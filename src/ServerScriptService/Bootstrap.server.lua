@@ -14,6 +14,7 @@ local Net = require(Shared.Net) -- requiring this on the server BUILDS the remot
 local Economy = require(Shared.Economy)
 
 local Modules = ServerScriptService:WaitForChild("Modules")
+local MapStyle = require(Modules.MapStyle)
 local DataService = require(Modules.DataService)
 local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
@@ -21,6 +22,11 @@ local PlotService = require(Modules.PlotService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
+
+-- Restyle first: PlotService caches each pad's colour when it attaches, so the
+-- map has to be in its final look before that happens.
+local styled, shrooms = MapStyle.apply()
+print(("[MapStyle] dusk pass: %d parts restyled, %d mushrooms"):format(styled, shrooms))
 
 DataService.start()
 EventService.start()
