@@ -48,6 +48,18 @@ function HUD.init(ctx)
 		size = UDim2.new(1, 0, 0, 26),
 	})
 
+	-- Pack icon if one is assigned, otherwise the label just keeps the whole row.
+	local moneyIcon = Theme.image({
+		parent = card,
+		slot = "money",
+		name = "MoneyIcon",
+		size = UDim2.fromOffset(26, 26),
+	})
+	if moneyIcon then
+		moneyLabel.Position = UDim2.fromOffset(32, 0)
+		moneyLabel.Size = UDim2.new(1, -32, 0, 26)
+	end
+
 	local incomeLabel = Theme.label({
 		parent = card,
 		text = "$0/s",

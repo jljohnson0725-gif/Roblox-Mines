@@ -6,7 +6,9 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sounds = require(ReplicatedStorage:WaitForChild("Shared").Sounds)
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Sounds = require(Shared.Sounds)
+local Assets = require(Shared.Assets)
 
 local Theme = {}
 
@@ -157,6 +159,53 @@ function Theme.button(props)
 	end
 
 	return button
+end
+
+--[[
+	Put a pack image inside a button, replacing its text glyph.
+
+	`slot` is a key in Assets.UI. If that slot is nil -- pack not loaded, image
+	not chosen yet -- this is a no-op and the button keeps its text fallback.
+	That's what makes adopting the art pack incremental and reversible: set a
+	slot back to nil in Assets.lua and the glyph comes straight back.
+]]
+function Theme.iconify(button, slot, inset)
+	local id = Assets.get(slot)
+	if not id then
+		return nil
+	end
+
+	button.Text = ""
+	local image = Instance.new("ImageLabel")
+	image.Name = "Icon"
+	image.BackgroundTransparency = 1
+	image.Image = id
+	image.ScaleType = Enum.ScaleType.Fit
+	image.Size = UDim2.new(1, -(inset or 10), 1, -(inset or 10))
+	image.Position = UDim2.fromScale(0.5, 0.5)
+	image.AnchorPoint = Vector2.new(0.5, 0.5)
+	image.ZIndex = button.ZIndex + 1
+	image.Parent = button
+	return image
+end
+
+--[[ Standalone image, for slots that aren't buttons (the money icon). ]]
+function Theme.image(props)
+	local id = Assets.get(props.slot)
+	if not id then
+		return nil
+	end
+	local image = Instance.new("ImageLabel")
+	image.Name = props.name or "Image"
+	image.BackgroundTransparency = 1
+	image.Image = id
+	image.ScaleType = Enum.ScaleType.Fit
+	image.Size = props.size or UDim2.fromOffset(24, 24)
+	image.Position = props.position or UDim2.fromOffset(0, 0)
+	image.AnchorPoint = props.anchor or Vector2.new(0, 0)
+	image.LayoutOrder = props.order or 0
+	image.Parent = props.parent
+	return image
 end
 
 --[[ Recolour a button built above, keeping hover in sync. ]]

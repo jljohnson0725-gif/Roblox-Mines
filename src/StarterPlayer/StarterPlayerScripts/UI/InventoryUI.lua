@@ -86,6 +86,7 @@ function InventoryUI.init(ctx)
 		position = UDim2.new(1, -PAD, 0, 14),
 		anchor = Vector2.new(1, 0),
 	})
+	Theme.iconify(closeButton, "close", 8)
 
 	-- ── summary strip ───────────────────────────────────────────────────────
 

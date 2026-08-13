@@ -169,6 +169,34 @@ tier — shake, flash, confetti count, stinger pitch, hold time, and whether it
 announces server-wide. Common and Uncommon are deliberately silent spectacle-wise
 (`level = 0`); see `DESIGN.md` for why.
 
+## Art assets
+
+Two kinds, with very different workflows.
+
+**UI pack (`.rbxmx`)** — its images are *already uploaded to Roblox*, so they
+work immediately. Convert the pack to XML in Studio (right-click the ScreenGui →
+**Save to File As** → set the dropdown to **Roblox XML Model Files**; renaming
+the extension does nothing), then:
+
+```bash
+python tools/extract_assets.py "path/to/YourUiPack!.rbxmx"
+```
+
+That regenerates `Shared/Assets.lua` with every id, grouped by screen.
+
+**Icon PNGs** — these are local files and *must be uploaded* to get an asset id.
+A shortlist of 23, already renamed to their UI roles, is staged in
+`assets/icons/_upload/`. Import them via Studio's **Asset Manager → Images →
+Import**, then paste the ids into `Assets.UI`.
+
+### How the UI consumes them
+
+`Assets.UI` is the only table the game reads, and it's never regenerated —
+`Assets.Pack` is. A slot set to `nil` means "keep the text-glyph fallback", so
+adopting the art is incremental and instantly reversible: blank a slot and the
+`✕`/`◆`/`⚡` glyph comes straight back. Wire one up with
+`Theme.iconify(button, "slot")` or `Theme.image({ slot = "..." })`.
+
 ## Adding a brainrot
 
 One line in `Shared/Brainrots.lua`:
