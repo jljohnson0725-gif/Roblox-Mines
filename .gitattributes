@@ -1,0 +1,19 @@
+# Normalise text to LF in the repo, checked out native per platform.
+* text=auto eol=lf
+
+# Roblox place/model files are machine-generated XML. Marking them -text stops
+# git rewriting their line endings, which on a 17 MB map would produce a
+# whole-file diff every time someone on a different OS touched the repo.
+*.rbxlx -text
+*.rbxl  -text
+*.rbxmx -text
+*.rbxm  -text
+
+# Windows launchers must keep CRLF or cmd.exe mis-parses them.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Lua stays LF everywhere; Studio doesn't care and diffs stay clean.
+*.lua text eol=lf
+*.py  text eol=lf
+*.md  text eol=lf

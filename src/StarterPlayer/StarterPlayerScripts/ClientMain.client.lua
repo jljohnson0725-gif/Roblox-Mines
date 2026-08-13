@@ -1,0 +1,302 @@
+--[[
+	ClientMain
+	Owns client state, wires the three UI modules together, and animates the
+	brainrots standing on pads.
+
+	State is MERGE-updated from the server's Sync payloads: a payload carrying
+	only `money` leaves inventory alone. That's what lets the per-second income
+	tick be cheap.
+]]
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared.Config)
+local Net = require(Shared.Net)
+local Sounds = require(Shared.Sounds)
+
+local UI = script.Parent:WaitForChild("UI")
+local HUD = require(UI.HUD)
+local Fx = require(UI.Fx)
+local MinesUI = require(UI.MinesUI)
+local InventoryUI = require(UI.InventoryUI)
+
+-- ── gui root ────────────────────────────────────────────────────────────────
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "BrainrotMines"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = playerGui
+
+-- ── state ───────────────────────────────────────────────────────────────────
+
+local state = {
+	money = 0,
+	slots = Config.StartingSlots,
+	inventory = {},
+	income = 0,
+	stats = {},
+	event = nil, -- global event clock, filled by RequestState / EventState
+}
+
+local listeners = {}
+
+local function fireState()
+	for _, listener in ipairs(listeners) do
+		local ok, err = pcall(listener)
+		if not ok then
+			warn("[ClientMain] state listener error: " .. tostring(err))
+		end
+	end
+end
+
+local ctx = {
+	gui = gui,
+	state = state,
+	remotes = {
+		StartRound = Net.get("StartRound"),
+		RevealTile = Net.get("RevealTile"),
+		CashOut = Net.get("CashOut"),
+		PlaceBrainrot = Net.get("PlaceBrainrot"),
+		BuySlot = Net.get("BuySlot"),
+		EquipBest = Net.get("EquipBest"),
+		RequestState = Net.get("RequestState"),
+	},
+	onState = function(fn)
+		table.insert(listeners, fn)
+	end,
+	notify = function() end, -- replaced by HUD below
+	flashDrop = function() end,
+	fx = nil, -- replaced by Fx below
+}
+
+-- ── ui ──────────────────────────────────────────────────────────────────────
+-- Order matters: HUD supplies notify (which Fx needs), Fx supplies ctx.fx
+-- (which MinesUI needs), so both must exist before the panels are built.
+
+local hud = HUD.init(ctx)
+ctx.notify = hud.notify
+ctx.flashDrop = hud.flashDrop
+
+ctx.fx = Fx.init(ctx)
+
+local minesUI = MinesUI.init(ctx)
+local inventoryUI = InventoryUI.init(ctx)
+
+local function showMines(visible)
+	if visible then
+		inventoryUI.setVisible(false)
+	end
+	if visible ~= minesUI.isVisible() then
+		Sounds.play(visible and "uiOpen" or "uiClose")
+	end
+	minesUI.setVisible(visible)
+end
+
+local function showInventory(visible)
+	if visible then
+		minesUI.setVisible(false)
+	end
+	if visible ~= inventoryUI.isVisible() then
+		Sounds.play(visible and "uiOpen" or "uiClose")
+	end
+	inventoryUI.setVisible(visible)
+end
+
+hud.onMines = function()
+	showMines(not minesUI.isVisible())
+end
+
+hud.onCollection = function()
+	showInventory(not inventoryUI.isVisible())
+end
+
+-- ── server events ───────────────────────────────────────────────────────────
+
+Net.get("Sync").OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" then
+		return
+	end
+	for key, value in pairs(payload) do
+		state[key] = value
+	end
+	fireState()
+end)
+
+Net.get("Notify").OnClientEvent:Connect(function(text, kind)
+	hud.notify(text, kind)
+end)
+
+Net.get("OpenPicker").OnClientEvent:Connect(function(padIndex)
+	minesUI.setVisible(false)
+	Sounds.play("uiOpen")
+	inventoryUI.openForPad(padIndex)
+end)
+
+Net.get("EventState").OnClientEvent:Connect(function(snapshot)
+	if type(snapshot) ~= "table" then
+		return
+	end
+	state.event = snapshot
+	fireState()
+end)
+
+Net.get("Announce").OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" then
+		return
+	end
+	-- Skip our own finds -- we already got the full screen-shaking version.
+	if payload.userId == player.UserId then
+		return
+	end
+	ctx.fx.announce(payload)
+end)
+
+--[[
+	Plot audio, driven off state changes rather than off the UI that caused
+	them. Placement can originate from the collection panel OR from a pad's
+	proximity prompt (which resolves entirely server-side), so watching the
+	resulting state is the only place that catches both.
+]]
+do
+	local lastSlots, lastPlaced
+
+	ctx.onState(function()
+		local placed = 0
+		for _, item in ipairs(state.inventory or {}) do
+			if item.pad then
+				placed += 1
+			end
+		end
+		local slots = state.slots or 0
+
+		if lastSlots and slots > lastSlots then
+			Sounds.play("unlock")
+		end
+		if lastPlaced and placed ~= lastPlaced then
+			Sounds.play(placed > lastPlaced and "place" or "store")
+		end
+
+		lastSlots, lastPlaced = slots, placed
+	end)
+end
+
+-- Pull once on startup so we can't miss the server's first push.
+task.spawn(function()
+	local ok, snapshot = pcall(ctx.remotes.RequestState.InvokeServer, ctx.remotes.RequestState)
+	if not ok then
+		warn("[ClientMain] initial state pull failed: " .. tostring(snapshot))
+		return
+	end
+	if type(snapshot) == "table" then
+		for key, value in pairs(snapshot) do
+			state[key] = value
+		end
+		fireState()
+	end
+end)
+
+-- ── keybinds ────────────────────────────────────────────────────────────────
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.M then
+		showMines(not minesUI.isVisible())
+	elseif input.KeyCode == Enum.KeyCode.C then
+		showInventory(not inventoryUI.isVisible())
+	elseif input.KeyCode == Enum.KeyCode.Escape then
+		minesUI.setVisible(false)
+		inventoryUI.setVisible(false)
+	end
+end)
+
+-- ── pad model animation ─────────────────────────────────────────────────────
+--
+-- Server-placed models are anchored and never moved by the server, so the
+-- client is free to animate them locally. Rebuilding the tagged list every
+-- frame would allocate constantly, so we track adds/removes instead, and skip
+-- anything too far away to see.
+
+local ANIMATE_RADIUS = 130
+local tracked = {}
+
+local function track(model)
+	task.defer(function()
+		if not model:IsDescendantOf(Workspace) then
+			return
+		end
+
+		local tintable = {}
+		if model:GetAttribute("CycleHue") then
+			for _, descendant in ipairs(model:GetDescendants()) do
+				if
+					descendant:IsA("BasePart")
+					and not descendant:GetAttribute("NoTint")
+					and descendant.Name ~= "Root"
+				then
+					table.insert(tintable, descendant)
+				end
+			end
+		end
+
+		tracked[model] = {
+			pivot = model:GetPivot(),
+			tintable = tintable,
+			phase = math.random() * math.pi * 2,
+		}
+	end)
+end
+
+for _, model in ipairs(CollectionService:GetTagged(Config.BrainrotTag)) do
+	track(model)
+end
+CollectionService:GetInstanceAddedSignal(Config.BrainrotTag):Connect(track)
+CollectionService:GetInstanceRemovedSignal(Config.BrainrotTag):Connect(function(model)
+	tracked[model] = nil
+end)
+
+local clock = 0
+RunService.Heartbeat:Connect(function(dt)
+	clock += dt
+
+	local camera = Workspace.CurrentCamera
+	local eye = camera and camera.CFrame.Position
+
+	for model, data in pairs(tracked) do
+		if not model.Parent then
+			tracked[model] = nil
+		elseif not eye or (data.pivot.Position - eye).Magnitude < ANIMATE_RADIUS then
+			local bob = math.sin(clock * 1.7 + data.phase) * 0.22
+			model:PivotTo(data.pivot * CFrame.new(0, bob, 0) * CFrame.Angles(0, clock * 0.7, 0))
+
+			if #data.tintable > 0 then
+				local hue = (clock * 0.16 + data.phase * 0.08) % 1
+				local color = Color3.fromHSV(hue, 0.85, 1)
+				for _, part in ipairs(data.tintable) do
+					part.Color = color
+				end
+			end
+		end
+	end
+end)
+
+-- ── first-run nudge ─────────────────────────────────────────────────────────
+
+task.delay(2, function()
+	if #(state.inventory or {}) == 0 then
+		hud.notify("Press M to play Mines. Brainrots you find pay rent forever.", "info")
+	end
+end)

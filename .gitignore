@@ -1,0 +1,15 @@
+# The place file is a BUILD ARTEFACT, regenerated from assets/ + src/ by
+# tools/build_place.py. Committing it means a 17 MB churn on every rebuild and
+# guarantees merge conflicts nobody can read. Run the build instead.
+BrainrotMines.rbxlx
+
+# Studio's "this place is open" markers
+*.lock
+
+# Studio autosaves / backups
+*.rbxl.bak
+*.rbxlx.bak
+AutoSaves/
+
+__pycache__/
+*.pyc
