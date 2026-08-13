@@ -44,6 +44,11 @@ local function newProfile()
 		slots = Config.StartingSlots,
 		nextUid = 1,
 		lasersOn = true, -- base door armed; toggled by the red button inside
+		-- Per-slot, not one total: "collect this brainrot" can't be expressed
+		-- without it. Stored as a dense 1..MaxSlots array on purpose -- a sparse
+		-- table would JSON-encode to an object and come back with STRING keys,
+		-- silently breaking every numeric lookup after a reload.
+		pending = table.create(Config.MaxSlots, 0),
 		inventory = {}, -- array of { uid, charId, variantId, pad = number? }
 		stats = {
 			rounds = 0,
@@ -66,6 +71,18 @@ local function reconcile(profile)
 		if profile.stats[key] == nil then
 			profile.stats[key] = value
 		end
+	end
+
+	-- Old saves stored pending as a single number; and any save could carry an
+	-- array sized for a different MaxSlots.
+	if type(profile.pending) ~= "table" then
+		profile.pending = table.create(Config.MaxSlots, 0)
+	end
+	for i = 1, Config.MaxSlots do
+		profile.pending[i] = tonumber(profile.pending[i]) or 0
+	end
+	for i = Config.MaxSlots + 1, #profile.pending do
+		profile.pending[i] = nil
 	end
 
 	-- Drop anything referring to a character that no longer exists in the roster,

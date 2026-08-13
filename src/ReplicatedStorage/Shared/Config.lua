@@ -87,6 +87,12 @@ Config.ShelfFrontZ = 8 -- centre Z of the front tier
 -- ── Income ──────────────────────────────────────────────────────────────────
 Config.IncomeTickRate = 1 -- seconds between passive income payouts
 
+-- Income no longer auto-credits: it piles up on the collect strips and you walk
+-- over the CollectZone to bank it. The cap is what makes that a loop instead of
+-- a formality -- leave for longer than this and the pile stops growing, so
+-- there's a real reason to come back rather than idle indefinitely.
+Config.CollectCapSeconds = 300
+
 -- CollectionService tag on placed brainrot models. Lives here because the
 -- server applies it and the client animates by it, and they must not drift.
 Config.BrainrotTag = "BrainrotModel"

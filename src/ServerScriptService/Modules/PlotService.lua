@@ -6,9 +6,9 @@
 	TWO MODES, chosen at startup:
 
 	  attach   -- Workspace/Bases/BaseN exists (the imported map). Each base is
-	              already a finished art asset with 8 slot pedestals, a Spawn,
-	              an Owner marker and a CollectZone. We bind to that geometry and
-	              build nothing.
+	              already a finished art asset with 8 slot pedestals, a Spawn
+	              and an Owner marker. We bind to that geometry and build
+	              nothing. (Its CollectZone is unused -- see tickCollect.)
 	  generate -- no Bases folder. Falls back to building ground, plots and
 	              tiered shelves in code, so the game still runs on a blank
 	              baseplate with zero setup.
@@ -47,6 +47,11 @@ local mode = "generate"
 
 local EMPTY_PAD = Color3.fromRGB(72, 76, 88)
 local LOCKED_PAD = Color3.fromRGB(38, 40, 48)
+
+-- How many cash slabs a full collect strip shows. Declared up here because
+-- attachPlot builds the slabs long before the collect-pile section below --
+-- a local declared later simply isn't in scope there.
+local PILE_STEPS = 3
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- ATTACH MODE
@@ -161,12 +166,52 @@ local function attachPlot(base, index)
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = pedestal
 
+		-- Cash slabs stacked on the strip. Built once, hidden/shown by
+		-- renderPile -- cheaper and steadier than spawning parts per tick.
+		local pile = {}
+		local top = pedestal.Position + Vector3.new(0, pedestal.Size.Y / 2, 0)
+		for step = 1, PILE_STEPS do
+			local slab = Instance.new("Part")
+			slab.Name = "Cash" .. step
+			slab.Size = Vector3.new(pedestal.Size.X * 0.5, 0.35, pedestal.Size.Z * 0.55)
+			slab.CFrame = CFrame.new(top + Vector3.new(0, 0.18 + (step - 1) * 0.38, 0))
+			slab.Anchored = true
+			slab.CanCollide = false
+			slab.CanQuery = false
+			slab.CanTouch = false
+			slab.Color = Color3.fromRGB(96, 200, 118)
+			slab.Material = Enum.Material.SmoothPlastic
+			slab.Transparency = 1
+			slab.Parent = container
+			pile[step] = slab
+		end
+
+		local pileGui = Instance.new("BillboardGui")
+		pileGui.Name = "PileLabel"
+		pileGui.Size = UDim2.fromOffset(120, 26)
+		pileGui.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
+		pileGui.MaxDistance = 70
+		pileGui.Adornee = pedestal
+		pileGui.Parent = container
+
+		local pileLabel = Instance.new("TextLabel")
+		pileLabel.Size = UDim2.fromScale(1, 1)
+		pileLabel.BackgroundTransparency = 1
+		pileLabel.Font = Enum.Font.GothamBlack
+		pileLabel.TextScaled = true
+		pileLabel.TextColor3 = Color3.fromRGB(120, 235, 150)
+		pileLabel.TextStrokeTransparency = 0.4
+		pileLabel.Text = ""
+		pileLabel.Parent = pileGui
+
 		pads[i] = {
 			part = pedestal, -- collect strip: carries the prompt and the tint
 			prompt = prompt,
 			model = nil,
 			facing = entry.facing,
 			stand = entry.stand, -- podium surface: where the model actually goes
+			pile = pile,
+			pileLabel = pileLabel,
 			-- so an empty pad can be restored to the map's own look
 			baseColor = pedestal.Color,
 			baseMaterial = pedestal.Material,
@@ -539,6 +584,137 @@ local function renderPad(plot, padIndex, profile)
 	pad.prompt.Enabled = true
 	pad.prompt.ActionText = "Store"
 	pad.prompt.ObjectText = Economy.displayName(item.charId, item.variantId)
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- COLLECT PILES
+-- ════════════════════════════════════════════════════════════════════════════
+
+--[[
+	Income accrues into `profile.pending` and shows up as cash on the strips in
+	front of each brainrot. Walking over the base's CollectZone banks it.
+
+	Pending is tracked as ONE number, not per slot. Each strip displays its
+	share proportionally (that brainrot's income / total income), which looks
+	identical to per-slot accounting but avoids keeping eight extra counters in
+	sync with placement changes.
+]]
+local function renderPile(pad, amount, fraction)
+	if not pad.pile then
+		return
+	end
+
+	local shown = 0
+	if amount > 0 then
+		-- stepped, not continuous: parts only toggle when crossing a threshold,
+		-- so the per-second tick isn't rewriting geometry every frame
+		shown = math.clamp(math.ceil(fraction * PILE_STEPS), 1, PILE_STEPS)
+	end
+
+	for i, slab in ipairs(pad.pile) do
+		slab.Transparency = i <= shown and 0 or 1
+	end
+
+	if pad.pileLabel then
+		pad.pileLabel.Text = amount > 0 and Format.money(amount) or ""
+	end
+end
+
+--[[
+	Grow each strip's pile. Capped PER SLOT off that brainrot's own rate, so a
+	fast earner fills its strip in the same wall-clock time a slow one does --
+	the cap is about how long you can stay away, not about who earns more.
+]]
+function PlotService.accrue(player, elapsed)
+	local profile = DataService.get(player)
+	if not profile or not profile.pending then
+		return
+	end
+
+	for _, item in ipairs(profile.inventory) do
+		local slot = item.pad
+		if slot and slot >= 1 and slot <= Config.MaxSlots then
+			local rate = Economy.incomeOf(item.charId, item.variantId)
+			local cap = rate * Config.CollectCapSeconds
+			profile.pending[slot] = math.min(cap, (profile.pending[slot] or 0) + rate * elapsed)
+		end
+	end
+end
+
+--[[ Refresh every strip on a player's base. Called once a second. ]]
+function PlotService.renderPiles(player)
+	local plot = byUserId[player.UserId]
+	local profile = DataService.get(player)
+	if not plot or not profile or not profile.pending then
+		return
+	end
+
+	for index, pad in ipairs(plot.pads) do
+		local item = DataService.itemOnPad(profile, index)
+		local amount = profile.pending[index] or 0
+		if item then
+			local cap = math.max(Economy.incomeOf(item.charId, item.variantId) * Config.CollectCapSeconds, 1)
+			renderPile(pad, amount, math.clamp(amount / cap, 0, 1))
+		else
+			-- cash left behind by a brainrot that got stored stays collectable
+			renderPile(pad, amount, amount > 0 and 1 or 0)
+		end
+	end
+end
+
+local function withinPad(root, part, pad)
+	local delta = root.Position - part.Position
+	local half = part.Size / 2
+	return math.abs(delta.X) <= half.X + pad
+		and math.abs(delta.Z) <= half.Z + pad
+		and math.abs(delta.Y) <= 8
+end
+
+--[[
+	Walk over the cash to pick it up.
+
+	Collection happens ONLY at the per-slot strips -- the same pads the cash and
+	the running total are displayed on. The map's own CollectZone is deliberately
+	unused: it sits at z -151 while the laser door is at z -157, which puts it
+	OUTSIDE your own security door, unreachable without opening up or dying.
+
+	Standing near a strip banks that brainrot's share (its income / total), so
+	you walk the row and pick cash up as you pass.
+
+	Runs on the tick rather than Touched alone: Touched fires on entry but not
+	while you stand still, so you'd watch the pile grow under your feet.
+]]
+function PlotService.tickCollect(player)
+	local plot = byUserId[player.UserId]
+	local profile = DataService.get(player)
+	if not plot or not profile or not profile.pending then
+		return
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+
+	local claimed = 0
+	for index, pad in ipairs(plot.pads) do
+		local amount = profile.pending[index] or 0
+		if amount >= 1 and withinPad(root, pad.part, 4) then
+			-- the WHOLE strip, emptied in one go
+			profile.pending[index] = 0
+			claimed += amount
+		end
+	end
+
+	if claimed < 1 then
+		return
+	end
+
+	profile.money += math.floor(claimed)
+	PlotService.renderPiles(player)
+	PlayerState.push(player)
+	PlayerState.notify(player, "Collected " .. Format.money(math.floor(claimed)), "good")
 end
 
 -- ════════════════════════════════════════════════════════════════════════════

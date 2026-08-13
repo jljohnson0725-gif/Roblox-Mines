@@ -11,10 +11,22 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
 local Economy = require(Shared.Economy)
+local Config = require(Shared.Config)
 
 local DataService = require(script.Parent.DataService)
 
 local PlayerState = {}
+
+--[[ Total across every collect strip -- the HUD only needs the one number. ]]
+local function totalPending(profile)
+	local sum = 0
+	for i = 1, Config.MaxSlots do
+		sum += profile.pending and profile.pending[i] or 0
+	end
+	return sum
+end
+
+PlayerState.totalPending = totalPending
 
 --[[
 	Sync payloads are MERGED by the client, not replaced, so a frequent update
@@ -28,6 +40,7 @@ function PlayerState.snapshot(player)
 	end
 	return {
 		money = profile.money,
+		pending = totalPending(profile),
 		slots = profile.slots,
 		inventory = profile.inventory,
 		income = Economy.totalIncome(profile.inventory),
@@ -43,13 +56,16 @@ function PlayerState.push(player)
 	end
 end
 
---[[ Money only -- for the income tick. ]]
+--[[ Money + pending only -- for the per-second income tick. ]]
 function PlayerState.pushMoney(player)
 	local profile = DataService.get(player)
 	if not profile then
 		return
 	end
-	Net.get("Sync"):FireClient(player, { money = profile.money })
+	Net.get("Sync"):FireClient(player, {
+		money = profile.money,
+		pending = totalPending(profile),
+	})
 end
 
 --[[ kind: "good" | "bad" | "info" ]]

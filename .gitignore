@@ -13,3 +13,8 @@ AutoSaves/
 
 __pycache__/
 *.pyc
+
+# MCP client config is per-developer environment, not project state: the
+# launcher path is Windows-specific (macOS uses a different binary entirely),
+# and connecting an AI client to Studio should be each person's own opt-in.
+.mcp.json

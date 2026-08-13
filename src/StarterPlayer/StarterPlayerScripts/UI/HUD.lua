@@ -374,7 +374,18 @@ function HUD.init(ctx)
 
 	function hud.render()
 		moneyLabel.Text = Format.money(math.floor(ctx.state.money or 0))
-		incomeLabel.Text = Format.rate(ctx.state.income or 0)
+
+		-- Pending is the nudge to walk home, so it takes over the income line
+		-- entirely when there's something waiting.
+		local pending = ctx.state.pending or 0
+		if pending >= 1 then
+			incomeLabel.Text = string.format("%s  •  %s ready",
+				Format.rate(ctx.state.income or 0), Format.money(pending))
+			incomeLabel.TextColor3 = Theme.color.gold
+		else
+			incomeLabel.Text = Format.rate(ctx.state.income or 0)
+			incomeLabel.TextColor3 = Theme.color.good
+		end
 	end
 
 	ctx.onState(hud.render)

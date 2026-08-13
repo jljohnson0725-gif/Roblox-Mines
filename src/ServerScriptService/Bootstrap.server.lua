@@ -83,10 +83,22 @@ task.spawn(function()
 			if profile then
 				local rate = Economy.totalIncome(profile.inventory)
 
+				-- Income accrues to the collect strips, NOT straight to the
+				-- wallet. Capped per slot, so leaving forever stops paying and
+				-- coming back to collect stays worth doing.
 				if rate > 0 then
-					profile.money += rate * elapsed
+					PlotService.accrue(player, elapsed)
+				end
+
+				-- Render and collect run even at zero income: cash can still be
+				-- sitting on a strip whose brainrot has since been stored, and
+				-- skipping these would strand it permanently.
+				PlotService.renderPiles(player)
+				PlotService.tickCollect(player)
+
+				if rate > 0 then
 					PlayerState.pushMoney(player)
-				elseif profile.money < Config.MinBet then
+				elseif profile.money < Config.MinBet and PlayerState.totalPending(profile) < Config.MinBet then
 					-- Broke with nothing earning: hand them back into the loop
 					-- rather than leaving them softlocked at the table.
 					profile.money = Config.BrokeStipend
