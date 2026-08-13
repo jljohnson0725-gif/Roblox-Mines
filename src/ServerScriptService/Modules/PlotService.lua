@@ -557,6 +557,11 @@ end
 	see is a door you forget you left open.
 ]]
 local function applyLasers(plot, on)
+	-- Read by the Touched handlers. Kept on the plot rather than looked up from
+	-- the profile each hit, because Touched fires constantly and this has to
+	-- stay cheap.
+	plot.lasersArmed = on
+
 	for _, laser in ipairs(plot.lasers or {}) do
 		local part = laser.part
 		part.CanCollide = on
@@ -575,6 +580,43 @@ local function applyLasers(plot, on)
 		plot.lockPrompt.ActionText = on and "Open Door" or "Close Door"
 		plot.lockPrompt.ObjectText = on and "Lasers ARMED" or "Lasers OFF"
 	end
+end
+
+--[[
+	Make one laser bar lethal. Connected ONCE at startup, not on every toggle --
+	re-connecting per toggle would stack duplicate handlers and fire N times per
+	contact.
+
+	Armed lasers kill the owner too. That's deliberate rather than an oversight:
+	the bars are solid, so the only way through is the button, and making them
+	harmless to you would turn a security door into scenery. Dying is cheap --
+	you respawn inside your own base.
+
+	An unowned base is inert. Nobody's property is being protected, so frying a
+	passer-by at an empty base would just be a trap with no author.
+]]
+local function wireLaser(plot, part)
+	part.Touched:Connect(function(hit)
+		if not plot.lasersArmed or not plot.userId then
+			return
+		end
+
+		local character = hit.Parent
+		if not character then
+			return
+		end
+		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+		if not humanoid or humanoid.Health <= 0 then
+			return -- also debounces: the second bar can't re-kill a corpse
+		end
+
+		humanoid.Health = 0
+
+		local victim = Players:GetPlayerFromCharacter(character)
+		if victim then
+			PlayerState.notify(victim, "Fried by the lasers.", "bad")
+		end
+	end)
 end
 
 function PlotService.toggleLasers(player)
@@ -843,6 +885,10 @@ function PlotService.start()
 	end
 
 	for _, plot in ipairs(plots) do
+		for _, laser in ipairs(plot.lasers or {}) do
+			wireLaser(plot, laser.part)
+		end
+
 		if plot.lockPrompt then
 			plot.lockPrompt.Triggered:Connect(function(player)
 				if plot.userId ~= player.UserId then
