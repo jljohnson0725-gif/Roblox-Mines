@@ -222,34 +222,50 @@ local function attachPlot(base, index)
 	local ownerPart = base:FindFirstChild("Owner")
 	local ownerLabel, rateLabel
 	if ownerPart and ownerPart:IsA("BasePart") then
+		--[[
+			Deliberately restrained. These were 300x74 at MaxDistance 250 with
+			uncapped TextScaled, which was fine over a bright daytime map but
+			became the loudest thing on screen once MapStyle took it to dusk --
+			white text over a dark map, big enough to overlap between bases.
+			Capping the text size is what actually fixes it; TextScaled alone
+			just grows to fill whatever box you give it.
+		]]
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "OwnerLabel"
-		gui.Size = UDim2.fromOffset(300, 74)
+		gui.Size = UDim2.fromOffset(210, 52)
 		gui.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
-		gui.MaxDistance = 250
+		gui.MaxDistance = 120
 		gui.AlwaysOnTop = false
 		gui.Parent = ownerPart
 
 		ownerLabel = Instance.new("TextLabel")
-		ownerLabel.Size = UDim2.new(1, 0, 0.6, 0)
+		ownerLabel.Size = UDim2.new(1, 0, 0.58, 0)
 		ownerLabel.BackgroundTransparency = 1
 		ownerLabel.Font = Enum.Font.GothamBold
 		ownerLabel.TextScaled = true
-		ownerLabel.TextColor3 = Color3.fromRGB(240, 242, 250)
-		ownerLabel.TextStrokeTransparency = 0.4
+		ownerLabel.TextColor3 = Color3.fromRGB(226, 232, 248)
+		ownerLabel.TextStrokeTransparency = 0.35
 		ownerLabel.Text = "Empty Base"
 		ownerLabel.Parent = gui
 
+		local ownerCap = Instance.new("UITextSizeConstraint")
+		ownerCap.MaxTextSize = 21
+		ownerCap.Parent = ownerLabel
+
 		rateLabel = Instance.new("TextLabel")
-		rateLabel.Size = UDim2.new(1, 0, 0.4, 0)
-		rateLabel.Position = UDim2.new(0, 0, 0.6, 0)
+		rateLabel.Size = UDim2.new(1, 0, 0.42, 0)
+		rateLabel.Position = UDim2.new(0, 0, 0.58, 0)
 		rateLabel.BackgroundTransparency = 1
 		rateLabel.Font = Enum.Font.GothamMedium
 		rateLabel.TextScaled = true
 		rateLabel.TextColor3 = Color3.fromRGB(120, 235, 150)
-		rateLabel.TextStrokeTransparency = 0.5
+		rateLabel.TextStrokeTransparency = 0.45
 		rateLabel.Text = ""
 		rateLabel.Parent = gui
+
+		local rateCap = Instance.new("UITextSizeConstraint")
+		rateCap.MaxTextSize = 15
+		rateCap.Parent = rateLabel
 	end
 
 	local spawnPart = base:FindFirstChild("Spawn")

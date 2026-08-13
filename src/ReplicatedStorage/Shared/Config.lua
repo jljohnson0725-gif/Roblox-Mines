@@ -97,6 +97,9 @@ Config.CollectCapSeconds = 300
 -- server applies it and the client animates by it, and they must not drift.
 Config.BrainrotTag = "BrainrotModel"
 
+-- Tag on the Mines landmark's rings. Server builds them, client spins them.
+Config.RingTag = "MinesRing"
+
 -- ── Events ──────────────────────────────────────────────────────────────────
 -- Gap between events, randomised in this range. The gap AND the event type are
 -- both rolled the moment the previous event ends, so the countdown shown to

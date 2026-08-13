@@ -151,6 +151,11 @@ Net.get("EventState").OnClientEvent:Connect(function(snapshot)
 	fireState()
 end)
 
+Net.get("OpenMines").OnClientEvent:Connect(function()
+	Sounds.play("uiOpen")
+	showMines(true)
+end)
+
 Net.get("Announce").OnClientEvent:Connect(function(payload)
 	if type(payload) ~= "table" then
 		return
@@ -268,7 +273,63 @@ CollectionService:GetInstanceRemovedSignal(Config.BrainrotTag):Connect(function(
 	tracked[model] = nil
 end)
 
+--[[
+	The landmark's rings. Separate from the brainrot animation because they want
+	pure yaw at their own speeds and directions, no bob, and they're always
+	worth spinning regardless of distance -- they're the map's landmark, so they
+	read from across it.
+]]
+local ringPivots = {}
+
+--[[
+	Polls rather than checking once.
+
+	PrimaryPart is a REFERENCE property, and references can replicate after the
+	instance that owns them. The landmark is built at server start -- before any
+	player joins -- so the whole thing lands in one burst as the client streams
+	in, which is exactly when that lag shows up. A single deferred check loses
+	the race and the ring then never spins, silently, for the life of the
+	session. Waiting for the pivot to be trustworthy is what makes it reliable:
+	capturing it early would snapshot the bounding box of a half-replicated ring
+	and rotate it about the wrong centre.
+]]
+local function trackRing(model)
+	task.spawn(function()
+		local deadline = os.clock() + 15
+		while os.clock() < deadline do
+			if model:IsDescendantOf(Workspace) and model.PrimaryPart then
+				ringPivots[model] = model:GetPivot()
+				return
+			end
+			task.wait(0.25)
+		end
+		warn("[ClientMain] ring never became trackable: " .. model:GetFullName())
+	end)
+end
+for _, m in ipairs(CollectionService:GetTagged(Config.RingTag)) do trackRing(m) end
+CollectionService:GetInstanceAddedSignal(Config.RingTag):Connect(trackRing)
+CollectionService:GetInstanceRemovedSignal(Config.RingTag):Connect(function(m)
+	ringPivots[m] = nil
+end)
+
+-- Own accumulator on purpose: sharing the brainrot loop's `clock` would mean
+-- deleting that loop silently freezes the rings.
+local ringClock = 0
+RunService.Heartbeat:Connect(function(dt)
+	ringClock += dt
+	for model, pivot in pairs(ringPivots) do
+		if model.Parent then
+			local dir = model:GetAttribute("SpinDirection") or 1
+			local speed = model:GetAttribute("SpinSpeed") or 0.3
+			model:PivotTo(pivot * CFrame.Angles(0, ringClock * speed * dir, 0))
+		else
+			ringPivots[model] = nil
+		end
+	end
+end)
+
 local clock = 0
+
 RunService.Heartbeat:Connect(function(dt)
 	clock += dt
 

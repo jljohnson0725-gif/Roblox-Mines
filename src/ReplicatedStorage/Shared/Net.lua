@@ -30,6 +30,7 @@ local EVENTS = {
 	"OpenPicker", -- a pad prompt was triggered; open the inventory picker for it
 	"Announce", -- broadcast: somebody found (or lost) a Mythic/Secret
 	"EventState", -- broadcast: an event started or ended
+	"OpenMines", -- the landmark's console was used
 }
 
 local folder

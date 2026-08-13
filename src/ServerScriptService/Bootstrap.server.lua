@@ -19,6 +19,7 @@ local DataService = require(Modules.DataService)
 local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
+local MinesLandmark = require(Modules.MinesLandmark)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -32,6 +33,11 @@ DataService.start()
 EventService.start()
 PlotService.start()
 MinesService.start()
+
+-- Built after the restyle so it sits on the final map, and after EventService
+-- so its rings can pick up whatever event is already running.
+MinesLandmark.build()
+MinesLandmark.startEventSync()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)
