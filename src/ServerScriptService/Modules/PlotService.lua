@@ -75,33 +75,51 @@ local function findBases()
 end
 
 --[[
-	The pedestal inside one slot model. The map gives each slot a wide flat
-	`Part` (the visible platform), a `Collect` trigger of the same footprint,
-	and a small `Spawn` marker set off to one side -- that offset is the only
-	thing telling us which way the slot faces, so we keep it.
+	Read one slot model. Two DIFFERENT places matter, and conflating them was a
+	bug worth naming:
+
+	  `Part` / `Collect`  -- a narrow 8.7 x 5.1 strip. This is the COLLECT strip
+	                         where cash piles up. It is not a display podium.
+	  `Spawn`             -- a 1x1x1 marker sitting at the centre of the map's
+	                         octagonal podium (four stacked Unions, 16x16 down
+	                         to 10x10). This is where the brainrot belongs.
+
+	The brainrot stands on the podium and faces the aisle, which is the
+	direction from the podium back toward the collect strip.
+
+	Podium height comes from a raycast rather than a guessed offset, because the
+	podium is four stacked Unions of differing thickness and the marker sits
+	inside them, not on top.
 ]]
 local function readSlot(slot)
-	local pedestal = slot:FindFirstChild("Part")
-	if not pedestal or not pedestal:IsA("BasePart") then
-		pedestal = slot:FindFirstChildWhichIsA("BasePart")
+	local strip = slot:FindFirstChild("Part")
+	if not strip or not strip:IsA("BasePart") then
+		strip = slot:FindFirstChildWhichIsA("BasePart")
 	end
-	if not pedestal then
+	if not strip then
 		return nil
 	end
 
 	local marker = slot:FindFirstChild("Spawn")
-	local facing
-	if marker and marker:IsA("BasePart") then
-		local delta = marker.Position - pedestal.Position
-		facing = Vector3.new(delta.X, 0, delta.Z)
-		if facing.Magnitude < 0.1 then
-			facing = nil
-		else
-			facing = facing.Unit
-		end
+	if not marker or not marker:IsA("BasePart") then
+		-- No podium marker: fall back to standing on the strip itself.
+		return strip, Vector3.new(0, 0, 1), strip.Position + Vector3.new(0, strip.Size.Y / 2, 0)
 	end
 
-	return pedestal, facing or Vector3.new(0, 0, 1)
+	-- podium -> strip is inward, toward the walkway the player uses
+	local delta = strip.Position - marker.Position
+	local facing = Vector3.new(delta.X, 0, delta.Z)
+	facing = facing.Magnitude > 0.1 and facing.Unit or Vector3.new(0, 0, 1)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { slot }
+
+	local from = marker.Position + Vector3.new(0, 12, 0)
+	local hit = Workspace:Raycast(from, Vector3.new(0, -24, 0), params)
+	local stand = hit and hit.Position or marker.Position
+
+	return strip, facing, stand
 end
 
 local function attachPlot(base, index)
@@ -110,9 +128,9 @@ local function attachPlot(base, index)
 
 	local entries = {}
 	for _, slot in ipairs(slotsFolder:GetChildren()) do
-		local pedestal, facing = readSlot(slot)
+		local pedestal, facing, stand = readSlot(slot)
 		if pedestal then
-			table.insert(entries, { pedestal = pedestal, facing = facing })
+			table.insert(entries, { pedestal = pedestal, facing = facing, stand = stand })
 		end
 	end
 
@@ -144,10 +162,11 @@ local function attachPlot(base, index)
 		prompt.Parent = pedestal
 
 		pads[i] = {
-			part = pedestal,
+			part = pedestal, -- collect strip: carries the prompt and the tint
 			prompt = prompt,
 			model = nil,
 			facing = entry.facing,
+			stand = entry.stand, -- podium surface: where the model actually goes
 			-- so an empty pad can be restored to the map's own look
 			baseColor = pedestal.Color,
 			baseMaterial = pedestal.Material,
@@ -194,6 +213,38 @@ local function attachPlot(base, index)
 		spawnCFrame = spawnPart.CFrame + Vector3.new(0, 4, 0)
 	end
 
+	-- ── laser door ──────────────────────────────────────────────────────────
+	-- The bars live at Floors/Floor1/Doors/Door1/Lasers, so search recursively
+	-- rather than assuming the path -- other bases could nest it differently.
+	local lasers = {}
+	local laserFolder = base:FindFirstChild("Lasers", true)
+	if laserFolder then
+		for _, part in ipairs(laserFolder:GetDescendants()) do
+			if part:IsA("BasePart") then
+				table.insert(lasers, {
+					part = part,
+					color = part.Color,
+					material = part.Material,
+					transparency = part.Transparency,
+				})
+			end
+		end
+	end
+
+	local lockPart = base:FindFirstChild("Lock")
+	local lockPrompt
+	if lockPart and lockPart:IsA("BasePart") and #lasers > 0 then
+		lockPrompt = Instance.new("ProximityPrompt")
+		lockPrompt.Name = "LaserPrompt"
+		lockPrompt.ActionText = "Toggle Lasers"
+		lockPrompt.ObjectText = "Door Control"
+		lockPrompt.HoldDuration = 0
+		lockPrompt.MaxActivationDistance = 10
+		lockPrompt.RequiresLineOfSight = false
+		lockPrompt.Enabled = false
+		lockPrompt.Parent = lockPart
+	end
+
 	return {
 		index = index,
 		model = base,
@@ -202,6 +253,10 @@ local function attachPlot(base, index)
 		ownerLabel = ownerLabel,
 		rateLabel = rateLabel,
 		spawnCFrame = spawnCFrame,
+		lasers = lasers,
+		lockPart = lockPart,
+		lockPrompt = lockPrompt,
+		lockColor = lockPart and lockPart:IsA("BasePart") and lockPart.Color or nil,
 		userId = nil,
 	}
 end
@@ -470,9 +525,11 @@ local function renderPad(plot, padIndex, profile)
 	local model = ModelFactory.build(item.charId, item.variantId)
 	if model then
 		model.Name = item.uid
-		local top = pad.part.Position + Vector3.new(0, pad.part.Size.Y / 2, 0)
+		-- `stand` is the podium surface, NOT pad.part -- pad.part is the collect
+		-- strip in front of it, which is where these used to wrongly appear.
+		local top = pad.stand or (pad.part.Position + Vector3.new(0, pad.part.Size.Y / 2, 0))
 		-- Placeholder figures are built facing +Z, and CFrame.lookAt aims -Z at
-		-- the target, so the extra half turn makes them look outward.
+		-- the target, so the extra half turn makes them look along `facing`.
 		local aim = CFrame.lookAt(top, top + pad.facing) * CFrame.Angles(0, math.pi, 0)
 		ModelFactory.place(model, aim)
 		model.Parent = plot.modelFolder
@@ -482,6 +539,54 @@ local function renderPad(plot, padIndex, profile)
 	pad.prompt.Enabled = true
 	pad.prompt.ActionText = "Store"
 	pad.prompt.ObjectText = Economy.displayName(item.charId, item.variantId)
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- LASER DOOR
+-- ════════════════════════════════════════════════════════════════════════════
+
+--[[
+	Arm or disarm the base door.
+
+	Armed bars collide, which is the whole point of a door -- and it's safe
+	because the control button sits INSIDE the base, so you can always reach it
+	to let yourself out. You also respawn inside, so being locked out is
+	recoverable by resetting.
+
+	Disarmed bars stay faintly visible rather than vanishing: a door you can't
+	see is a door you forget you left open.
+]]
+local function applyLasers(plot, on)
+	for _, laser in ipairs(plot.lasers or {}) do
+		local part = laser.part
+		part.CanCollide = on
+		part.Transparency = on and laser.transparency or 0.88
+		part.Material = on and laser.material or Enum.Material.Neon
+		part.Color = on and laser.color or laser.color:Lerp(Color3.new(0, 0, 0), 0.55)
+	end
+
+	if plot.lockPart and plot.lockColor then
+		-- the button reads the state at a glance: bright when armed, dead when not
+		plot.lockPart.Color = on and plot.lockColor or Color3.fromRGB(40, 90, 48)
+		plot.lockPart.Material = on and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	end
+
+	if plot.lockPrompt then
+		plot.lockPrompt.ActionText = on and "Open Door" or "Close Door"
+		plot.lockPrompt.ObjectText = on and "Lasers ARMED" or "Lasers OFF"
+	end
+end
+
+function PlotService.toggleLasers(player)
+	local plot = byUserId[player.UserId]
+	local profile = DataService.get(player)
+	if not plot or not profile or #(plot.lasers or {}) == 0 then
+		return
+	end
+
+	profile.lasersOn = not profile.lasersOn
+	applyLasers(plot, profile.lasersOn)
+	PlayerState.notify(player, profile.lasersOn and "Door closed." or "Door opened.", "info")
 end
 
 function PlotService.refresh(player)
@@ -501,6 +606,14 @@ function PlotService.refresh(player)
 	if plot.rateLabel then
 		plot.rateLabel.Text = Format.rate(Economy.totalIncome(profile.inventory))
 	end
+
+	if plot.lockPrompt then
+		plot.lockPrompt.Enabled = true
+	end
+	if profile.lasersOn == nil then
+		profile.lasersOn = true
+	end
+	applyLasers(plot, profile.lasersOn)
 end
 
 --[[ How many pads this world actually offers. Attach mode is capped by the
@@ -670,6 +783,13 @@ local function releasePlot(player)
 	if plot.rateLabel then
 		plot.rateLabel.Text = ""
 	end
+
+	-- Re-arm the door so the next occupant inherits a closed base rather than
+	-- whatever the previous player happened to leave it as.
+	if plot.lockPrompt then
+		plot.lockPrompt.Enabled = false
+	end
+	applyLasers(plot, true)
 end
 
 function PlotService.spawnAt(player, character)
@@ -723,6 +843,16 @@ function PlotService.start()
 	end
 
 	for _, plot in ipairs(plots) do
+		if plot.lockPrompt then
+			plot.lockPrompt.Triggered:Connect(function(player)
+				if plot.userId ~= player.UserId then
+					PlayerState.notify(player, "That's not your base.", "bad")
+					return
+				end
+				PlotService.toggleLasers(player)
+			end)
+		end
+
 		for padIndex, pad in ipairs(plot.pads) do
 			pad.prompt.Enabled = false
 			pad.prompt.Triggered:Connect(function(player)

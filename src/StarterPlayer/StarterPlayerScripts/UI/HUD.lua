@@ -19,7 +19,21 @@ local Format = require(Shared.Format)
 local Events = require(Shared.Events)
 local Sounds = require(Shared.Sounds)
 
+local GuiService = game:GetService("GuiService")
+
 local Theme = require(script.Parent.Theme)
+
+--[[
+	Vertical start of the HUD stack.
+
+	The ScreenGui sets IgnoreGuiInset, so our coordinates begin at the very top
+	of the screen -- straight underneath Roblox's own topbar. GetGuiInset covers
+	the bar itself, but the menu and chat buttons hang BELOW it on the left, so
+	an inset-only offset still collides. The extra clearance clears the buttons.
+]]
+local function hudTop()
+	return GuiService:GetGuiInset().Y + 44
+end
 
 local HUD = {}
 
@@ -33,7 +47,7 @@ function HUD.init(ctx)
 		name = "MoneyCard",
 		color = Theme.color.panel,
 		size = UDim2.fromOffset(196, 62),
-		position = UDim2.fromOffset(16, 16),
+		position = UDim2.fromOffset(16, hudTop()),
 		radius = 12,
 	})
 	Theme.stroke(card, Theme.color.line, 1)
@@ -80,7 +94,7 @@ function HUD.init(ctx)
 		name = "EventCard",
 		color = Theme.color.panel,
 		size = UDim2.fromOffset(232, 54),
-		position = UDim2.fromOffset(16, 86),
+		position = UDim2.fromOffset(16, hudTop() + 70),
 		radius = 12,
 	})
 	local eventStroke = Theme.stroke(eventCard, Theme.color.line, 1)
@@ -223,7 +237,7 @@ function HUD.init(ctx)
 		name = "Toasts",
 		transparency = 1,
 		size = UDim2.fromOffset(420, 200),
-		position = UDim2.new(0.5, 0, 0, 16),
+		position = UDim2.new(0.5, 0, 0, hudTop()), -- same topbar clearance
 		anchor = Vector2.new(0.5, 0),
 		radius = false,
 	})

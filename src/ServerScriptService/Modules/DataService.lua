@@ -43,6 +43,7 @@ local function newProfile()
 		money = Config.StartingMoney,
 		slots = Config.StartingSlots,
 		nextUid = 1,
+		lasersOn = true, -- base door armed; toggled by the red button inside
 		inventory = {}, -- array of { uid, charId, variantId, pad = number? }
 		stats = {
 			rounds = 0,
