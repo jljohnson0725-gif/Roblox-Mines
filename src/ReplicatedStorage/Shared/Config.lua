@@ -201,6 +201,11 @@ Config.WheelMinStake = 1500000
 Config.WheelCashPrize = 200000
 Config.WheelRange = 34 -- how close you must stand
 
+--[[ The wheel takes over a player base's footprint. That base is demolished at
+     startup, so the map supports seven plots instead of eight. ]]
+Config.WheelReplacesBase = "Base7"
+
+
 -- Must sum to 1. Order is the display order on the wheel face.
 Config.WheelOdds = {
 	{ id = "secret", chance = 0.08, label = "SECRET" },

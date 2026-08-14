@@ -64,24 +64,38 @@ local function buildFace()
 		i = i % #order + 1
 	end
 
-	--[[ Deal the wedges out round-robin from the rarest outcome to the most
-	     common, which naturally scatters the good ones instead of clustering
-	     them on one side of the face. ]]
+	--[[
+		Deal the wedges out in RUNS, not one at a time.
+
+		Alternating single wedges was the first attempt and it looked terrible:
+		100 one-wedge stripes at this radius read as a smear of colour rather
+		than a wheel, especially once the daylight pass got hold of it. Dealing
+		in chunks gives roughly nine repeats of a chunky
+		BUST-CASH-BUST-RETRY-SECRET motif, which reads as a carnival wheel and
+		leaves the 8 Secret wedges as thin gold slivers -- rare, and looking it.
+
+		The COUNTS are untouched, so the odds the face shows are still exact.
+		Only the order changes.
+	]]
+	local RUN = { nothing = 5, cash = 3, retry = 2, secret = 1 }
+
 	local pools = {}
 	for _, outcome in ipairs(Config.WheelOdds) do
 		table.insert(pools, { id = outcome.id, left = counts[outcome.id] })
 	end
+	-- most common first, so a cycle opens on a wide dark band
 	table.sort(pools, function(a, b)
-		return a.left < b.left
+		return a.left > b.left
 	end)
 
 	local face, cursor = {}, 1
 	while #face < Wheel.SEGMENTS do
 		local pool = pools[cursor]
-		if pool.left > 0 then
+		local take = math.min(RUN[pool.id] or 1, pool.left, Wheel.SEGMENTS - #face)
+		for _ = 1, take do
 			table.insert(face, pool.id)
-			pool.left -= 1
 		end
+		pool.left -= take
 		cursor = cursor % #pools + 1
 	end
 	return face

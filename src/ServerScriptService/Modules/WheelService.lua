@@ -226,18 +226,40 @@ end
 
 -- ── the machine ─────────────────────────────────────────────────────────────
 
---[[ Dead centre of the map, 28 studs clear of the walkway at z=-66 and well
-     away from the upgrade shop. Picked by scanning the street for somewhere
-     that clears a 38x16 footprint with 40 studs of headroom. ]]
+--[[
+	The wheel stands where a player base used to.
+
+	Config.WheelReplacesBase names it. That base is demolished at startup and
+	PlotService then finds one fewer plot, so the server supports seven players
+	instead of eight -- the trade the wheel is worth.
+
+	Filled in by clearSite() from the demolished base's own footprint, so moving
+	the wheel is a matter of naming a different base rather than hunting for
+	coordinates.
+]]
 local SITE = Vector3.new(0, 0.3, -30)
 local RADIUS = 15
-local FACE_Z = 6 -- how far the disc stands in front of the frame
+--[[ NEGATIVE: the disc faces -Z, toward the street players walk in from.
+     Built facing +Z first, which pointed it at the map edge -- from the
+     approach you saw the blank backing plate and none of the wedges. ]]
+local FACE_Z = -6
 
+--[[
+	Deliberately NOT neon, except the Secret slivers.
+
+	The first pass made every wedge Neon and the whole disc rendered as a white
+	starburst -- fully self-lit geometry under the daylight pass plus bloom, with
+	no shading left to separate one wedge from the next. These are flat plastic
+	with enough value contrast to read from across the street, and only the eight
+	Secret wedges glow, which is exactly where the eye should go.
+]]
 local TINT = {
-	secret = Color3.fromRGB(255, 236, 120),
-	retry = Color3.fromRGB(120, 200, 255),
-	cash = Color3.fromRGB(92, 220, 120),
-	nothing = Color3.fromRGB(58, 66, 96),
+	secret = Color3.fromRGB(255, 214, 64),
+	retry = Color3.fromRGB(64, 132, 220),
+	cash = Color3.fromRGB(46, 168, 82),
+	-- deep crimson, not near-black: at (30,36,62) the 47 BUST wedges were the
+	-- same value as the backing plate and the whole face read as one dark disc
+	nothing = Color3.fromRGB(152, 42, 60),
 }
 
 local function part(props, parent)
@@ -256,6 +278,43 @@ local function part(props, parent)
 	p.Name = props.name or "Part"
 	p.Parent = parent
 	return p
+end
+
+--[[
+	Demolish the base the wheel replaces, and take its ground position.
+
+	MUST run before PlotService.start(). PlotService attaches to whatever bases
+	exist when it starts, so deleting one afterwards would leave it holding a
+	plot made of destroyed parts.
+]]
+function WheelService.clearSite()
+	local bases = workspace:FindFirstChild("Bases")
+	local base = bases and bases:FindFirstChild(Config.WheelReplacesBase)
+	if not base then
+		warn(("[Wheel] %s not found; leaving the wheel at its fallback site")
+			:format(tostring(Config.WheelReplacesBase)))
+		return SITE
+	end
+
+	local cf = base:GetBoundingBox()
+	base:Destroy()
+
+	--[[ Find the ground AFTER demolishing, by raycast.
+
+	     The base's bounding box is not the answer: its foundation hangs about
+	     three studs below the walkable floor, so taking the box's underside put
+	     the wheel underground. With the base gone the ray lands on the map's
+	     own terrain, which is what the wheel should stand on. ]]
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { workspace:FindFirstChild("TheWheel") }
+	local hit = workspace:Raycast(Vector3.new(cf.X, cf.Y + 60, cf.Z),
+		Vector3.new(0, -160, 0), params)
+
+	SITE = Vector3.new(cf.X, hit and (hit.Position.Y + 0.2) or 0.3, cf.Z)
+	print(("[Wheel] demolished %s; wheel site is %.0f, %.0f, %.0f")
+		:format(Config.WheelReplacesBase, SITE.X, SITE.Y, SITE.Z))
+	return SITE
 end
 
 function WheelService.build()
@@ -297,7 +356,9 @@ function WheelService.build()
 
 	local hub = part({
 		name = "Hub",
-		size = Vector3.new(3, 3, FACE_Z + 1.2),
+		-- wide enough to cap the middle: 100 wedges all converging on one point
+		-- leaves a ragged knot there, and the hub is what hides it
+		size = Vector3.new(7, 7, math.abs(FACE_Z) + 1.6),
 		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z / 2)) * CFrame.Angles(0, 0, 0),
 		color = Color3.fromRGB(255, 190, 60),
 		material = Enum.Material.Metal,
@@ -311,7 +372,7 @@ function WheelService.build()
 	part({
 		name = "Backing",
 		size = Vector3.new(1.2, RADIUS * 2 + 2, RADIUS * 2 + 2),
-		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z - 0.6))
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z + 0.6))
 			* CFrame.Angles(0, math.rad(90), 0),
 		color = Color3.fromRGB(28, 34, 60),
 		material = Enum.Material.SmoothPlastic,
@@ -321,8 +382,9 @@ function WheelService.build()
 	--[[ One radial bar per wedge. 100 of them, coloured by outcome, so the face
 	     is a literal picture of the odds -- see Wheel.SEGMENTS for why the count
 	     has to be 100 and not a rounder number. ]]
-	local step = 360 / Wheel.SEGMENTS
-	local width = (2 * math.pi * RADIUS / Wheel.SEGMENTS) * 1.9
+	-- Width is set from the arc at the RIM, not at mid-radius: sizing off the
+	-- middle leaves visible gaps around the outside, which is where the eye is.
+	local width = (2 * math.pi * RADIUS / Wheel.SEGMENTS) * 1.06
 	for index, outcomeId in ipairs(Wheel.FACE) do
 		local angle = math.rad(Wheel.angleOf(index))
 		local wedge = part({
@@ -332,8 +394,8 @@ function WheelService.build()
 				* CFrame.Angles(0, 0, -angle)
 				* CFrame.new(0, RADIUS / 2, 0),
 			color = TINT[outcomeId],
-			material = outcomeId == "nothing" and Enum.Material.SmoothPlastic
-				or Enum.Material.Neon,
+			material = outcomeId == "secret" and Enum.Material.Neon
+				or Enum.Material.SmoothPlastic,
 			collide = false,
 		}, face)
 		wedge:SetAttribute("Outcome", outcomeId)
@@ -343,7 +405,7 @@ function WheelService.build()
 	part({
 		name = "Pointer",
 		size = Vector3.new(2.4, 4, 1.4),
-		cframe = CFrame.new(centre + Vector3.new(0, RADIUS + 1.5, FACE_Z + 0.8)),
+		cframe = CFrame.new(centre + Vector3.new(0, RADIUS + 1.5, FACE_Z - 0.8)),
 		color = Color3.fromRGB(255, 72, 92),
 		material = Enum.Material.Neon,
 		collide = false,
@@ -353,7 +415,7 @@ function WheelService.build()
 	local console = part({
 		name = "Console",
 		size = Vector3.new(10, 3.4, 3.4),
-		cframe = CFrame.new(SITE + Vector3.new(0, 1.7, FACE_Z + 6)),
+		cframe = CFrame.new(SITE + Vector3.new(0, 1.7, FACE_Z - 6)),
 		color = Color3.fromRGB(96, 106, 138),
 		material = Enum.Material.Metal,
 		query = true,

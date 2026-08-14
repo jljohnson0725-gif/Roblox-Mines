@@ -42,6 +42,11 @@ game:GetService("StarterPlayer").CharacterWalkSpeed = Config.BaseWalkSpeed
 
 DataService.start()
 EventService.start()
+
+-- Before PlotService: it attaches to the bases that exist when it starts, so
+-- the one the wheel replaces has to be gone first.
+WheelService.clearSite()
+
 PlotService.start()
 MinesService.start()
 
@@ -60,7 +65,7 @@ AuctionService.desk = HubService.desk
 AuctionService.start()
 HubService.startBlockDisplay()
 
--- The wheel builds itself and is the only source of Secrets.
+-- The wheel is the only source of Secrets. Its site was cleared above.
 WheelService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
