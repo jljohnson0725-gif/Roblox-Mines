@@ -20,6 +20,7 @@ local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
 local MinesLandmark = require(Modules.MinesLandmark)
+local HubService = require(Modules.HubService)
 local UpgradeService = require(Modules.UpgradeService)
 local MinesService = require(Modules.MinesService)
 
@@ -37,6 +38,7 @@ MinesService.start()
 
 -- Built after the restyle so it sits on the final map, and after EventService
 -- so its rings can pick up whatever event is already running.
+HubService.start()
 MinesLandmark.build()
 MinesLandmark.startEventSync()
 UpgradeService.start()

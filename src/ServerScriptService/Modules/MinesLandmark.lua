@@ -2,10 +2,14 @@
 	MinesLandmark
 	Gives the gambling a place.
 
-	Until now Mines existed only as a keypress -- press M, a panel appears. The
-	world and the core loop were unrelated, and the map had no focal point. This
-	builds a monument at the centre of the street: a tiered podium under two
-	counter-rotating neon rings, visible from every base.
+	This is now purely a BEACON over the portal in the street -- the podium and
+	console moved into the Auction House (see HubService), because two bulky
+	monuments 34 studs apart crowded the same stretch of road and every future
+	service would have made it worse.
+
+	What's left is the part worth keeping outdoors: two counter-rotating neon
+	rings hanging over the archway, visible from every base, marking where to
+	go. The gambling happens through the portal beneath them.
 
 	The rings are faceted from straight segments rather than being a smooth
 	torus. Roblox has no torus primitive, but more to the point a segmented ring
@@ -23,21 +27,19 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
-local Net = require(Shared.Net)
 local Events = require(Shared.Events)
 
 local EventService = require(script.Parent.EventService)
 
 local MinesLandmark = {}
 
--- Sited by raycast survey: dead centre of the street between the two rows of
--- bases, with clear sky above and nothing within 16 studs.
-local SITE = Vector3.new(0, 0.3, -60)
+-- Above the map's western doorway, the one HubService turns into the primary
+-- portal. The rings mark the way in from anywhere on the street.
+local SITE = Vector3.new(-336, 0, -66)
 
 local IDLE_OUTER = Color3.fromRGB(90, 226, 255)
 local IDLE_INNER = Color3.fromRGB(255, 92, 214)
 local STONE = Color3.fromRGB(74, 82, 112)
-local STONE_LIT = Color3.fromRGB(104, 114, 146)
 
 local rings = {}
 
@@ -100,34 +102,6 @@ local function buildRing(parent, radius, segments, thickness, height, color, nam
 	return model
 end
 
---[[
-	How close you must stand to gamble. Slightly wider than the prompt's own 14
-	so the panel doesn't slam shut when you shuffle a step while playing.
-]]
-MinesLandmark.RANGE = 30
-
-function MinesLandmark.consolePosition()
-	local root = Workspace:FindFirstChild("MinesLandmark")
-	local console = root and root:FindFirstChild("Console")
-	return console and console.Position or nil
-end
-
---[[ Server-side gate. The client hides the panel when you walk off, but that's
-     a courtesy -- this is what actually stops a remote from being called from
-     the other side of the map. ]]
-function MinesLandmark.isNear(player)
-	local spot = MinesLandmark.consolePosition()
-	if not spot then
-		return true -- landmark missing (generate mode): don't lock anyone out
-	end
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return false
-	end
-	return (root.Position - spot).Magnitude <= MinesLandmark.RANGE
-end
-
 function MinesLandmark.build()
 	local existing = Workspace:FindFirstChild("MinesLandmark")
 	if existing then
@@ -138,54 +112,9 @@ function MinesLandmark.build()
 	root.Name = "MinesLandmark"
 	root.Parent = Workspace
 
-	-- ── tiered podium ───────────────────────────────────────────────────────
-	local tiers = { { 23, 1.6 }, { 18, 1.5 }, { 13, 1.4 } }
-	local y = SITE.Y
-	for index, tier in ipairs(tiers) do
-		local radius, thick = tier[1], tier[2]
-		part({
-			name = "Tier" .. index,
-			size = Vector3.new(radius * 2, thick, radius * 2),
-			cframe = CFrame.new(SITE + Vector3.new(0, y - SITE.Y + thick / 2, 0)),
-			color = index == #tiers and STONE_LIT or STONE,
-			material = Enum.Material.Slate,
-		}, root).Shape = Enum.PartType.Cylinder
-		y += thick
-	end
-
-	-- Cylinders point along X, so each needs rolling upright.
-	for _, p in ipairs(root:GetChildren()) do
-		if p:IsA("BasePart") and p.Name:match("^Tier") then
-			p.CFrame = p.CFrame * CFrame.Angles(0, 0, math.rad(90))
-		end
-	end
-
-	local deckY = y - SITE.Y
-
-	-- glowing rim on the top tier, so the podium reads at night
-	local rimSegments = 32
-	for i = 1, rimSegments do
-		local angle = (i / rimSegments) * math.pi * 2
-		local pos = SITE + Vector3.new(math.cos(angle) * 12.6, deckY - 0.15, math.sin(angle) * 12.6)
-		part({
-			name = "Rim",
-			size = Vector3.new((2 * math.pi * 12.6 / rimSegments) * 1.08, 0.3, 0.7),
-			cframe = CFrame.lookAt(pos, Vector3.new(SITE.X, pos.Y, SITE.Z)),
-			color = IDLE_OUTER,
-			material = Enum.Material.Neon,
-			collide = false,
-		}, root)
-	end
+	local deckY = 16 -- the doorway's lintel sits at ~15, so clear it
 
 	-- ── central pillar and light shaft ──────────────────────────────────────
-	part({
-		name = "Pillar",
-		size = Vector3.new(4.4, 26, 4.4),
-		cframe = CFrame.new(SITE + Vector3.new(0, deckY + 13, 0)),
-		color = STONE,
-		material = Enum.Material.Slate,
-	}, root)
-
 	part({
 		name = "Shaft",
 		size = Vector3.new(1.5, 34, 1.5),
@@ -256,29 +185,6 @@ function MinesLandmark.build()
 	local statusCap = Instance.new("UITextSizeConstraint")
 	statusCap.MaxTextSize = 17
 	statusCap.Parent = status
-
-	-- A pedestal you walk up to. M still works -- this is a destination, not a
-	-- toll gate; forcing the walk every round would fight the core loop.
-	local console = part({
-		name = "Console",
-		size = Vector3.new(6, 3.2, 3),
-		cframe = CFrame.new(SITE + Vector3.new(0, deckY + 1.6, 8.5)),
-		color = STONE_LIT,
-		material = Enum.Material.Metal,
-	}, root)
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "MinesPrompt"
-	prompt.ActionText = "Play Mines"
-	prompt.ObjectText = "The Mines"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = console
-
-	prompt.Triggered:Connect(function(player)
-		Net.get("OpenMines"):FireClient(player)
-	end)
 
 	MinesLandmark.status = status
 	return root
