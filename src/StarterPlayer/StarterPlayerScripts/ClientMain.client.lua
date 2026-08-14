@@ -31,6 +31,7 @@ local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
 local AuctionUI = require(UI.AuctionUI)
 local IndexUI = require(UI.IndexUI)
+local Coach = require(UI.Coach)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ local state = {
 	slots = Config.StartingSlots,
 	inventory = {},
 	index = {}, -- ["charId:variantId"] = times secured; drives the Index panel
+	onboarding = { drops = 0, done = false }, -- first-session coach progress
+	pending = 0,
 	income = 0,
 	stats = {},
 	upgrades = {},
@@ -106,6 +109,7 @@ local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
 local auctionUI = AuctionUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
+Coach.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
@@ -467,8 +471,8 @@ end)
 
 -- ── first-run nudge ─────────────────────────────────────────────────────────
 
-task.delay(2, function()
-	if #(state.inventory or {}) == 0 then
-		hud.notify("Press M to play Mines. Brainrots you find pay rent forever.", "info")
-	end
-end)
+--[[
+	The first-run nudge used to live here: one toast, two seconds after spawn,
+	gone before most people had finished loading in. UI/Coach replaces it with a
+	persistent card that tracks real progress, so this is deliberately empty.
+]]

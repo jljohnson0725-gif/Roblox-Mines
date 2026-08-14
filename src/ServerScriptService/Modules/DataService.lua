@@ -61,6 +61,10 @@ local function newProfile()
 			same trap `pending` had to be a dense array to avoid.
 		]]
 		index = {},
+		--[[ First-session state. `drops` is how many guaranteed finds are left;
+		     `done` latches once the loop has visibly worked at least once, so the
+		     coach never comes back for a returning player. ]]
+		onboarding = { drops = Config.OnboardingDrops, done = false },
 		stats = {
 			rounds = 0,
 			busts = 0,
@@ -90,6 +94,11 @@ local function reconcile(profile)
 	if type(profile.index) ~= "table" then
 		profile.index = {}
 	end
+	if type(profile.onboarding) ~= "table" then
+		profile.onboarding = { drops = Config.OnboardingDrops, done = false }
+	end
+	profile.onboarding.drops = tonumber(profile.onboarding.drops) or 0
+	profile.onboarding.done = profile.onboarding.done == true
 
 	--[[ Saves made before the index existed still hold proof of discovery in
 	     the inventory, so seed from it rather than starting everyone at zero. ]]
@@ -207,6 +216,31 @@ function DataService.recordIndex(profile, charId, variantId)
 	profile.index = profile.index or {}
 	local key = charId .. ":" .. variantId
 	profile.index[key] = (profile.index[key] or 0) + 1
+end
+
+--[[
+	Latch the first-session coach off once the loop has demonstrably worked:
+	something banked AND something standing on a pad.
+
+	Derived rather than driven by a "tutorial finished" button, because those two
+	facts ARE the tutorial. A returning player already satisfies both, so the
+	coach never reappears for them, and nobody can get stuck on a step by
+	dismissing something.
+]]
+function DataService.refreshOnboarding(profile)
+	local ob = profile.onboarding
+	if not ob or ob.done then
+		return
+	end
+	if next(profile.index or {}) == nil then
+		return
+	end
+	for _, item in ipairs(profile.inventory) do
+		if item.pad then
+			ob.done = true
+			return
+		end
+	end
 end
 
 function DataService.findItem(profile, uid)

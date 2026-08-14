@@ -39,6 +39,10 @@ function PlayerState.snapshot(player)
 	if not profile then
 		return nil
 	end
+	-- Cheap, and this is the one place every structural change funnels through,
+	-- so the coach can never miss the moment it should switch off.
+	DataService.refreshOnboarding(profile)
+
 	return {
 		money = profile.money,
 		pending = totalPending(profile),
@@ -48,6 +52,7 @@ function PlayerState.snapshot(player)
 		income = Economy.totalIncome(profile.inventory) * Upgrades.incomeMultiplier(profile),
 		upgrades = profile.upgrades or {},
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
+		onboarding = profile.onboarding, -- drives the first-session coach
 		stats = profile.stats,
 	}
 end

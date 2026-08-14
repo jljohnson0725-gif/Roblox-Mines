@@ -112,6 +112,28 @@ Config.RingTag = "MinesRing"
 -- upgrade shop and the auction consign desk.
 Config.ShopRange = 30
 
+-- ── First session ───────────────────────────────────────────────────────────
+--[[
+	Your first N BANKED drops are guaranteed: the first safe tile of a round
+	always yields something until you have secured this many.
+
+	Without it, 15% of new players bet five times, lose money and end up with an
+	empty base -- the whole hook is "you found a thing and it pays you rent
+	forever", and for one in seven people it never fires at all. The guarantee
+	takes that to 1.4% and pulls the first bank forward from round 2.3 to 1.7.
+	See tools/onboarding.py.
+
+	Two rather than one because the retention gain is nearly all in the first
+	(15% -> 1.4%, then 1.3%); the second is there to fill the base faster, which
+	is what puts the 4th pad inside the first session.
+
+	It guarantees THAT you find something, never WHAT -- the tier and variant
+	still roll honestly. The multiplier is still the luck stat.
+
+	Spent only when a drop is actually banked, so busting never burns one.
+]]
+Config.OnboardingDrops = 2
+
 -- ── Auction house ───────────────────────────────────────────────────────────
 --[[
 	The house's standing offer on any listed brainrot is FLAT RENT: it pays

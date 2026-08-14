@@ -202,8 +202,23 @@ function MinesService.revealTile(player, index)
 	-- mid-round applies from the very next tile.
 	local mods = EventService.currentMods()
 
+	--[[
+		First-session guarantee: while the player still has guaranteed finds
+		left, their FIRST safe tile of a round always yields something.
+
+		Only the roll to drop is forced -- DropTable.roll still decides tier and
+		variant honestly, so this changes whether you find something, never what.
+		The multiplier remains the luck stat.
+
+		The flag is set here but only spent at cash-out, so busting with an
+		unsecured guaranteed drop doesn't cost the player their guarantee.
+	]]
+	local guaranteed = round.picks == 1
+		and profile ~= nil
+		and (profile.onboarding and profile.onboarding.drops or 0) > 0
+
 	local drop
-	if rng:NextNumber() < DropTable.dropChance(round.mines, mods) then
+	if guaranteed or rng:NextNumber() < DropTable.dropChance(round.mines, mods) then
 		-- roll() returns nil only if the roster is misconfigured; treat that as
 		-- "no drop this tile" rather than failing the reveal.
 		drop = DropTable.roll(round.multiplier, rng, mods)
@@ -211,6 +226,9 @@ function MinesService.revealTile(player, index)
 			drop.income = Economy.incomeOf(drop.charId, drop.variantId)
 			drop.tier = Brainrots.get(drop.charId).tier
 			table.insert(round.unsecured, drop)
+			if guaranteed then
+				round.usedGuarantee = true
+			end
 			announce(player, drop, false)
 		end
 	end
@@ -287,6 +305,11 @@ function MinesService.cashOut(player)
 		if not previous or best.score > (previous.score or 0) then
 			profile.stats.bestDrop = best
 		end
+	end
+
+	-- Spend the guarantee only now that the drop is actually banked.
+	if round.usedGuarantee and #secured > 0 and profile.onboarding then
+		profile.onboarding.drops = math.max(0, profile.onboarding.drops - 1)
 	end
 
 	local multiplier = round.multiplier
