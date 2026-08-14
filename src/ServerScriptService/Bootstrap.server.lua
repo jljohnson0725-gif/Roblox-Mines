@@ -33,6 +33,12 @@ local MinesService = require(Modules.MinesService)
 local styled, shrooms = MapStyle.apply()
 print(("[MapStyle] daylight pass: %d parts restyled, %d mushrooms"):format(styled, shrooms))
 
+--[[ Set on StarterPlayer as well as per-character. UpgradeService applies the
+     upgraded speed a frame after the character spawns, and without this the
+     player gets Roblox's default 16 for that frame -- a visible stutter on every
+     respawn. ]]
+game:GetService("StarterPlayer").CharacterWalkSpeed = Config.BaseWalkSpeed
+
 DataService.start()
 EventService.start()
 PlotService.start()

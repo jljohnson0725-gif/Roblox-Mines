@@ -15,6 +15,8 @@
 	cached -- the level is the only thing that persists.
 ]]
 
+local Config = require(script.Parent.Config)
+
 local Upgrades = {}
 
 Upgrades.List = {
@@ -62,13 +64,14 @@ Upgrades.List = {
 		maxLevel = 12,
 		baseCost = 3000,
 		costGrowth = 1.60,
-		-- 16 default -> 34 at max. Deliberately cheap: it buys down the friction
-		-- the console-only change added, so it should be reachable early.
+		-- Starts at Config.BaseWalkSpeed (25, what level 6 used to give) and runs
+		-- to 43. Deliberately cheap: it buys down travel time, so it should be
+		-- reachable early.
 		effect = function(level)
-			return 16 + level * 1.5
+			return Config.BaseWalkSpeed + level * 1.5
 		end,
 		format = function(level)
-			return string.format("%.0f walk speed", 16 + level * 1.5)
+			return string.format("%.0f walk speed", Config.BaseWalkSpeed + level * 1.5)
 		end,
 	},
 	{

@@ -112,6 +112,20 @@ Config.RingTag = "MinesRing"
 -- upgrade shop and the auction consign desk.
 Config.ShopRange = 30
 
+--[[
+	Walk speed before any upgrade.
+
+	Roblox's default is 16, and the old Fast Feet curve started there and reached
+	25 at level 6. That first stretch was buying back speed the game should have
+	had all along: the street runs 590 studs and at 16 the walk between your base
+	and a portal is dead time, not friction worth paying to remove.
+
+	So the whole curve moves up. You START where level 6 used to put you, and the
+	twelve levels of Fast Feet now take you well past the old ceiling instead of
+	climbing back to it.
+]]
+Config.BaseWalkSpeed = 25
+
 -- ── First session ───────────────────────────────────────────────────────────
 --[[
 	Your first N BANKED drops are guaranteed: the first safe tile of a round

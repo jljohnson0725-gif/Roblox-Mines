@@ -272,7 +272,11 @@ function AuctionUI.init(ctx)
 				or Format.money(lot.minNextBid)
 			row.button.Active = not mine and not topBid and affordable
 			Theme.recolor(row.button, row.button.Active and Theme.color.gold or Theme.color.raised)
-			row.button.TextColor3 = row.button.Active and Theme.color.bg or Theme.color.faint
+			-- outlined white, same rule as the upgrade prices: a bid amount sits on
+			-- a gold button and dark-on-colour reads as muddy
+			row.button.TextColor3 = row.button.Active and Theme.color.text or Theme.color.faint
+			row.button.TextStrokeColor3 = Theme.color.line
+			row.button.TextStrokeTransparency = row.button.Active and 0 or 0.6
 		end
 
 		for id, row in pairs(lotRows) do

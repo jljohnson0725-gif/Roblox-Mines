@@ -192,13 +192,22 @@ function UpgradeUI.init(ctx)
 				local affordable = money >= cost
 				row.buy.Active = affordable
 				Theme.recolor(row.buy, affordable and def.color or Theme.color.raised)
-				row.buy.TextColor3 = affordable and Theme.color.bg or Theme.color.faint
+
+				--[[ White with a hard dark outline, never dark-on-colour.
+				     The price used to be drawn in Theme.color.bg, which reads as
+				     black and sat on four different button colours -- fine on the
+				     pale ones, muddy on the rest. An outlined white price is
+				     legible on every one of them and matches the other buttons. ]]
+				row.buy.TextColor3 = affordable and Theme.color.text or Theme.color.faint
+				row.buy.TextStrokeColor3 = Theme.color.line
+				row.buy.TextStrokeTransparency = affordable and 0 or 0.6
 			else
 				row.effect.Text = def.format(lvl)
 				row.buy.Text = "MAXED"
 				row.buy.Active = false
 				Theme.recolor(row.buy, Theme.color.raised)
 				row.buy.TextColor3 = Theme.color.faint
+				row.buy.TextStrokeTransparency = 0.6
 			end
 		end
 	end
