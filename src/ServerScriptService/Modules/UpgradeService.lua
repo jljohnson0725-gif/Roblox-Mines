@@ -2,9 +2,8 @@
 	UpgradeService
 	Purchase logic for the upgrades sold in the Auction House.
 
-	The shop counter lives in the Auction House now, not out in the street --
-	HubService builds it. This module keeps only the purchase logic, which is
-	the part that has to be server-authoritative.
+	ShopService builds and owns the street kiosk. This module keeps only the
+	purchase logic, which is the part that has to be server-authoritative.
 ]]
 
 local Players = game:GetService("Players")
@@ -16,7 +15,7 @@ local Format = require(Shared.Format)
 local Upgrades = require(Shared.Upgrades)
 
 local DataService = require(script.Parent.DataService)
-local HubService = require(script.Parent.HubService)
+local ShopService = require(script.Parent.ShopService)
 local PlayerState = require(script.Parent.PlayerState)
 
 local UpgradeService = {}
@@ -28,7 +27,7 @@ function UpgradeService.buy(player, id)
 	if not profile then
 		return { ok = false, err = "Still loading, one sec." }
 	end
-	if not HubService.isNearShop(player) then
+	if not ShopService.isNear(player) then
 		return { ok = false, err = "Head to the upgrade shop." }
 	end
 

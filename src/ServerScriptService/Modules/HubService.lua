@@ -21,8 +21,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared.Config)
 local Net = require(Shared.Net)
+local Format = require(Shared.Format)
+
+local AuctionService = require(script.Parent.AuctionService)
+local ModelFactory = require(script.Parent.ModelFactory)
 
 local HubService = {}
 
@@ -185,14 +188,17 @@ end
 
 -- ── the hub interior ────────────────────────────────────────────────────────
 
---[[ Bays are laid out along both long walls so new services get an obvious
-     home. Only two are filled; the rest are labelled and waiting. ]]
-local BAYS = {
-	{ id = "mines", name = "THE MINES", blurb = "bet, reveal, bank", side = -1, slot = 1, color = Color3.fromRGB(90, 226, 255) },
-	{ id = "upgrades", name = "UPGRADES", blurb = "spend it to make it", side = 1, slot = 1, color = GOLD },
-	{ id = "soon_a", name = "RESERVED", blurb = "coming soon", side = -1, slot = 2, color = Color3.fromRGB(110, 118, 150) },
-	{ id = "soon_b", name = "RESERVED", blurb = "coming soon", side = 1, slot = 2, color = Color3.fromRGB(110, 118, 150) },
-}
+--[[
+	The room is one thing now, not a parade of service counters: an auction
+	floor with the block in the middle.
+
+	Mines went back to being playable anywhere and upgrades moved out to their
+	own street shop, so the bay layout had nothing left to hold. What replaced
+	it is a single focal point -- whatever is currently under the hammer stands
+	lit on the block, and the desk beside it is where you consign and bid.
+]]
+local BLOCK = Vector3.new(0, 0, -6) -- offset from HUB, the centre of the room
+local DESK = Vector3.new(0, 0, 16) -- consign desk, between the block and the exit
 
 function HubService.build()
 	local existing = Workspace:FindFirstChild("AuctionHouse")
@@ -251,71 +257,108 @@ function HubService.build()
 		end
 	end
 
-	-- ── service bays ────────────────────────────────────────────────────────
-	local stations = {}
-	for _, bay in ipairs(BAYS) do
-		local spot = HUB
-			+ Vector3.new((bay.slot == 1 and -24 or 24), 1, bay.side * (FLOOR_D / 2 - 12))
+	-- ── the block ───────────────────────────────────────────────────────────
+	--[[ A raised dais with a display stand on top. Whatever lot is closest to
+	     closing stands here, so the room always shows what it's for. ]]
+	local blockSpot = HUB + BLOCK
 
-		part({
-			name = "BayFloor",
-			size = Vector3.new(24, 0.4, 14),
-			cframe = CFrame.new(spot + Vector3.new(0, 0.2, 0)),
-			color = STONE_LIT,
-			material = Enum.Material.Slate,
-		}, root)
+	part({
+		name = "BlockDais",
+		size = Vector3.new(26, 2, 26),
+		cframe = CFrame.new(blockSpot + Vector3.new(0, 1.5, 0)),
+		color = STONE_LIT,
+		material = Enum.Material.Slate,
+	}, root)
+	part({
+		name = "BlockRim",
+		size = Vector3.new(27.4, 0.35, 27.4),
+		cframe = CFrame.new(blockSpot + Vector3.new(0, 2.6, 0)),
+		color = GOLD,
+		material = Enum.Material.Neon,
+		collide = false,
+	}, root)
 
-		local counter = part({
-			name = bay.id == "mines" and "Console" or (bay.id == "upgrades" and "Counter" or "BayDesk"),
-			size = Vector3.new(11, 3.4, 3.6),
-			cframe = CFrame.new(spot + Vector3.new(0, 2.1, bay.side * -3)),
-			color = bay.id:match("^soon") and STONE or STONE_LIT,
-			material = Enum.Material.Metal,
-		}, root)
+	local stand = part({
+		name = "BlockStand",
+		size = Vector3.new(9, 3.2, 9),
+		cframe = CFrame.new(blockSpot + Vector3.new(0, 4.1, 0)),
+		color = STONE,
+		material = Enum.Material.Marble,
+	}, root)
 
-		part({
-			name = "BayGlow",
-			size = Vector3.new(10.4, 0.3, 3),
-			cframe = CFrame.new(spot + Vector3.new(0, 3.9, bay.side * -3)),
-			color = bay.color,
-			material = Enum.Material.Neon,
-			collide = false,
-		}, root)
+	-- The spot a lot's model is pivoted onto. An invisible marker rather than a
+	-- computed offset so AuctionDisplay never has to know the dais geometry.
+	local pedestal = part({
+		name = "Pedestal",
+		size = Vector3.new(1, 1, 1),
+		cframe = CFrame.new(blockSpot + Vector3.new(0, 5.7, 0)),
+		color = GOLD,
+		transparency = 1,
+		collide = false,
+	}, root)
 
-		local pylon = part({
-			name = "BayPylon",
-			size = Vector3.new(1.2, 14, 1.2),
-			cframe = CFrame.new(spot + Vector3.new(0, 9, bay.side * 4)),
-			color = bay.color,
-			material = Enum.Material.Neon,
-			transparency = 0.3,
-			collide = false,
-		}, root)
-		local lamp = Instance.new("PointLight")
-		lamp.Color = bay.color
-		lamp.Range = 34
-		lamp.Brightness = 1.6
-		lamp.Parent = pylon
+	-- spotlight down onto whatever is standing there
+	local spot = Instance.new("SpotLight")
+	spot.Face = Enum.NormalId.Bottom
+	spot.Angle = 70
+	spot.Range = 44
+	spot.Brightness = 3
+	spot.Color = Color3.fromRGB(255, 236, 198)
+	spot.Parent = part({
+		name = "BlockLamp",
+		size = Vector3.new(4, 0.6, 4),
+		cframe = CFrame.new(blockSpot + Vector3.new(0, 24, 0)),
+		color = GOLD,
+		material = Enum.Material.Neon,
+		collide = false,
+	}, root)
 
-		sign(root, pylon, bay.name, bay.blurb, bay.color, 24)
+	local blockTitle, blockSub = sign(root, stand, "ON THE BLOCK", "nothing listed", GOLD, 26)
+	HubService.blockTitle, HubService.blockSub = blockTitle, blockSub
 
-		if bay.id == "mines" or bay.id == "upgrades" then
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.Name = bay.id == "mines" and "MinesPrompt" or "ShopPrompt"
-			prompt.ActionText = bay.id == "mines" and "Play Mines" or "Upgrades"
-			prompt.ObjectText = bay.name
-			prompt.HoldDuration = 0
-			prompt.MaxActivationDistance = 14
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = counter
+	-- ── the consign desk ────────────────────────────────────────────────────
+	local deskSpot = HUB + DESK
 
-			local remote = bay.id == "mines" and "OpenMines" or "OpenUpgrades"
-			prompt.Triggered:Connect(function(player)
-				Net.get(remote):FireClient(player)
-			end)
-			stations[bay.id] = counter
-		end
-	end
+	part({
+		name = "DeskFloor",
+		size = Vector3.new(30, 0.4, 12),
+		cframe = CFrame.new(deskSpot + Vector3.new(0, 1.2, 0)),
+		color = STONE_LIT,
+		material = Enum.Material.Slate,
+	}, root)
+
+	local desk = part({
+		name = "ConsignDesk",
+		size = Vector3.new(16, 3.4, 3.6),
+		cframe = CFrame.new(deskSpot + Vector3.new(0, 3.1, 0)),
+		color = STONE_LIT,
+		material = Enum.Material.Metal,
+	}, root)
+	part({
+		name = "DeskGlow",
+		size = Vector3.new(15.4, 0.3, 3),
+		cframe = CFrame.new(deskSpot + Vector3.new(0, 4.9, 0)),
+		color = GOLD,
+		material = Enum.Material.Neon,
+		collide = false,
+	}, root)
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "AuctionPrompt"
+	prompt.ActionText = "Sell / Bid"
+	prompt.ObjectText = "Auction House"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = desk
+	prompt.Triggered:Connect(function(player)
+		Net.get("OpenAuction"):FireClient(player)
+	end)
+
+	sign(root, desk, "CONSIGN & BID", "put a brainrot up", GOLD, 24)
+
+	HubService.pedestal = pedestal
+	HubService.desk = desk
 
 	-- ── the way home ────────────────────────────────────────────────────────
 	local exit = part({
@@ -343,8 +386,52 @@ function HubService.build()
 		end
 	end)
 
-	HubService.stations = stations
 	return root
+end
+
+--[[
+	Keep the block showing the lot closest to the hammer.
+
+	Polled, like the landmark's event sync and for the same reason: AuctionService
+	has no listener hook, and a two-second lag on a two-minute auction is
+	invisible. Rebuilds the model only when the LOT changes, so a bid every few
+	seconds doesn't churn a model on the pedestal.
+]]
+function HubService.startBlockDisplay()
+	task.spawn(function()
+		local showingId = nil
+		local shown = nil
+
+		while true do
+			local top = AuctionService.snapshot()[1]
+
+			if (top and top.id) ~= showingId then
+				showingId = top and top.id or nil
+				if shown then
+					shown:Destroy()
+					shown = nil
+				end
+				if top then
+					shown = ModelFactory.build(top.charId, top.variantId)
+					if shown and HubService.pedestal then
+						ModelFactory.place(shown, HubService.pedestal.CFrame)
+						shown.Parent = Workspace:FindFirstChild("AuctionHouse")
+					end
+				end
+			end
+
+			if HubService.blockTitle then
+				HubService.blockTitle.Text = top and string.upper(top.name) or "ON THE BLOCK"
+				HubService.blockSub.Text = top
+					and (Format.money(top.bid) .. "  ·  " ..
+						math.ceil(top.timeLeft) .. "s  ·  " ..
+						(top.bidderName or "the house"))
+					or "nothing listed"
+			end
+
+			task.wait(2)
+		end
+	end)
 end
 
 -- ── travel ──────────────────────────────────────────────────────────────────
@@ -376,28 +463,14 @@ function HubService.sendToStreet(player)
 	move(player, STREET_ARRIVAL)
 end
 
--- ── proximity, for the server-side gates ────────────────────────────────────
+--[[
+	No proximity helpers live here any more.
 
-local function nearStation(player, id)
-	local station = HubService.stations and HubService.stations[id]
-	if not station then
-		return true -- hub missing: don't lock anyone out
-	end
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return false
-	end
-	return (root.Position - station.Position).Magnitude <= Config.ShopRange
-end
-
-function HubService.isNearMines(player)
-	return nearStation(player, "mines")
-end
-
-function HubService.isNearShop(player)
-	return nearStation(player, "upgrades")
-end
+	Mines is playable from anywhere, so nothing gates on it. Upgrades moved out
+	to the street shop, which owns its own check. The one gate left in this room
+	belongs to the auction, and AuctionService does it against HubService.desk --
+	the module that enforces a rule should be the one that states it.
+]]
 
 function HubService.start()
 	HubService.build()

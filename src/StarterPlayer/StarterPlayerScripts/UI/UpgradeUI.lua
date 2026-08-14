@@ -1,7 +1,8 @@
 --[[
 	UpgradeUI
-	The shop panel. Opens from the counter out in the street, never remotely --
-	same rule as Mines, for the same reason.
+	The shop panel. Opens at the counter in the Auction House, never remotely,
+	and the server enforces the same rule -- spending is the trip you make, now
+	that Mines isn't.
 
 	Every row states what you HAVE and what you'd GET, not just a level number.
 	"x1.36 income -> x1.48" is a decision; "level 3 -> 4" is a chore.

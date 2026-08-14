@@ -29,6 +29,7 @@ local Fx = require(UI.Fx)
 local MinesUI = require(UI.MinesUI)
 local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
+local AuctionUI = require(UI.AuctionUI)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,9 @@ end
 local ctx = {
 	gui = gui,
 	state = state,
+	-- The auction has to tell your own lots and bids apart from everyone
+	-- else's, and DisplayNames aren't unique.
+	userId = player.UserId,
 	remotes = {
 		StartRound = Net.get("StartRound"),
 		RevealTile = Net.get("RevealTile"),
@@ -73,6 +77,8 @@ local ctx = {
 		BuySlot = Net.get("BuySlot"),
 		EquipBest = Net.get("EquipBest"),
 		BuyUpgrade = Net.get("BuyUpgrade"),
+		ListBrainrot = Net.get("ListBrainrot"),
+		PlaceBid = Net.get("PlaceBid"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -96,11 +102,13 @@ ctx.fx = Fx.init(ctx)
 local minesUI = MinesUI.init(ctx)
 local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
+local auctionUI = AuctionUI.init(ctx)
 
 local function showMines(visible)
 	if visible then
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
+		auctionUI.setVisible(false)
 	end
 	if visible ~= minesUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -112,6 +120,7 @@ local function showInventory(visible)
 	if visible then
 		minesUI.setVisible(false)
 		upgradeUI.setVisible(false)
+		auctionUI.setVisible(false)
 	end
 	if visible ~= inventoryUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -160,8 +169,23 @@ end)
 Net.get("OpenUpgrades").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)
+	auctionUI.setVisible(false)
 	Sounds.play("uiOpen")
 	upgradeUI.setVisible(true)
+end)
+
+Net.get("OpenAuction").OnClientEvent:Connect(function()
+	minesUI.setVisible(false)
+	inventoryUI.setVisible(false)
+	upgradeUI.setVisible(false)
+	Sounds.play("uiOpen")
+	auctionUI.setVisible(true)
+end)
+
+-- Broadcast to everyone, not just the floor: a lot closing is worth knowing
+-- about wherever you are, and the panel is ready the moment you walk in.
+Net.get("AuctionState").OnClientEvent:Connect(function(list)
+	auctionUI.setLots(list or {})
 end)
 
 Net.get("OpenMines").OnClientEvent:Connect(function()
@@ -231,20 +255,15 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
-	-- M closes but never OPENS: Mines lives at the landmark console now, so that
-	-- the gambling pulls you out of your base instead of happening in a menu.
 	if input.KeyCode == Enum.KeyCode.M then
-		if minesUI.isVisible() then
-			showMines(false)
-		else
-			hud.notify("The Mines are out in the street — look for the rings.", "info")
-		end
+		showMines(not minesUI.isVisible())
 	elseif input.KeyCode == Enum.KeyCode.C then
 		showInventory(not inventoryUI.isVisible())
 	elseif input.KeyCode == Enum.KeyCode.Escape then
 		minesUI.setVisible(false)
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
+		auctionUI.setVisible(false)
 	end
 end)
 
@@ -375,31 +394,34 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 --[[
-	Close the panel when you leave the Mines.
+	Close a counter panel when you walk away from its counter.
 
-	Never mid-round: the server lets a live round finish wherever you are, so
-	yanking the board away from someone who has an unsecured Secret on the table
-	would be the worst possible moment to enforce a rule.
+	Not Mines -- that's playable from anywhere again, so there's nowhere to walk
+	away FROM, and the server agrees. A UI rule the server doesn't share is
+	theatre; these two match real server-side gates.
+
+	A MISSING part closes the panel as well. StreamingEnabled is on, and the two
+	counters are ~4300 studs apart (one in the street, one through the portal),
+	so leaving either unloads it -- waiting on a part that will never stream back
+	would leave the panel stuck open. You can only open these standing at the
+	counter, so "not there" is the only thing nil can mean.
 ]]
 task.spawn(function()
+	local function walkedAway(modelName, partName)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local model = Workspace:FindFirstChild(modelName)
+		local counter = model and model:FindFirstChild(partName)
+		return not counter or not root
+			or (root.Position - counter.Position).Magnitude > 34
+	end
+
 	while true do
 		task.wait(0.5)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
-		if minesUI.isVisible() and not minesUI.hasRound() then
-			local landmark = Workspace:FindFirstChild("MinesLandmark")
-			local console = landmark and landmark:FindFirstChild("Console")
-			if console and root and (root.Position - console.Position).Magnitude > 34 then
-				showMines(false)
-			end
+		if upgradeUI.isVisible() and walkedAway("UpgradeShop", "Counter") then
+			upgradeUI.setVisible(false)
 		end
-
-		if upgradeUI.isVisible() then
-			local shop = Workspace:FindFirstChild("UpgradeShop")
-			local counter = shop and shop:FindFirstChild("Counter")
-			if counter and root and (root.Position - counter.Position).Magnitude > 34 then
-				upgradeUI.setVisible(false)
-			end
+		if auctionUI.isVisible() and walkedAway("AuctionHouse", "ConsignDesk") then
+			auctionUI.setVisible(false)
 		end
 	end
 end)
@@ -408,6 +430,6 @@ end)
 
 task.delay(2, function()
 	if #(state.inventory or {}) == 0 then
-		hud.notify("Head for the glowing rings to play Mines. What you win pays rent forever.", "info")
+		hud.notify("Press M to play Mines. Brainrots you find pay rent forever.", "info")
 	end
 end)

@@ -1,15 +1,15 @@
 --[[
 	MinesLandmark
-	Gives the gambling a place.
+	The beacon over the street portal.
 
-	This is now purely a BEACON over the portal in the street -- the podium and
-	console moved into the Auction House (see HubService), because two bulky
-	monuments 34 studs apart crowded the same stretch of road and every future
-	service would have made it worse.
+	Named for what it used to be. Mines is playable from anywhere again, so this
+	no longer points at the gambling -- it points at the Auction House through
+	the archway beneath it, which is where upgrades and every service after them
+	live. The sign says so; only the module name is historical.
 
-	What's left is the part worth keeping outdoors: two counter-rotating neon
-	rings hanging over the archway, visible from every base, marking where to
-	go. The gambling happens through the portal beneath them.
+	What it is: two counter-rotating neon rings hanging over the archway, high
+	enough to clear both the lintel and the baseplate outside the map, visible
+	from every base.
 
 	The rings are faceted from straight segments rather than being a smooth
 	torus. Roblox has no torus primitive, but more to the point a segmented ring
@@ -165,7 +165,7 @@ function MinesLandmark.build()
 	title.TextScaled = true
 	title.TextColor3 = Color3.fromRGB(236, 240, 255)
 	title.TextStrokeTransparency = 0.3
-	title.Text = "MINES"
+	title.Text = "AUCTION HOUSE"
 	title.Parent = gui
 	local titleCap = Instance.new("UITextSizeConstraint")
 	titleCap.MaxTextSize = 34
@@ -180,7 +180,7 @@ function MinesLandmark.build()
 	status.TextScaled = true
 	status.TextColor3 = IDLE_OUTER
 	status.TextStrokeTransparency = 0.45
-	status.Text = "bet, reveal, bank"
+	status.Text = "upgrades through the portal"
 	status.Parent = gui
 	local statusCap = Instance.new("UITextSizeConstraint")
 	statusCap.MaxTextSize = 17
@@ -233,7 +233,7 @@ function MinesLandmark.startEventSync()
 				end
 
 				if MinesLandmark.status then
-					MinesLandmark.status.Text = def and string.upper(def.name) or "bet, reveal, bank"
+					MinesLandmark.status.Text = def and string.upper(def.name) or "upgrades through the portal"
 					MinesLandmark.status.TextColor3 = outer
 				end
 			end

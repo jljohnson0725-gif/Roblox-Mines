@@ -126,18 +126,48 @@ API Services**. Without it the game still runs — you'll see a
 
 | input | action |
 |-------|--------|
+| `M`   | open/close Mines |
 | `C`   | open/close Collection |
 | `Esc` | close everything |
 | walk to a pad + `E` | place, store, or unlock |
 | walk to the red button + `E` | arm/disarm your laser door |
-| walk to the **Mines console** + `E` | play Mines |
+| walk through the **street archway** | portal to the Auction House |
 | walk to the **Upgrade shop** + `E` | buy upgrades |
+| walk to the **Consign desk** + `E` | sell a brainrot, or bid on one |
 
-**Mines has no keybind on purpose.** It only opens at the console under the
-neon rings, so gambling pulls you out of your base and into the street. `M`
-closes the panel but never opens it, and the server rejects `StartRound` from
-out of range — the UI check alone wouldn't stop a remote being called from
-anywhere. A live round can always be finished wherever you walk.
+**Mines plays from anywhere.** It was briefly console-only, to pull people out
+of their bases — but the pull isn't worth the friction of walking to a desk
+every time you want to bet.
+
+**Upgrades and the auction aren't remote.** Both are occasional trips rather
+than loops you run every thirty seconds, so the walk costs nothing and gives the
+street and the hub a reason to exist. The server enforces both — a UI check
+alone wouldn't stop the remote being called from anywhere.
+
+## The Auction House
+
+Through either archway at the ends of the street. Put a brainrot up and the
+house immediately bids **15 minutes of that brainrot's rent** (`Config
+.AuctionFloorSeconds`), so a lot always sells even in an empty server. Other
+players on the floor can outbid the house in 10% steps.
+
+Three things make it a decision rather than free money:
+
+- **Listing takes the brainrot off its pad.** It stops paying you the moment it
+  goes on the block. Sell the spare, not the earner.
+- **The floor is linear in income**, so the rule reads the same at every tier:
+  *keeping it beats selling it after 15 minutes of collected rent.* With pads
+  capped at 8 and drops far outrunning them, the auction's real job is
+  liquidating brainrots you have nowhere to put — where the alternative is zero.
+- **Player bids are escrowed.** Your money leaves when you bid and comes back
+  when you're outbid, so nobody can park a huge bid, spend it elsewhere, and win
+  with an empty wallet.
+
+A bid inside the last 15 seconds pushes the close out by 15 more, uncapped — a
+contested lot *should* run long. Disconnecting mid-auction returns your item and
+refunds the standing bidder; a server shutdown settles every open lot.
+
+Run `python tools/auction.py` before touching the pricing.
 
 The **⚡ EQUIP BEST** button in the Collection panel clears every pad and refills
 it with your highest-earning brainrots, sorted by actual income — a Galaxy Common

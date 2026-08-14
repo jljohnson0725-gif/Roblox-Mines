@@ -21,6 +21,8 @@ local FUNCTIONS = {
 	"BuySlot",
 	"EquipBest", -- auto-place the highest-earning brainrots
 	"BuyUpgrade", -- purchase one level of an upgrade
+	"ListBrainrot", -- consign one of your brainrots to the auction house
+	"PlaceBid", -- outbid the house (or another player) on a live lot
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
@@ -33,6 +35,8 @@ local EVENTS = {
 	"EventState", -- broadcast: an event started or ended
 	"OpenMines", -- the landmark's console was used
 	"OpenUpgrades", -- the shop counter was used
+	"OpenAuction", -- the consign desk was used
+	"AuctionState", -- broadcast: the board changed (new lot, bid, or sale)
 }
 
 local folder
