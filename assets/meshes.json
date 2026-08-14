@@ -8,14 +8,20 @@
     "",
     "native  = the size the generator reported for the raw asset.",
     "target  = what the model's LARGEST dimension should become on a pad.",
+    "          Raised from 4.4 -> 6.4: at the old scale the brainrots read as",
+    "          trinkets on a 63x72 stud plot rather than the thing you own.",
     "          Largest-dimension rather than height, because these come back in",
     "          all shapes and normalising a flat wide one to a standard height",
     "          leaves it enormous across.",
     "",
-    "Each entry emits TWO MeshParts: Body keeps the generated texture and is used",
-    "for the Normal variant, BodyPlain drops it so Gold/Diamond/Rainbow can take",
-    "a colour. Two parts rather than clearing the texture at runtime because",
-    "TextureID is the same kind of unwritable Content property as MeshId."
+    "Each entry emits TWO MeshParts. Body keeps the generated texture. BodyPlain",
+    "is the same geometry untextured, and ModelFactory turns it into a tinted,",
+    "slightly enlarged, semi-transparent SHELL over the Body for any coloured",
+    "variant -- so a Gold reads as gold while the face and clothes still show.",
+    "",
+    "Two parts rather than recolouring one, for two separate reasons: TextureID is",
+    "as unwritable at runtime as MeshId, AND MeshPart.Color does nothing at all",
+    "once a texture is set, so a variant cannot be a tint on the textured mesh."
   ],
 
   "models": {
@@ -33,7 +39,7 @@
       "mesh": "rbxassetid://130940222466585",
       "texture": "rbxassetid://95165494102617",
       "native": [2.58, 5.00, 3.64],
-      "target": 5.0
+      "target": 7.2
     },
     "tim_cheese": {
       "mesh": "rbxassetid://102199928948739",
@@ -115,7 +121,7 @@
       "mesh": "rbxassetid://86834334872262",
       "texture": "rbxassetid://88186852474664",
       "native": [1.35, 4.07, 3.00],
-      "target": 5.0
+      "target": 7.2
     },
     "orangutini_ananassini": {
       "mesh": "rbxassetid://114663598330938",
@@ -131,13 +137,13 @@
       "mesh": "rbxassetid://72010639523862",
       "texture": "rbxassetid://97629597826034",
       "native": [1.35, 5.00, 1.41],
-      "target": 5.2
+      "target": 7.4
     },
     "statutino_libertino": {
       "mesh": "rbxassetid://112402523481770",
       "texture": "rbxassetid://75603404094694",
       "native": [2.21, 5.00, 1.43],
-      "target": 5.2
+      "target": 7.4
     },
     "tralalita_tralala": {
       "mesh": "rbxassetid://82103751058019",
@@ -148,33 +154,33 @@
       "mesh": "rbxassetid://130940678699229",
       "texture": "rbxassetid://109131789314236",
       "native": [2.28, 3.32, 4.00],
-      "target": 5.4
+      "target": 7.6
     },
     "graipuss_medussi": {
       "mesh": "rbxassetid://132313012916794",
       "texture": "rbxassetid://117942895387186",
       "native": [4.47, 4.00, 4.39],
-      "target": 5.4
+      "target": 7.6
     },
     "garama_madundung": {
       "mesh": "rbxassetid://97584028184460",
       "texture": "rbxassetid://130326781005238",
       "native": [4.50, 4.92, 1.92],
-      "target": 5.4
+      "target": 7.6
     },
     "chimpanzini_spiderini": {
       "mesh": "rbxassetid://140700562552938",
       "texture": "rbxassetid://134268020685658",
       "native": [4.35, 4.00, 3.21],
-      "target": 5.6
+      "target": 7.9
     },
     "grande_combinasion": {
       "mesh": "rbxassetid://107376624764481",
       "texture": "rbxassetid://76365244591500",
       "native": [5.00, 4.93, 3.96],
-      "target": 5.6
+      "target": 7.9
     }
   },
 
-  "defaultTarget": 4.4
+  "defaultTarget": 6.4
 }

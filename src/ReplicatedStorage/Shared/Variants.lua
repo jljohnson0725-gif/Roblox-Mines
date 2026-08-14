@@ -13,6 +13,24 @@ local Variants = {}
 
 Variants.Order = { "Normal", "Gold", "Diamond", "Rainbow", "Frost", "Lava", "Galaxy" }
 
+--[[
+	`shell` is how see-through the coloured overlay is.
+
+	A variant CANNOT be done by tinting the mesh: MeshPart.Color has no effect
+	once a TextureID is set -- a gold tint over a textured rat renders as the
+	plain rat, verified in Studio. Painting the mesh flat instead loses the face,
+	the suit and the sunglasses, which is what made our Gold and Diamond
+	unreadable blobs.
+
+	So ModelFactory keeps the textured mesh and puts a slightly larger
+	semi-transparent copy over it. The colour reads across the whole silhouette
+	and the art still shows through, which is what the reference art does by
+	recolouring only some parts of a many-part model.
+
+	NOTHING IS NEON ANY MORE. A neon shell is fully self-lit, so it flattens the
+	very shading that makes the shape legible. Rarity is already carried by the
+	aura disc under the model and by the nameplate colour.
+]]
 Variants.List = {
 	Normal = {
 		index = 1,
@@ -30,9 +48,10 @@ Variants.List = {
 		weight = 250,
 		growth = 1.00,
 		prefix = "Gold ",
-		color = Color3.fromRGB(255, 200, 62),
+		color = Color3.fromRGB(255, 196, 64),
 		material = Enum.Material.Metal,
-		reflectance = 0.25,
+		reflectance = 0.3,
+		shell = 0.42,
 	},
 	Diamond = {
 		index = 3,
@@ -40,9 +59,10 @@ Variants.List = {
 		weight = 70,
 		growth = 1.15,
 		prefix = "Diamond ",
-		color = Color3.fromRGB(150, 240, 255),
+		color = Color3.fromRGB(150, 235, 255),
 		material = Enum.Material.Glass,
-		reflectance = 0.45,
+		reflectance = 0.35,
+		shell = 0.50,
 	},
 	Rainbow = {
 		index = 4,
@@ -51,8 +71,9 @@ Variants.List = {
 		growth = 1.35,
 		prefix = "Rainbow ",
 		color = Color3.fromRGB(255, 120, 200), -- cycled client-side
-		material = Enum.Material.Neon,
-		reflectance = 0,
+		material = Enum.Material.SmoothPlastic,
+		reflectance = 0.1,
+		shell = 0.45,
 		cycleHue = true,
 	},
 	--[[
@@ -67,9 +88,10 @@ Variants.List = {
 		weight = 0,
 		growth = 1.40,
 		prefix = "Frost ",
-		color = Color3.fromRGB(186, 240, 255),
+		color = Color3.fromRGB(196, 240, 255),
 		material = Enum.Material.Ice,
-		reflectance = 0.3,
+		reflectance = 0.25,
+		shell = 0.48,
 		eventOnly = true,
 	},
 	Lava = {
@@ -78,9 +100,10 @@ Variants.List = {
 		weight = 3,
 		growth = 1.55,
 		prefix = "Lava ",
-		color = Color3.fromRGB(255, 92, 24),
-		material = Enum.Material.Neon,
+		color = Color3.fromRGB(255, 100, 32),
+		material = Enum.Material.SmoothPlastic,
 		reflectance = 0,
+		shell = 0.40,
 	},
 	Galaxy = {
 		index = 7,
@@ -88,9 +111,10 @@ Variants.List = {
 		weight = 0.3,
 		growth = 1.80,
 		prefix = "Galaxy ",
-		color = Color3.fromRGB(126, 80, 255),
-		material = Enum.Material.Neon,
-		reflectance = 0,
+		color = Color3.fromRGB(140, 95, 255),
+		material = Enum.Material.SmoothPlastic,
+		reflectance = 0.15,
+		shell = 0.40,
 	},
 }
 

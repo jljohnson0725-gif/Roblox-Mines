@@ -29,6 +29,10 @@ local ModelFactory = {}
 
 ModelFactory.TAG = Config.BrainrotTag
 
+--[[ How far the variant shell sits outside the textured mesh. Big enough to
+     never z-fight, small enough that it doesn't read as a separate object. ]]
+local SHELL_SCALE = 1.015
+
 local function part(name, size, cf, color, parent)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -208,20 +212,30 @@ function ModelFactory.build(charId, variantId)
 		model = source:Clone()
 
 		--[[
-			Generated models ship two copies of the same geometry: Body keeps the
-			paint job, BodyPlain has no texture. Keep exactly one.
+			Generated models ship two copies of the same geometry: Body carries
+			the generated paint job, BodyPlain is the same mesh with no texture.
 
-			Two parts rather than clearing TextureID at runtime because it's the
-			same kind of unwritable Content property as MeshId -- assigning it
-			from a script throws. Normal is the one variant with no colour of its
-			own, which is exactly when the generated texture is what we want.
+			For a coloured variant, BodyPlain becomes a SHELL -- tinted, slightly
+			enlarged and semi-transparent, sitting over the textured original.
+
+			Painting the plain copy solid was the obvious approach and it's what
+			made Gold and Diamond unreadable: a flat mesh has no face, no suit, no
+			sunglasses, just a coloured silhouette. Tinting the textured mesh
+			directly is not an option either -- MeshPart.Color does nothing once a
+			TextureID is set, verified in Studio with four identically-rendered
+			rats. The shell is what gives both: variant colour across the whole
+			silhouette, original art still legible underneath.
 		]]
 		local body = model:FindFirstChild("Body")
 		local plain = model:FindFirstChild("BodyPlain")
 		if body and plain then
+			body:SetAttribute("NoTint", true) -- the texture is the point; leave it alone
 			if variant.color then
-				body:Destroy()
-				plain.Name = "Body"
+				plain.Name = "Shell"
+				plain.Transparency = variant.shell or 0.45
+				plain.Size = body.Size * SHELL_SCALE
+				plain.CFrame = body.CFrame
+				plain.CastShadow = false -- the body already casts one
 			else
 				plain:Destroy()
 			end
