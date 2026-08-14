@@ -31,6 +31,7 @@ local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
 local AuctionUI = require(UI.AuctionUI)
 local IndexUI = require(UI.IndexUI)
+local WheelUI = require(UI.WheelUI)
 local Coach = require(UI.Coach)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
@@ -84,6 +85,8 @@ local ctx = {
 		BuyUpgrade = Net.get("BuyUpgrade"),
 		ListBrainrot = Net.get("ListBrainrot"),
 		PlaceBid = Net.get("PlaceBid"),
+		SpinWheel = Net.get("SpinWheel"),
+		WheelStake = Net.get("WheelStake"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -109,6 +112,7 @@ local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
 local auctionUI = AuctionUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
+local wheelUI = WheelUI.init(ctx)
 Coach.init(ctx)
 
 --[[
@@ -118,7 +122,8 @@ Coach.init(ctx)
 ]]
 local function syncChrome()
 	hud.setMoneyVisible(not (minesUI.isVisible() or inventoryUI.isVisible()
-		or upgradeUI.isVisible() or auctionUI.isVisible() or indexUI.isVisible()))
+		or upgradeUI.isVisible() or auctionUI.isVisible() or indexUI.isVisible()
+		or wheelUI.isVisible()))
 end
 
 
@@ -128,6 +133,7 @@ local function showMines(visible)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
+		wheelUI.setVisible(false)
 	end
 	if visible ~= minesUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -142,6 +148,7 @@ local function showInventory(visible)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
+		wheelUI.setVisible(false)
 	end
 	if visible ~= inventoryUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -165,6 +172,7 @@ hud.onIndex = function()
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
+		wheelUI.setVisible(false)
 	end
 	Sounds.play(opening and "uiOpen" or "uiClose")
 	indexUI.setVisible(opening)
@@ -225,6 +233,26 @@ end)
 -- about wherever you are, and the panel is ready the moment you walk in.
 Net.get("AuctionState").OnClientEvent:Connect(function(list)
 	auctionUI.setLots(list or {})
+end)
+
+--[[ The wheel pulls its stake fresh on open rather than reading cached state:
+     it is about to take everything, so the number on screen has to be the
+     server's, not one the client happens to be holding. ]]
+Net.get("OpenWheel").OnClientEvent:Connect(function()
+	minesUI.setVisible(false)
+	inventoryUI.setVisible(false)
+	upgradeUI.setVisible(false)
+	auctionUI.setVisible(false)
+	indexUI.setVisible(false)
+	Sounds.play("uiOpen")
+	local ok, stake = pcall(function()
+		return ctx.remotes.WheelStake:InvokeServer()
+	end)
+	if ok and stake then
+		wheelUI.setStake(stake)
+	end
+	wheelUI.setVisible(true)
+	syncChrome()
 end)
 
 Net.get("OpenMines").OnClientEvent:Connect(function()

@@ -66,6 +66,16 @@ Rarity.Tiers = {
 	Secret = {
 		index = 7,
 		income = 5000,
+		--[[
+			WHEEL ONLY. Secrets cannot be rolled in the Mines at any multiplier,
+			at any mine count, under any event. The only way to own one is to
+			wager everything on the wheel and hit the 8%.
+
+			`weight` and `growth` are kept so the tier still has a shape if it is
+			ever made rollable again, but DropTable skips it entirely -- see
+			Rarity.Rollable.
+		]]
+		wheelOnly = true,
 		weight = 0.05,
 		growth = 2.20,
 		-- Near-white so it reads on the dark UI; the model itself is void-black.
@@ -73,6 +83,21 @@ Rarity.Tiers = {
 		modelColor = Color3.fromRGB(26, 26, 34),
 	},
 }
+
+--[[
+	The tiers the Mines is allowed to roll: Order minus anything wheelOnly.
+
+	Separate from Order on purpose. Order is the full ladder and stays complete,
+	because the Index has to list Secrets as undiscovered rather than pretend
+	they don't exist -- seeing the locked row is what tells you the wheel is
+	where they come from.
+]]
+Rarity.Rollable = {}
+for _, name in ipairs(Rarity.Order) do
+	if not Rarity.Tiers[name].wheelOnly then
+		table.insert(Rarity.Rollable, name)
+	end
+end
 
 function Rarity.get(name)
 	return Rarity.Tiers[name] or Rarity.Tiers.Common

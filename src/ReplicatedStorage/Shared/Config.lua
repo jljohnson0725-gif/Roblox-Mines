@@ -175,6 +175,40 @@ Config.AuctionBidStep = 0.10 -- each bid must beat the last by 10%
 -- a contested lot SHOULD run long, that's the drama.
 Config.AuctionSnipeWindow = 15
 
+-- ── The Wheel ───────────────────────────────────────────────────────────────
+--[[
+	One machine, one bet: EVERYTHING. All your cash and every brainrot you own,
+	placed or stored, for a shot at a Secret.
+
+	Secrets exist nowhere else. The Mines cannot roll one (Rarity marks the tier
+	wheelOnly) and the auction can only ever resell one that came from here, so
+	the only source in the game is this wager.
+
+	NUMBERS WORTH KNOWING, from tools/wheel.py:
+
+	  - The real chance of a Secret is 9.4%, not 8%. A retry re-rolls rather than
+	    resolving, so the true odds are the non-retry ones renormalised.
+	  - As a cash game it is atrocious: ~4.7% of the minimum stake comes back on
+	    average. That is the point -- it is a sink, and the Secret is the reason.
+	  - The floor only ever gates the FIRST spin. The weakest possible Secret
+	    earns back 1.5M in about four minutes.
+
+	That last one is self-correcting rather than a hole: spinning again wagers
+	the Secret too, so once you hold a good one the bet is terrible and you stop.
+	The wheel is attractive exactly while you have little to lose.
+]]
+Config.WheelMinStake = 1500000
+Config.WheelCashPrize = 200000
+Config.WheelRange = 34 -- how close you must stand
+
+-- Must sum to 1. Order is the display order on the wheel face.
+Config.WheelOdds = {
+	{ id = "secret", chance = 0.08, label = "SECRET" },
+	{ id = "retry", chance = 0.15, label = "RETRY" },
+	{ id = "cash", chance = 0.30, label = "$200K" },
+	{ id = "nothing", chance = 0.47, label = "BUST" },
+}
+
 -- ── Events ──────────────────────────────────────────────────────────────────
 -- Gap between events, randomised in this range. The gap AND the event type are
 -- both rolled the moment the previous event ends, so the countdown shown to

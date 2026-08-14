@@ -107,7 +107,9 @@ function DropTable.roll(multiplier, rng, mods)
 	local depth = depthOf(multiplier)
 	local tierOpts, variantOpts = axisOpts(mods)
 
-	local tierName = weightedPick(Rarity.Order, Rarity.Tiers, depth, rng, tierOpts)
+	-- Rollable, not Order: the Secret tier is wheel-only and must never appear
+	-- from a tile reveal, at any multiplier or under any event.
+	local tierName = weightedPick(Rarity.Rollable, Rarity.Tiers, depth, rng, tierOpts)
 	local variantId = weightedPick(Variants.Order, Variants.List, depth, rng, variantOpts)
 
 	-- A tier listed in Rarity with no characters assigned to it would otherwise
@@ -144,7 +146,9 @@ function DropTable.tierOdds(multiplier, mods)
 	local total = 0
 	local raw = {}
 
-	for _, name in ipairs(Rarity.Order) do
+	-- Rollable so the odds panel shows what can actually drop; listing Secret
+	-- at 0% would read as a bug rather than as a rule.
+	for _, name in ipairs(Rarity.Rollable) do
 		local def = Rarity.Tiers[name]
 		local w = def.weight
 			* (def.growth ^ effectiveDepth)

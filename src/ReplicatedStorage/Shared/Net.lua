@@ -23,6 +23,8 @@ local FUNCTIONS = {
 	"BuyUpgrade", -- purchase one level of an upgrade
 	"ListBrainrot", -- consign one of your brainrots to the auction house
 	"PlaceBid", -- outbid the house (or another player) on a live lot
+	"SpinWheel", -- wager everything on the wheel
+	"WheelStake", -- what that wager currently consists of
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
@@ -37,6 +39,7 @@ local EVENTS = {
 	"OpenUpgrades", -- the shop counter was used
 	"OpenAuction", -- the consign desk was used
 	"AuctionState", -- broadcast: the board changed (new lot, bid, or sale)
+	"OpenWheel", -- the wheel console was used
 }
 
 local folder

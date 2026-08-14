@@ -24,6 +24,7 @@ local AuctionService = require(Modules.AuctionService)
 local HubService = require(Modules.HubService)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
+local WheelService = require(Modules.WheelService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -58,6 +59,9 @@ UpgradeService.start()
 AuctionService.desk = HubService.desk
 AuctionService.start()
 HubService.startBlockDisplay()
+
+-- The wheel builds itself and is the only source of Secrets.
+WheelService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)
