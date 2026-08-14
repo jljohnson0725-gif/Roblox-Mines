@@ -36,9 +36,10 @@
       "target": 5.0
     },
     "tim_cheese": {
-      "mesh": "rbxassetid://78770950286613",
-      "texture": "rbxassetid://110581962324274",
-      "native": [4.00, 2.33, 2.70]
+      "mesh": "rbxassetid://102199928948739",
+      "texture": "rbxassetid://80188030481856",
+      "native": [2.41, 4.32, 3.00],
+      "_note": "Tim Cheese is a RAT IN A SUIT, not cheese. The name is a red herring and the first pass generated a cheese wedge."
     },
     "bananita_dolphinita": {
       "mesh": "rbxassetid://137572849282669",
@@ -54,6 +55,124 @@
       "mesh": "rbxassetid://102657264569927",
       "texture": "rbxassetid://108810313352656",
       "native": [3.40, 3.29, 4.00]
+    },
+    "tung_tung_sahur": {
+      "mesh": "rbxassetid://100547747843499",
+      "texture": "rbxassetid://95408228159863",
+      "native": [2.50, 3.04, 1.48]
+    },
+    "lirili_larila": {
+      "mesh": "rbxassetid://105624247562512",
+      "texture": "rbxassetid://71702958505775",
+      "native": [3.00, 3.29, 1.65]
+    },
+    "chimpanzini_bananini": {
+      "mesh": "rbxassetid://72434059577489",
+      "texture": "rbxassetid://88105927230022",
+      "native": [3.00, 3.76, 1.44]
+    },
+    "bombombini_gusini": {
+      "mesh": "rbxassetid://74827020831146",
+      "texture": "rbxassetid://126752563985113",
+      "native": [3.95, 2.29, 4.00]
+    },
+    "bombardiro_crocodilo": {
+      "mesh": "rbxassetid://99300193704334",
+      "texture": "rbxassetid://110652042941220",
+      "native": [4.94, 2.32, 5.00]
+    },
+    "cappuccino_assassino": {
+      "mesh": "rbxassetid://73895109088880",
+      "texture": "rbxassetid://93483059558455",
+      "native": [3.00, 2.36, 1.67]
+    },
+    "ballerina_cappuccina": {
+      "mesh": "rbxassetid://90472767305375",
+      "texture": "rbxassetid://96954618133964",
+      "native": [2.89, 5.00, 2.89]
+    },
+    "vacca_saturnita": {
+      "mesh": "rbxassetid://86522354570567",
+      "texture": "rbxassetid://95208906904503",
+      "native": [4.45, 4.00, 4.45]
+    },
+    "frigo_camelo": {
+      "mesh": "rbxassetid://126457603804377",
+      "texture": "rbxassetid://101960961173399",
+      "native": [2.28, 4.89, 3.00]
+    },
+    "trulimero_trulicina": {
+      "mesh": "rbxassetid://114373667944786",
+      "texture": "rbxassetid://71395584863103",
+      "native": [1.79, 2.31, 3.00]
+    },
+    "glorbo_fruttodrillo": {
+      "mesh": "rbxassetid://118161099745764",
+      "texture": "rbxassetid://89807771936047",
+      "native": [1.40, 1.31, 3.00]
+    },
+    "girafa_celestre": {
+      "mesh": "rbxassetid://86834334872262",
+      "texture": "rbxassetid://88186852474664",
+      "native": [1.35, 4.07, 3.00],
+      "target": 5.0
+    },
+    "orangutini_ananassini": {
+      "mesh": "rbxassetid://114663598330938",
+      "texture": "rbxassetid://130997533004540",
+      "native": [3.00, 4.30, 2.16]
+    },
+    "los_tralaleritos": {
+      "mesh": "rbxassetid://103320342934678",
+      "texture": "rbxassetid://97311616175224",
+      "native": [4.37, 4.00, 3.81]
+    },
+    "odin_din_din_dun": {
+      "mesh": "rbxassetid://72010639523862",
+      "texture": "rbxassetid://97629597826034",
+      "native": [1.35, 5.00, 1.41],
+      "target": 5.2
+    },
+    "statutino_libertino": {
+      "mesh": "rbxassetid://112402523481770",
+      "texture": "rbxassetid://75603404094694",
+      "native": [2.21, 5.00, 1.43],
+      "target": 5.2
+    },
+    "tralalita_tralala": {
+      "mesh": "rbxassetid://82103751058019",
+      "texture": "rbxassetid://122881698857559",
+      "native": [3.33, 4.00, 3.82]
+    },
+    "nuclearo_dinossauro": {
+      "mesh": "rbxassetid://130940678699229",
+      "texture": "rbxassetid://109131789314236",
+      "native": [2.28, 3.32, 4.00],
+      "target": 5.4
+    },
+    "graipuss_medussi": {
+      "mesh": "rbxassetid://132313012916794",
+      "texture": "rbxassetid://117942895387186",
+      "native": [4.47, 4.00, 4.39],
+      "target": 5.4
+    },
+    "garama_madundung": {
+      "mesh": "rbxassetid://97584028184460",
+      "texture": "rbxassetid://130326781005238",
+      "native": [4.50, 4.92, 1.92],
+      "target": 5.4
+    },
+    "chimpanzini_spiderini": {
+      "mesh": "rbxassetid://140700562552938",
+      "texture": "rbxassetid://134268020685658",
+      "native": [4.35, 4.00, 3.21],
+      "target": 5.6
+    },
+    "grande_combinasion": {
+      "mesh": "rbxassetid://107376624764481",
+      "texture": "rbxassetid://76365244591500",
+      "native": [5.00, 4.93, 3.96],
+      "target": 5.6
     }
   },
 
