@@ -182,6 +182,37 @@ inventory permanently and a collection you can lose by selling isn't a
 collection. Recorded on **cash-out**, never on the find: a brainrot lost to a
 mine was never yours. Winning one at auction counts too.
 
+## Brainrot models
+
+Real generated meshes for 7 of the 29 characters; the rest still use the block
+placeholder, which is a fine state to ship — `ModelFactory` falls through per
+character.
+
+**Meshes cannot be applied at runtime.** `MeshPart.MeshId` is not writable from
+a script (`lacking capability`), so a MeshPart has to already exist in the place
+and be cloned. That rules out keeping asset IDs in a Lua table, which is where
+this started. Instead:
+
+```bash
+python tools/build_place.py
+```
+
+bakes `assets/meshes.json` into `ReplicatedStorage.BrainrotModels` as real
+MeshParts. Source of truth stays in the repo, and a rebuild can't wipe them the
+way hand-placing them in Studio would.
+
+Each character emits **two** MeshParts. `Body` keeps the generated texture and
+serves the Normal variant; `BodyPlain` has no texture so Gold, Diamond, Rainbow
+and friends have something to tint — `TextureID` is the same unwritable kind of
+property as `MeshId`, so clearing it at runtime isn't an option either.
+
+Scale normalises on the **largest dimension**, not height: the generated shapes
+range from 2.6×5.0×3.6 to 4.0×1.9×3.5, and matching heights would leave a flat
+wide character enormous across.
+
+To add one: generate a mesh, note its `MeshId`, `TextureID` and native size, and
+add an entry to `assets/meshes.json`.
+
 ## Look
 
 Bright saturated daylight, near-noon sun, `ColorCorrection.Saturation` at 0.30,

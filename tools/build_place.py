@@ -23,6 +23,7 @@ namespace the map provably doesn't use.
     python tools/build_place.py
 """
 
+import json
 import pathlib
 import sys
 import xml.etree.ElementTree as ET
@@ -31,6 +32,7 @@ from xml.sax.saxutils import escape
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 MAP = ROOT / "assets" / "map.rbxlx"
+MESHES = ROOT / "assets" / "meshes.json"
 OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
@@ -98,6 +100,76 @@ def build_tree(directory):
                           entry.read_text(encoding="utf-8"))
             )
     return items
+
+
+def _bool(props, name, value):
+    e = ET.SubElement(props, "bool", {"name": name})
+    e.text = "true" if value else "false"
+
+
+def _vector3(props, name, x, y, z):
+    v = ET.SubElement(props, "Vector3", {"name": name})
+    for axis, val in (("X", x), ("Y", y), ("Z", z)):
+        e = ET.SubElement(v, axis)
+        e.text = "%.6f" % val
+
+
+def _content(props, name, url):
+    c = ET.SubElement(props, "Content", {"name": name})
+    u = ET.SubElement(c, "url")
+    u.text = url
+
+
+def make_meshpart(name, mesh_id, texture_id, native, scale):
+    """One MeshPart. `size` != `InitialSize` is what scales the geometry."""
+    item = ET.Element("Item", {"class": "MeshPart", "referent": fresh_referent()})
+    props = ET.SubElement(item, "Properties")
+    n = ET.SubElement(props, "string", {"name": "Name"})
+    n.text = name
+
+    _content(props, "MeshId", mesh_id)
+    _content(props, "TextureID", texture_id or "")
+    _vector3(props, "InitialSize", *native)
+    _vector3(props, "size", *[v * scale for v in native])
+    _bool(props, "Anchored", True)
+    _bool(props, "CanCollide", False)
+    _bool(props, "CanQuery", False)
+    _bool(props, "CanTouch", False)
+    return item
+
+
+def build_mesh_library():
+    """
+    ReplicatedStorage.BrainrotModels, baked from assets/meshes.json.
+
+    This exists because MeshPart.MeshId is NOT writable from a runtime script --
+    a MeshPart has to already be in the place and be cloned. Keeping the asset
+    ids in JSON and emitting the parts here means the library is reproducible
+    from source rather than something hand-placed in Studio that the next build
+    would wipe.
+    """
+    if not MESHES.is_file():
+        return None, 0
+
+    data = json.loads(MESHES.read_text(encoding="utf-8"))
+    models = data.get("models", {})
+    default_target = data.get("defaultTarget", 4.4)
+
+    folder = make_item("Folder", "BrainrotModels")
+    for char_id in sorted(models):
+        entry = models[char_id]
+        native = entry["native"]
+        target = entry.get("target", default_target)
+        scale = target / max(native)
+
+        model = make_item("Model", char_id)
+        # Body carries the generated paint job; BodyPlain is the same geometry
+        # with no texture, so a coloured variant has something to tint.
+        model.append(make_meshpart("Body", entry["mesh"], entry["texture"], native, scale))
+        model.append(make_meshpart("BodyPlain", entry["mesh"], "", native, scale))
+        folder.append(model)
+
+    return folder, len(models)
 
 
 def merge_into(dest, new_child):
@@ -184,6 +256,15 @@ def main():
             directory = SRC / service
             if directory.is_dir():
                 service_items.append((service, build_tree(directory)))
+
+        # Baked mesh library rides along in ReplicatedStorage. Built after the
+        # referent namespace is claimed so its ids can't collide with the map's.
+        mesh_folder, mesh_count = build_mesh_library()
+        if mesh_folder is not None:
+            for service, items in service_items:
+                if service == "ReplicatedStorage":
+                    items.append(mesh_folder)
+                    break
 
         injected = 0
         for service, items in service_items:

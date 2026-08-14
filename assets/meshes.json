@@ -1,0 +1,61 @@
+{
+  "_comment": [
+    "Generated brainrot meshes, by character id.",
+    "",
+    "These are baked into ReplicatedStorage.BrainrotModels by tools/build_place.py.",
+    "They CANNOT be applied at runtime: MeshPart.MeshId is not writable from a",
+    "script, so a MeshPart has to already exist in the place and be cloned.",
+    "",
+    "native  = the size the generator reported for the raw asset.",
+    "target  = what the model's LARGEST dimension should become on a pad.",
+    "          Largest-dimension rather than height, because these come back in",
+    "          all shapes and normalising a flat wide one to a standard height",
+    "          leaves it enormous across.",
+    "",
+    "Each entry emits TWO MeshParts: Body keeps the generated texture and is used",
+    "for the Normal variant, BodyPlain drops it so Gold/Diamond/Rainbow can take",
+    "a colour. Two parts rather than clearing the texture at runtime because",
+    "TextureID is the same kind of unwritable Content property as MeshId."
+  ],
+
+  "models": {
+    "trippi_troppi": {
+      "mesh": "rbxassetid://128172791128956",
+      "texture": "rbxassetid://105638633763756",
+      "native": [1.81, 3.35, 4.00]
+    },
+    "boneca_ambalabu": {
+      "mesh": "rbxassetid://80965344648901",
+      "texture": "rbxassetid://117120310072404",
+      "native": [3.82, 3.74, 4.00]
+    },
+    "brr_brr_patapim": {
+      "mesh": "rbxassetid://130940222466585",
+      "texture": "rbxassetid://95165494102617",
+      "native": [2.58, 5.00, 3.64],
+      "target": 5.0
+    },
+    "tim_cheese": {
+      "mesh": "rbxassetid://78770950286613",
+      "texture": "rbxassetid://110581962324274",
+      "native": [4.00, 2.33, 2.70]
+    },
+    "bananita_dolphinita": {
+      "mesh": "rbxassetid://137572849282669",
+      "texture": "rbxassetid://133049576170267",
+      "native": [2.41, 2.36, 4.00]
+    },
+    "svinina_bombardino": {
+      "mesh": "rbxassetid://79146266714895",
+      "texture": "rbxassetid://110450249409044",
+      "native": [4.00, 1.87, 3.53]
+    },
+    "tralalero_tralala": {
+      "mesh": "rbxassetid://102657264569927",
+      "texture": "rbxassetid://108810313352656",
+      "native": [3.40, 3.29, 4.00]
+    }
+  },
+
+  "defaultTarget": 4.4
+}

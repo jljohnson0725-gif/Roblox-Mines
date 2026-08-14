@@ -9,6 +9,9 @@
 	To use real art: put your models in ReplicatedStorage/BrainrotModels, each
 	named exactly the character's `id` from Brainrots.lua. This module picks them
 	up automatically and applies the variant tint. No code change.
+
+	The generated meshes get there via assets/meshes.json + build_place.py rather
+	than being placed by hand, so a rebuild can't wipe them.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -188,12 +191,42 @@ function ModelFactory.build(charId, variantId)
 	local variant = Variants.get(variantId)
 	local tier = Rarity.get(char.tier)
 
+	--[[
+		Two sources: a Model in ReplicatedStorage.BrainrotModels named after the
+		character, or the block placeholder.
+
+		That library is baked into the place by tools/build_place.py from
+		assets/meshes.json, because MeshPart.MeshId is NOT writable from a
+		runtime script -- a MeshPart has to already exist and be cloned. A
+		half-filled library is fine; anything missing falls through to blocks.
+	]]
 	local model
 	local library = ReplicatedStorage:FindFirstChild("BrainrotModels")
 	local source = library and library:FindFirstChild(charId)
 
 	if source then
 		model = source:Clone()
+
+		--[[
+			Generated models ship two copies of the same geometry: Body keeps the
+			paint job, BodyPlain has no texture. Keep exactly one.
+
+			Two parts rather than clearing TextureID at runtime because it's the
+			same kind of unwritable Content property as MeshId -- assigning it
+			from a script throws. Normal is the one variant with no colour of its
+			own, which is exactly when the generated texture is what we want.
+		]]
+		local body = model:FindFirstChild("Body")
+		local plain = model:FindFirstChild("BodyPlain")
+		if body and plain then
+			if variant.color then
+				body:Destroy()
+				plain.Name = "Body"
+			else
+				plain:Destroy()
+			end
+		end
+
 		if not model.PrimaryPart then
 			model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart", true)
 		end
@@ -207,7 +240,18 @@ function ModelFactory.build(charId, variantId)
 		model = buildPlaceholder(char)
 	end
 
-	-- variant skin
+	--[[
+		Variant skin.
+
+		Textured meshes need the texture CLEARED for any variant that isn't
+		Normal: a MeshPart keeps drawing its TextureID over whatever Color you
+		set, so a Gold or Rainbow would have come out looking exactly like the
+		Normal one. Dropping the texture and letting the material do the work is
+		also the better look -- untextured Metal reads as gold, Glass as diamond.
+
+		Normal is the one variant with no colour of its own, which is precisely
+		when we want the generated paint job kept.
+	]]
 	for _, descendant in ipairs(model:GetDescendants()) do
 		if descendant:IsA("BasePart") and not descendant:GetAttribute("NoTint") and descendant.Name ~= "Root" then
 			if variant.color then
