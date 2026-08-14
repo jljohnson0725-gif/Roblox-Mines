@@ -32,6 +32,7 @@ local UpgradeUI = require(UI.UpgradeUI)
 local AuctionUI = require(UI.AuctionUI)
 local IndexUI = require(UI.IndexUI)
 local WheelUI = require(UI.WheelUI)
+local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ local ctx = {
 		PlaceBid = Net.get("PlaceBid"),
 		SpinWheel = Net.get("SpinWheel"),
 		WheelStake = Net.get("WheelStake"),
+		RedeemCode = Net.get("RedeemCode"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -113,6 +115,7 @@ local upgradeUI = UpgradeUI.init(ctx)
 local auctionUI = AuctionUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
+local codesUI = CodesUI.init(ctx)
 Coach.init(ctx)
 
 --[[
@@ -123,7 +126,7 @@ Coach.init(ctx)
 local function syncChrome()
 	hud.setMoneyVisible(not (minesUI.isVisible() or inventoryUI.isVisible()
 		or upgradeUI.isVisible() or auctionUI.isVisible() or indexUI.isVisible()
-		or wheelUI.isVisible()))
+		or wheelUI.isVisible() or codesUI.isVisible()))
 end
 
 
@@ -163,6 +166,21 @@ end
 
 hud.onCollection = function()
 	showInventory(not inventoryUI.isVisible())
+end
+
+hud.onCodes = function()
+	local opening = not codesUI.isVisible()
+	if opening then
+		minesUI.setVisible(false)
+		inventoryUI.setVisible(false)
+		upgradeUI.setVisible(false)
+		auctionUI.setVisible(false)
+		indexUI.setVisible(false)
+		wheelUI.setVisible(false)
+	end
+	Sounds.play(opening and "uiOpen" or "uiClose")
+	codesUI.setVisible(opening)
+	syncChrome()
 end
 
 hud.onIndex = function()

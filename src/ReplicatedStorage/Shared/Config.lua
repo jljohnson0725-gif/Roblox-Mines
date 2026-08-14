@@ -214,6 +214,30 @@ Config.WheelOdds = {
 	{ id = "nothing", chance = 0.47, label = "BUST" },
 }
 
+-- ── Codes ───────────────────────────────────────────────────────────────────
+--[[
+	Redeemable codes. Each one is once per player, recorded in the profile.
+
+	`testOnly` is the important field. A code that hands out eight figures is
+	fine while you're testing the wheel and catastrophic the day the game goes
+	public with it still in the table -- so those only work in Studio, or for a
+	UserId listed in CodeAdmins. Ordinary codes have no such gate.
+
+	Matching is case-insensitive and trims whitespace, because players paste
+	codes out of videos with a trailing space more often than not.
+]]
+Config.CodeAdmins = { 873380891 } -- UserIds that may redeem testOnly codes live
+
+Config.Codes = {
+	WHEELTEST = {
+		money = 10500000,
+		testOnly = true,
+		blurb = "seven spins of the wheel",
+	},
+	RELEASE = { money = 2500, blurb = "thanks for playing" },
+	BRAINROT = { money = 1000, blurb = "a little starter cash" },
+}
+
 -- ── Events ──────────────────────────────────────────────────────────────────
 -- Gap between events, randomised in this range. The gap AND the event type are
 -- both rolled the moment the previous event ends, so the countdown shown to

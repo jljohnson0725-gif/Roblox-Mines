@@ -220,6 +220,7 @@ function HUD.init(ctx)
 		{ id = "mines", glyph = "💣", label = "MINES", color = Theme.color.accent },
 		{ id = "index", glyph = "📘", label = "INDEX", color = Color3.fromRGB(120, 100, 255) },
 		{ id = "collection", glyph = "🎒", label = "BASE", color = Color3.fromRGB(255, 120, 190) },
+		{ id = "codes", glyph = "🎁", label = "CODES", color = Color3.fromRGB(64, 200, 120) },
 	}
 
 	for order, entry in ipairs(RAIL) do

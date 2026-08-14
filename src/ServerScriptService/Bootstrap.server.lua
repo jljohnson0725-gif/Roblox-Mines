@@ -25,6 +25,7 @@ local HubService = require(Modules.HubService)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
 local WheelService = require(Modules.WheelService)
+local CodeService = require(Modules.CodeService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ HubService.startBlockDisplay()
 
 -- The wheel is the only source of Secrets. Its site was cleared above.
 WheelService.start()
+CodeService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)

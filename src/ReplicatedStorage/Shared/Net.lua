@@ -25,6 +25,7 @@ local FUNCTIONS = {
 	"PlaceBid", -- outbid the house (or another player) on a live lot
 	"SpinWheel", -- wager everything on the wheel
 	"WheelStake", -- what that wager currently consists of
+	"RedeemCode", -- one-use reward codes
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
