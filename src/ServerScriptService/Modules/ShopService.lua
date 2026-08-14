@@ -124,7 +124,9 @@ function ShopService.build()
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
 	gui.MaxDistance = 220
 	gui.Adornee = counter
-	gui.Parent = root
+	-- On the COUNTER, not the model. A BillboardGui parented to a Model survives
+	-- its Adornee being streamed out, and then renders at the world origin.
+	gui.Parent = counter
 
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0.6, 0)

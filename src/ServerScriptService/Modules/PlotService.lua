@@ -322,7 +322,10 @@ local function attachPlot(base, index)
 		pileGui.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
 		pileGui.MaxDistance = 70
 		pileGui.Adornee = pedestal
-		pileGui.Parent = container
+		-- On the PEDESTAL, not the container folder. A BillboardGui outlives its
+		-- Adornee when streaming unloads the part, and one with a nil Adornee and
+		-- a non-BasePart parent renders at the world origin -- out in the street.
+		pileGui.Parent = pedestal
 
 		local pileLabel = Instance.new("TextLabel")
 		pileLabel.Size = UDim2.fromScale(1, 1)

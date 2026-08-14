@@ -81,14 +81,27 @@ local function part(props, parent)
 	return p
 end
 
-local function sign(parent, adornee, title, subtitle, color, maxTitle)
+--[[
+	Parented to the ADORNEE, never to the model around it.
+
+	StreamingEnabled is on. A BillboardGui parented to a Model keeps existing
+	when the model's parts stream out, but its Adornee goes nil -- and a
+	BillboardGui with no Adornee and a non-BasePart parent falls back to
+	rendering at the WORLD ORIGIN. The origin sits in the middle of the street,
+	so "ON THE BLOCK" and "CONSIGN & BID" appeared lying on the ground outside
+	the bases, 4000 studs from the room they belong to.
+
+	Parenting to the part makes the label stream in and out with the thing it
+	labels, which is the only arrangement that can't orphan.
+]]
+local function sign(adornee, title, subtitle, color, maxTitle)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
 	gui.Size = UDim2.fromOffset(230, 62)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
 	gui.MaxDistance = 180
 	gui.Adornee = adornee
-	gui.Parent = parent
+	gui.Parent = adornee
 
 	local a = Instance.new("TextLabel")
 	a.Size = UDim2.new(1, 0, 0.6, 0)
@@ -172,7 +185,7 @@ function HubService.buildGate()
 		glow.Brightness = 2.4
 		glow.Parent = plane
 
-		sign(root, plane, "AUCTION HOUSE", "walk through", GOLD, 28)
+		sign(plane, "AUCTION HOUSE", "walk through", GOLD, 28)
 
 		plane.Touched:Connect(function(hit)
 			local character = hit.Parent
@@ -313,7 +326,7 @@ function HubService.build()
 		collide = false,
 	}, root)
 
-	local blockTitle, blockSub = sign(root, stand, "ON THE BLOCK", "nothing listed", GOLD, 26)
+	local blockTitle, blockSub = sign(stand, "ON THE BLOCK", "nothing listed", GOLD, 26)
 	HubService.blockTitle, HubService.blockSub = blockTitle, blockSub
 
 	-- ── the consign desk ────────────────────────────────────────────────────
@@ -355,7 +368,7 @@ function HubService.build()
 		Net.get("OpenAuction"):FireClient(player)
 	end)
 
-	sign(root, desk, "CONSIGN & BID", "put a brainrot up", GOLD, 24)
+	sign(desk, "CONSIGN & BID", "put a brainrot up", GOLD, 24)
 
 	HubService.pedestal = pedestal
 	HubService.desk = desk
@@ -376,7 +389,7 @@ function HubService.build()
 	exitGlow.Range = 34
 	exitGlow.Brightness = 2
 	exitGlow.Parent = exit
-	sign(root, exit, "BACK TO THE STREET", "walk through", GOLD, 22)
+	sign(exit, "BACK TO THE STREET", "walk through", GOLD, 22)
 
 	exit.Touched:Connect(function(hit)
 		local character = hit.Parent
