@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
 local Economy = require(Shared.Economy)
 local Config = require(Shared.Config)
+local Upgrades = require(Shared.Upgrades)
 
 local DataService = require(script.Parent.DataService)
 
@@ -43,7 +44,9 @@ function PlayerState.snapshot(player)
 		pending = totalPending(profile),
 		slots = profile.slots,
 		inventory = profile.inventory,
-		income = Economy.totalIncome(profile.inventory),
+		-- multiplied, so the HUD matches what the strips actually fill at
+		income = Economy.totalIncome(profile.inventory) * Upgrades.incomeMultiplier(profile),
+		upgrades = profile.upgrades or {},
 		stats = profile.stats,
 	}
 end

@@ -28,6 +28,7 @@ local Sounds = require(Shared.Sounds)
 local DataService = require(script.Parent.DataService)
 local PlayerState = require(script.Parent.PlayerState)
 local EventService = require(script.Parent.EventService)
+local MinesLandmark = require(script.Parent.MinesLandmark)
 
 local MinesService = {}
 
@@ -98,6 +99,14 @@ function MinesService.startRound(player, bet, mines)
 	end
 	if rounds[player.UserId] then
 		return { ok = false, err = "You already have a round going." }
+	end
+
+	-- Gambling happens AT the Mines, not from your armchair. Checked here and
+	-- not just in the UI: the remote is callable from anywhere otherwise.
+	-- Only starting is gated -- once a round is live you can finish it, so a
+	-- stray step never costs you a bet.
+	if not MinesLandmark.isNear(player) then
+		return { ok = false, err = "Head to the Mines to play." }
 	end
 
 	if type(bet) ~= "number" or bet ~= bet or bet == math.huge then

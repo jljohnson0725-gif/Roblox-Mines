@@ -87,11 +87,18 @@ Config.ShelfFrontZ = 8 -- centre Z of the front tier
 -- ── Income ──────────────────────────────────────────────────────────────────
 Config.IncomeTickRate = 1 -- seconds between passive income payouts
 
--- Income no longer auto-credits: it piles up on the collect strips and you walk
--- over the CollectZone to bank it. The cap is what makes that a loop instead of
--- a formality -- leave for longer than this and the pile stops growing, so
--- there's a real reason to come back rather than idle indefinitely.
-Config.CollectCapSeconds = 300
+-- Income doesn't auto-credit: it piles up on the collect strips and you walk to
+-- a brainrot to bank it.
+--
+-- FOUR HOURS, not the five minutes this started as. Leaving the game running to
+-- stack money is a genuine pleasure of the genre and a short cap fights it --
+-- you'd come back from dinner to a pile that stopped growing twenty minutes in.
+-- A cap still has to exist, or a week away mints unbounded money, and the
+-- Capacity upgrade extends this further.
+--
+-- Note this is AFK income: the tick only runs for connected players. Earning
+-- while fully disconnected would be a separate feature.
+Config.CollectCapSeconds = 4 * 60 * 60
 
 -- CollectionService tag on placed brainrot models. Lives here because the
 -- server applies it and the client animates by it, and they must not drift.
@@ -99,6 +106,10 @@ Config.BrainrotTag = "BrainrotModel"
 
 -- Tag on the Mines landmark's rings. Server builds them, client spins them.
 Config.RingTag = "MinesRing"
+
+-- ── Upgrades ────────────────────────────────────────────────────────────────
+-- How close you must stand to the shop to buy. Matches the Mines console.
+Config.ShopRange = 30
 
 -- ── Events ──────────────────────────────────────────────────────────────────
 -- Gap between events, randomised in this range. The gap AND the event type are

@@ -190,40 +190,27 @@ function HUD.init(ctx)
 		parent = ctx.gui,
 		name = "Dock",
 		transparency = 1,
-		size = UDim2.fromOffset(300, 46),
+		size = UDim2.fromOffset(180, 46),
 		position = UDim2.new(0.5, 0, 1, -20),
 		anchor = Vector2.new(0.5, 1),
 		radius = false,
 	})
 	Theme.list(dock, 10, Enum.FillDirection.Horizontal)
 
-	local minesButton = Theme.button({
-		parent = dock,
-		name = "MinesButton",
-		text = "MINES  [M]",
-		textSize = 14,
-		color = Theme.color.accent,
-		size = UDim2.fromOffset(145, 46),
-		order = 1,
-		radius = 12,
-	})
-
+	-- No Mines button any more. It would be a lie: the panel only opens at the
+	-- landmark console, and a dock button that refuses to work is worse than no
+	-- button at all.
 	local collectionButton = Theme.button({
 		parent = dock,
 		name = "CollectionButton",
 		text = "COLLECTION  [C]",
 		textSize = 13,
 		color = Theme.color.raised,
-		size = UDim2.fromOffset(145, 46),
-		order = 2,
+		size = UDim2.fromOffset(180, 46),
+		order = 1,
 		radius = 12,
 	})
 
-	minesButton.MouseButton1Click:Connect(function()
-		if hud.onMines then
-			hud.onMines()
-		end
-	end)
 	collectionButton.MouseButton1Click:Connect(function()
 		if hud.onCollection then
 			hud.onCollection()

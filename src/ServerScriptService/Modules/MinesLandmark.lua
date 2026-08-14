@@ -100,6 +100,34 @@ local function buildRing(parent, radius, segments, thickness, height, color, nam
 	return model
 end
 
+--[[
+	How close you must stand to gamble. Slightly wider than the prompt's own 14
+	so the panel doesn't slam shut when you shuffle a step while playing.
+]]
+MinesLandmark.RANGE = 30
+
+function MinesLandmark.consolePosition()
+	local root = Workspace:FindFirstChild("MinesLandmark")
+	local console = root and root:FindFirstChild("Console")
+	return console and console.Position or nil
+end
+
+--[[ Server-side gate. The client hides the panel when you walk off, but that's
+     a courtesy -- this is what actually stops a remote from being called from
+     the other side of the map. ]]
+function MinesLandmark.isNear(player)
+	local spot = MinesLandmark.consolePosition()
+	if not spot then
+		return true -- landmark missing (generate mode): don't lock anyone out
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return false
+	end
+	return (root.Position - spot).Magnitude <= MinesLandmark.RANGE
+end
+
 function MinesLandmark.build()
 	local existing = Workspace:FindFirstChild("MinesLandmark")
 	if existing then

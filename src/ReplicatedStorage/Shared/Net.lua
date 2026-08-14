@@ -20,6 +20,7 @@ local FUNCTIONS = {
 	"PlaceBrainrot",
 	"BuySlot",
 	"EquipBest", -- auto-place the highest-earning brainrots
+	"BuyUpgrade", -- purchase one level of an upgrade
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
@@ -31,6 +32,7 @@ local EVENTS = {
 	"Announce", -- broadcast: somebody found (or lost) a Mythic/Secret
 	"EventState", -- broadcast: an event started or ended
 	"OpenMines", -- the landmark's console was used
+	"OpenUpgrades", -- the shop counter was used
 }
 
 local folder

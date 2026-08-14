@@ -20,6 +20,7 @@ local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
 local MinesLandmark = require(Modules.MinesLandmark)
+local UpgradeService = require(Modules.UpgradeService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ MinesService.start()
 -- so its rings can pick up whatever event is already running.
 MinesLandmark.build()
 MinesLandmark.startEventSync()
+UpgradeService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)
@@ -66,6 +68,7 @@ local function onPlayerAdded(player)
 
 	player.CharacterAdded:Connect(function(character)
 		onCharacterAdded(player, character)
+		UpgradeService.applyToCharacter(player)
 	end)
 	if player.Character then
 		onCharacterAdded(player, player.Character)

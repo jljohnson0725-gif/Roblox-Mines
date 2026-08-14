@@ -28,6 +28,7 @@ local HUD = require(UI.HUD)
 local Fx = require(UI.Fx)
 local MinesUI = require(UI.MinesUI)
 local InventoryUI = require(UI.InventoryUI)
+local UpgradeUI = require(UI.UpgradeUI)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ local state = {
 	inventory = {},
 	income = 0,
 	stats = {},
+	upgrades = {},
 	event = nil, -- global event clock, filled by RequestState / EventState
 }
 
@@ -70,6 +72,7 @@ local ctx = {
 		PlaceBrainrot = Net.get("PlaceBrainrot"),
 		BuySlot = Net.get("BuySlot"),
 		EquipBest = Net.get("EquipBest"),
+		BuyUpgrade = Net.get("BuyUpgrade"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -92,10 +95,12 @@ ctx.fx = Fx.init(ctx)
 
 local minesUI = MinesUI.init(ctx)
 local inventoryUI = InventoryUI.init(ctx)
+local upgradeUI = UpgradeUI.init(ctx)
 
 local function showMines(visible)
 	if visible then
 		inventoryUI.setVisible(false)
+		upgradeUI.setVisible(false)
 	end
 	if visible ~= minesUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -106,6 +111,7 @@ end
 local function showInventory(visible)
 	if visible then
 		minesUI.setVisible(false)
+		upgradeUI.setVisible(false)
 	end
 	if visible ~= inventoryUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
@@ -149,6 +155,13 @@ Net.get("EventState").OnClientEvent:Connect(function(snapshot)
 	end
 	state.event = snapshot
 	fireState()
+end)
+
+Net.get("OpenUpgrades").OnClientEvent:Connect(function()
+	minesUI.setVisible(false)
+	inventoryUI.setVisible(false)
+	Sounds.play("uiOpen")
+	upgradeUI.setVisible(true)
 end)
 
 Net.get("OpenMines").OnClientEvent:Connect(function()
@@ -218,13 +231,20 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
+	-- M closes but never OPENS: Mines lives at the landmark console now, so that
+	-- the gambling pulls you out of your base instead of happening in a menu.
 	if input.KeyCode == Enum.KeyCode.M then
-		showMines(not minesUI.isVisible())
+		if minesUI.isVisible() then
+			showMines(false)
+		else
+			hud.notify("The Mines are out in the street — look for the rings.", "info")
+		end
 	elseif input.KeyCode == Enum.KeyCode.C then
 		showInventory(not inventoryUI.isVisible())
 	elseif input.KeyCode == Enum.KeyCode.Escape then
 		minesUI.setVisible(false)
 		inventoryUI.setVisible(false)
+		upgradeUI.setVisible(false)
 	end
 end)
 
@@ -354,10 +374,40 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+--[[
+	Close the panel when you leave the Mines.
+
+	Never mid-round: the server lets a live round finish wherever you are, so
+	yanking the board away from someone who has an unsecured Secret on the table
+	would be the worst possible moment to enforce a rule.
+]]
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+		if minesUI.isVisible() and not minesUI.hasRound() then
+			local landmark = Workspace:FindFirstChild("MinesLandmark")
+			local console = landmark and landmark:FindFirstChild("Console")
+			if console and root and (root.Position - console.Position).Magnitude > 34 then
+				showMines(false)
+			end
+		end
+
+		if upgradeUI.isVisible() then
+			local shop = Workspace:FindFirstChild("UpgradeShop")
+			local counter = shop and shop:FindFirstChild("Counter")
+			if counter and root and (root.Position - counter.Position).Magnitude > 34 then
+				upgradeUI.setVisible(false)
+			end
+		end
+	end
+end)
+
 -- ── first-run nudge ─────────────────────────────────────────────────────────
 
 task.delay(2, function()
 	if #(state.inventory or {}) == 0 then
-		hud.notify("Press M to play Mines. Brainrots you find pay rent forever.", "info")
+		hud.notify("Head for the glowing rings to play Mines. What you win pays rent forever.", "info")
 	end
 end)

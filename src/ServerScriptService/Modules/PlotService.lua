@@ -32,6 +32,7 @@ local Economy = require(Shared.Economy)
 local Format = require(Shared.Format)
 local Rarity = require(Shared.Rarity)
 local Brainrots = require(Shared.Brainrots)
+local Upgrades = require(Shared.Upgrades)
 
 local DataService = require(script.Parent.DataService)
 local PlayerState = require(script.Parent.PlayerState)
@@ -647,12 +648,17 @@ function PlotService.accrue(player, elapsed)
 		return
 	end
 
+	-- Upgrades multiply the rate and extend how long a strip keeps filling.
+	-- Applied here rather than inside Economy so Economy stays a pure function
+	-- of (character, variant) that the client can evaluate identically.
+	local multiplier = Upgrades.incomeMultiplier(profile)
+	local capSeconds = Upgrades.capSeconds(profile, Config.CollectCapSeconds)
+
 	for _, item in ipairs(profile.inventory) do
 		local slot = item.pad
 		if slot and slot >= 1 and slot <= Config.MaxSlots then
-			local rate = Economy.incomeOf(item.charId, item.variantId)
-			local cap = rate * Config.CollectCapSeconds
-			profile.pending[slot] = math.min(cap, (profile.pending[slot] or 0) + rate * elapsed)
+			local rate = Economy.incomeOf(item.charId, item.variantId) * multiplier
+			profile.pending[slot] = math.min(rate * capSeconds, (profile.pending[slot] or 0) + rate * elapsed)
 		end
 	end
 end
@@ -669,7 +675,8 @@ function PlotService.renderPiles(player)
 		local item = DataService.itemOnPad(profile, index)
 		local amount = profile.pending[index] or 0
 		if item then
-			local cap = math.max(Economy.incomeOf(item.charId, item.variantId) * Config.CollectCapSeconds, 1)
+			local rate = Economy.incomeOf(item.charId, item.variantId) * Upgrades.incomeMultiplier(profile)
+			local cap = math.max(rate * Upgrades.capSeconds(profile, Config.CollectCapSeconds), 1)
 			renderPile(pad, amount, math.clamp(amount / cap, 0, 1))
 		else
 			-- cash left behind by a brainrot that got stored stays collectable

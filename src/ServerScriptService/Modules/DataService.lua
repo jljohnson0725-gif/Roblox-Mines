@@ -49,6 +49,7 @@ local function newProfile()
 		-- table would JSON-encode to an object and come back with STRING keys,
 		-- silently breaking every numeric lookup after a reload.
 		pending = table.create(Config.MaxSlots, 0),
+		upgrades = {}, -- [upgradeId] = level; absent means 0
 		inventory = {}, -- array of { uid, charId, variantId, pad = number? }
 		stats = {
 			rounds = 0,
@@ -71,6 +72,10 @@ local function reconcile(profile)
 		if profile.stats[key] == nil then
 			profile.stats[key] = value
 		end
+	end
+
+	if type(profile.upgrades) ~= "table" then
+		profile.upgrades = {}
 	end
 
 	-- Old saves stored pending as a single number; and any save could carry an
