@@ -61,10 +61,11 @@ local function newProfile()
 			same trap `pending` had to be a dense array to avoid.
 		]]
 		index = {},
-		--[[ First-session state. `drops` is how many guaranteed finds are left;
-		     `done` latches once the loop has visibly worked at least once, so the
-		     coach never comes back for a returning player. ]]
-		onboarding = { drops = Config.OnboardingDrops, done = false },
+		--[[ First-session state. `drops` is how many guaranteed finds are left,
+		     `collected` records that a cash pile has actually been banked (the
+		     coach's last step reads it), and `done` latches once the whole loop
+		     has worked, so the coach never returns for an existing player. ]]
+		onboarding = { drops = Config.OnboardingDrops, collected = false, done = false },
 		stats = {
 			rounds = 0,
 			busts = 0,
@@ -95,9 +96,10 @@ local function reconcile(profile)
 		profile.index = {}
 	end
 	if type(profile.onboarding) ~= "table" then
-		profile.onboarding = { drops = Config.OnboardingDrops, done = false }
+		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false }
 	end
 	profile.onboarding.drops = tonumber(profile.onboarding.drops) or 0
+	profile.onboarding.collected = profile.onboarding.collected == true
 	profile.onboarding.done = profile.onboarding.done == true
 
 	--[[ Saves made before the index existed still hold proof of discovery in
@@ -219,12 +221,14 @@ function DataService.recordIndex(profile, charId, variantId)
 end
 
 --[[
-	Latch the first-session coach off once the loop has demonstrably worked:
-	something banked AND something standing on a pad.
+	Latch the first-session coach off once the whole loop has demonstrably
+	worked: something banked, something standing on a pad, and a pile actually
+	collected. All three, because the last step of the coach IS the collect and
+	latching before it would hide the card mid-lesson.
 
-	Derived rather than driven by a "tutorial finished" button, because those two
-	facts ARE the tutorial. A returning player already satisfies both, so the
-	coach never reappears for them, and nobody can get stuck on a step by
+	Derived rather than driven by a "tutorial finished" button, because those
+	three facts ARE the tutorial. A returning player already satisfies all of
+	them, so the coach never reappears, and nobody can get stuck on a step by
 	dismissing something.
 ]]
 function DataService.refreshOnboarding(profile)
@@ -232,7 +236,7 @@ function DataService.refreshOnboarding(profile)
 	if not ob or ob.done then
 		return
 	end
-	if next(profile.index or {}) == nil then
+	if next(profile.index or {}) == nil or not ob.collected then
 		return
 	end
 	for _, item in ipairs(profile.inventory) do

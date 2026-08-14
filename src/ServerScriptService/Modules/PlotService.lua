@@ -867,6 +867,15 @@ function PlotService.tickCollect(player)
 	end
 
 	profile.money += math.floor(claimed)
+
+	--[[ The one place that can honestly say a pile was collected. The coach's
+	     last step reads this: inferring it client-side from `pending == 0` is
+	     wrong, because pending is also zero in the seconds after you place a
+	     brainrot and before it has earned anything. ]]
+	if profile.onboarding then
+		profile.onboarding.collected = true
+	end
+
 	PlotService.renderPiles(player)
 	PlayerState.push(player)
 	PlayerState.notify(player, "Collected " .. Format.money(math.floor(claimed)), "good")

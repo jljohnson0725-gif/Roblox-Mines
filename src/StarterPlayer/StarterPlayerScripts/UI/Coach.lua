@@ -8,14 +8,19 @@
 
 	EVERY STEP IS DERIVED FROM REAL STATE, never from a script position. The
 	player is on "place it on a pad" because they own something unplaced, not
-	because they pressed Next twice. That means it cannot desync, it survives a
-	rejoin mid-way, and doing things out of order just works -- someone who
-	places a brainrot before reading anything simply finds the step already
-	complete.
+	because they pressed Next twice. That means it cannot desync and it survives
+	a rejoin mid-way.
 
-	It switches off for good once the server latches `onboarding.done`, which
-	happens when they have banked something AND stood it on a pad. Those two
-	facts ARE the tutorial, so there is nothing else to remember.
+	It shows the FIRST incomplete step, which is not the same as skipping ahead.
+	Someone who buys a brainrot at the auction and places it without ever opening
+	Mines still gets "Play a round of Mines" -- correctly, because they haven't.
+	The pips are what tell them the later steps are already behind them, so they
+	light by whether each step is DONE rather than by position in the list.
+
+	It switches off once all four steps read done, which is also exactly when the
+	server latches `onboarding.done`: banked, placed, and a pile collected. Those
+	three facts ARE the tutorial, so there is nothing else to remember and a
+	returning player never sees the card.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,11 +73,21 @@ local STEPS = {
 		key = "collect",
 		title = "Collect what it earned",
 		body = "Cash piles up on the strip by each pad. Walk over it to bank it.",
+		--[[
+			Reads a server flag rather than inferring from `pending == 0`.
+
+			Pending is also zero in the moment right after placing, before any
+			rent has accrued, so testing it directly completed this step
+			instantly, hid the card, and then un-hid it seconds later when the
+			first cash appeared. Tracking "I have seen a pile" on the client
+			fixed that but broke returning players, whose client starts each
+			session having seen nothing and got told to go and collect.
+
+			PlotService sets `collected` the first time it actually banks a
+			pile, so the fact survives a rejoin and means exactly one thing.
+		]]
 		done = function(s)
-			-- the server latches `done` on bank + place; this last step is the
-			-- payoff, so hold it until money actually arrives
-			return (s.onboarding and s.onboarding.done) == true
-				and (s.pending or 0) < 1
+			return (s.onboarding and s.onboarding.collected) == true
 		end,
 	},
 }
@@ -157,21 +172,6 @@ function Coach.init(ctx)
 	local function render()
 		local state = ctx.state
 
-		-- Nothing to teach a player who has already done it.
-		if state.onboarding and state.onboarding.done then
-			local allDone = true
-			for _, step in ipairs(STEPS) do
-				if not step.done(state) then
-					allDone = false
-					break
-				end
-			end
-			if allDone then
-				card.Visible = false
-				return
-			end
-		end
-
 		local current, index
 		for i, step in ipairs(STEPS) do
 			if not step.done(state) then
@@ -186,9 +186,11 @@ function Coach.init(ctx)
 		end
 
 		card.Visible = true
+		-- Lit by completion, not position: a step finished out of order still
+		-- reads as done rather than pretending it's ahead of the player.
 		for i, dot in ipairs(dots) do
-			dot.BackgroundColor3 = i < index and Theme.color.good
-				or (i == index and Theme.color.gold or Theme.color.raised)
+			dot.BackgroundColor3 = i == index and Theme.color.gold
+				or (STEPS[i].done(state) and Theme.color.good or Theme.color.raised)
 		end
 
 		if current.key ~= shownKey then
