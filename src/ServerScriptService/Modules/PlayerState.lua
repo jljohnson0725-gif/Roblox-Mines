@@ -47,6 +47,7 @@ function PlayerState.snapshot(player)
 		-- multiplied, so the HUD matches what the strips actually fill at
 		income = Economy.totalIncome(profile.inventory) * Upgrades.incomeMultiplier(profile),
 		upgrades = profile.upgrades or {},
+		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		stats = profile.stats,
 	}
 end

@@ -279,6 +279,9 @@ local function settle(lot)
 				charId = lot.item.charId,
 				variantId = lot.item.variantId,
 			})
+			-- Won at auction still counts as discovered: you own it, and buying
+			-- what you can't roll is a legitimate way to finish a collection.
+			DataService.recordIndex(buyerProfile, lot.item.charId, lot.item.variantId)
 			PlayerState.push(buyer)
 			PlayerState.notify(buyer, "Won " .. lot.name .. " for " ..
 				Format.money(lot.bid) .. ".", "good")

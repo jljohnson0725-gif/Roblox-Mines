@@ -128,6 +128,7 @@ API Services**. Without it the game still runs — you'll see a
 |-------|--------|
 | `M`   | open/close Mines |
 | `C`   | open/close Collection |
+| left rail | Mines, Index, Base — the panels you open from anywhere |
 | `Esc` | close everything |
 | walk to a pad + `E` | place, store, or unlock |
 | walk to the red button + `E` | arm/disarm your laser door |
@@ -168,6 +169,30 @@ contested lot *should* run long. Disconnecting mid-auction returns your item and
 refunds the standing bidder; a server shutdown settles every open lot.
 
 Run `python tools/auction.py` before touching the pricing.
+
+## The Index
+
+Every character crossed with every variant — **203 pairs** — with variant tabs
+down the right edge. Discovered entries show their name, income and how many
+you've banked; the rest are `???`.
+
+It is **not** your inventory. The server keeps a separate `index` count that
+only ever goes up, because the auction house removes brainrots from your
+inventory permanently and a collection you can lose by selling isn't a
+collection. Recorded on **cash-out**, never on the find: a brainrot lost to a
+mine was never yours. Winning one at auction counts too.
+
+## Look
+
+Bright saturated daylight, near-noon sun, `ColorCorrection.Saturation` at 0.30,
+and ground surfaces on `Plastic` rather than `SmoothPlastic` so Roblox's stud
+shading reads as moulded brick. Plots get a red/green checker floor over a
+bright green slab.
+
+Tile size is **measured, not chosen**: slot rows sit 18 studs apart and the
+strips are 5.1 deep, leaving ~12.9 studs of clear floor, so a 9.5-stud tile
+plus its exclusion margin needed more room than exists and produced *zero*
+tiles on all eight bases. At 4 studs two rows fit per lane — ~121 tiles a base.
 
 The **⚡ EQUIP BEST** button in the Collection panel clears every pad and refills
 it with your highest-earning brainrots, sorted by actual income — a Galaxy Common

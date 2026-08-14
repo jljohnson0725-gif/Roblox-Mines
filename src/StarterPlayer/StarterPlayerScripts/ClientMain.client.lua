@@ -30,6 +30,7 @@ local MinesUI = require(UI.MinesUI)
 local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
 local AuctionUI = require(UI.AuctionUI)
+local IndexUI = require(UI.IndexUI)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ local state = {
 	money = 0,
 	slots = Config.StartingSlots,
 	inventory = {},
+	index = {}, -- ["charId:variantId"] = times secured; drives the Index panel
 	income = 0,
 	stats = {},
 	upgrades = {},
@@ -103,17 +105,31 @@ local minesUI = MinesUI.init(ctx)
 local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
 local auctionUI = AuctionUI.init(ctx)
+local indexUI = IndexUI.init(ctx)
+
+--[[
+	The bottom-centre money counter steps aside while any full panel is open.
+	Centralised here rather than in each panel: every one of them is
+	viewport-height, and the rule is the same for all of them.
+]]
+local function syncChrome()
+	hud.setMoneyVisible(not (minesUI.isVisible() or inventoryUI.isVisible()
+		or upgradeUI.isVisible() or auctionUI.isVisible() or indexUI.isVisible()))
+end
+
 
 local function showMines(visible)
 	if visible then
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
+		indexUI.setVisible(false)
 	end
 	if visible ~= minesUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
 	end
 	minesUI.setVisible(visible)
+	syncChrome()
 end
 
 local function showInventory(visible)
@@ -121,11 +137,13 @@ local function showInventory(visible)
 		minesUI.setVisible(false)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
+		indexUI.setVisible(false)
 	end
 	if visible ~= inventoryUI.isVisible() then
 		Sounds.play(visible and "uiOpen" or "uiClose")
 	end
 	inventoryUI.setVisible(visible)
+	syncChrome()
 end
 
 hud.onMines = function()
@@ -134,6 +152,19 @@ end
 
 hud.onCollection = function()
 	showInventory(not inventoryUI.isVisible())
+end
+
+hud.onIndex = function()
+	local opening = not indexUI.isVisible()
+	if opening then
+		minesUI.setVisible(false)
+		inventoryUI.setVisible(false)
+		upgradeUI.setVisible(false)
+		auctionUI.setVisible(false)
+	end
+	Sounds.play(opening and "uiOpen" or "uiClose")
+	indexUI.setVisible(opening)
+	syncChrome()
 end
 
 -- ── server events ───────────────────────────────────────────────────────────
@@ -170,16 +201,20 @@ Net.get("OpenUpgrades").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)
 	auctionUI.setVisible(false)
+	indexUI.setVisible(false)
 	Sounds.play("uiOpen")
 	upgradeUI.setVisible(true)
+	syncChrome()
 end)
 
 Net.get("OpenAuction").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)
 	upgradeUI.setVisible(false)
+	indexUI.setVisible(false)
 	Sounds.play("uiOpen")
 	auctionUI.setVisible(true)
+	syncChrome()
 end)
 
 -- Broadcast to everyone, not just the floor: a lot closing is worth knowing
@@ -264,6 +299,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
 		auctionUI.setVisible(false)
+		indexUI.setVisible(false)
+		syncChrome()
 	end
 end)
 
@@ -419,9 +456,11 @@ task.spawn(function()
 		task.wait(0.5)
 		if upgradeUI.isVisible() and walkedAway("UpgradeShop", "Counter") then
 			upgradeUI.setVisible(false)
+			syncChrome()
 		end
 		if auctionUI.isVisible() and walkedAway("AuctionHouse", "ConsignDesk") then
 			auctionUI.setVisible(false)
+			syncChrome()
 		end
 	end
 end)

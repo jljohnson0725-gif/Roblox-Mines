@@ -272,6 +272,10 @@ function MinesService.cashOut(player)
 		table.insert(profile.inventory, item)
 		table.insert(secured, drop)
 
+		-- Banked, so it counts for the Index. Recorded here rather than at the
+		-- moment of the find, because a drop lost to a mine was never yours.
+		DataService.recordIndex(profile, drop.charId, drop.variantId)
+
 		local score = Economy.powerScore(drop.charId, drop.variantId)
 		if not best or score > best.score then
 			best = { score = score, charId = drop.charId, variantId = drop.variantId }

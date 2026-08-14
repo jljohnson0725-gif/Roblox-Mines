@@ -12,29 +12,44 @@ local Assets = require(Shared.Assets)
 
 local Theme = {}
 
+--[[
+	The palette is deliberately LOUD.
+
+	It used to be a muted dark-neon scheme, which looked good in isolation and
+	wrong in the game: this genre's audience reads a saturated primary-colour
+	interface as "this is a toy, press it", and a tasteful dark one as somebody
+	else's app. Panels stay dark enough for white text to carry, but every
+	interactive thing is a full-strength colour with a hard outline, and the
+	fonts went to the fattest weights available.
+]]
 Theme.color = {
-	bg = Color3.fromRGB(18, 19, 26),
-	panel = Color3.fromRGB(26, 28, 38),
-	raised = Color3.fromRGB(35, 38, 50),
-	tile = Color3.fromRGB(48, 52, 68),
-	tileHover = Color3.fromRGB(62, 68, 88),
-	line = Color3.fromRGB(52, 56, 72),
+	bg = Color3.fromRGB(26, 32, 62), -- deep blue, not neutral black
+	panel = Color3.fromRGB(38, 48, 88),
+	raised = Color3.fromRGB(56, 70, 122),
+	tile = Color3.fromRGB(70, 88, 148),
+	tileHover = Color3.fromRGB(92, 114, 184),
+	line = Color3.fromRGB(18, 22, 44), -- outline, so it goes DARKER than bg
 
-	text = Color3.fromRGB(238, 240, 248),
-	dim = Color3.fromRGB(146, 152, 170),
-	faint = Color3.fromRGB(96, 102, 120),
+	text = Color3.fromRGB(255, 255, 255),
+	dim = Color3.fromRGB(188, 202, 240),
+	faint = Color3.fromRGB(130, 146, 190),
 
-	good = Color3.fromRGB(88, 214, 132),
-	bad = Color3.fromRGB(240, 84, 96),
-	gold = Color3.fromRGB(255, 190, 60),
-	accent = Color3.fromRGB(120, 132, 255),
+	good = Color3.fromRGB(64, 224, 96),
+	bad = Color3.fromRGB(255, 68, 88),
+	gold = Color3.fromRGB(255, 202, 40),
+	accent = Color3.fromRGB(88, 168, 255),
+
+	-- the reference's tile floor, reused by PlotService so the UI and the world
+	-- are visibly the same palette
+	plotA = Color3.fromRGB(88, 214, 58),
+	plotB = Color3.fromRGB(236, 62, 62),
 }
 
 Theme.font = {
-	bold = Enum.Font.GothamBold,
-	medium = Enum.Font.GothamMedium,
-	regular = Enum.Font.Gotham,
-	black = Enum.Font.GothamBlack,
+	bold = Enum.Font.FredokaOne,
+	medium = Enum.Font.GothamBold,
+	regular = Enum.Font.GothamMedium,
+	black = Enum.Font.FredokaOne,
 }
 
 -- ── constructors ────────────────────────────────────────────────────────────
@@ -133,6 +148,16 @@ function Theme.button(props)
 	button.Name = props.name or "Button"
 	button.AutoLocalize = false
 	Theme.corner(button, props.radius or 8)
+
+	--[[ Every button gets the hard dark outline and the drop shadow under the
+	     text. That pairing is what makes a flat primary colour read as a chunky
+	     plastic key rather than a coloured rectangle. ]]
+	if props.outline ~= false then
+		Theme.stroke(button, Theme.color.line, 2)
+	end
+	button.TextStrokeColor3 = Theme.color.line
+	button.TextStrokeTransparency = props.textStroke or 0.55
+
 	button.Parent = props.parent
 
 	-- hover feedback without AutoButtonColor's washed-out tint

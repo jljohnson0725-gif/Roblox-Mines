@@ -51,6 +51,16 @@ local function newProfile()
 		pending = table.create(Config.MaxSlots, 0),
 		upgrades = {}, -- [upgradeId] = level; absent means 0
 		inventory = {}, -- array of { uid, charId, variantId, pad = number? }
+		--[[
+			Everything you have EVER secured, as ["charId:variantId"] = count.
+
+			Separate from inventory on purpose: the auction house takes brainrots
+			out of your inventory permanently, and a collection you can lose by
+			selling isn't a collection. String keys because a pair needs both
+			halves, and because JSON round-trips string keys unchanged -- the
+			same trap `pending` had to be a dense array to avoid.
+		]]
+		index = {},
 		stats = {
 			rounds = 0,
 			busts = 0,
@@ -76,6 +86,18 @@ local function reconcile(profile)
 
 	if type(profile.upgrades) ~= "table" then
 		profile.upgrades = {}
+	end
+	if type(profile.index) ~= "table" then
+		profile.index = {}
+	end
+
+	--[[ Saves made before the index existed still hold proof of discovery in
+	     the inventory, so seed from it rather than starting everyone at zero. ]]
+	for _, item in ipairs(profile.inventory) do
+		local key = item.charId .. ":" .. item.variantId
+		if profile.index[key] == nil then
+			profile.index[key] = 1
+		end
 	end
 
 	-- Old saves stored pending as a single number; and any save could carry an
@@ -172,6 +194,19 @@ function DataService.nextUid(profile)
 	local uid = profile.nextUid or 1
 	profile.nextUid = uid + 1
 	return "b" .. uid
+end
+
+--[[
+	Record a (character, variant) pair as discovered.
+
+	Called when a drop is SECURED, never when it's found: an unsecured brainrot
+	lost to a mine was never yours, and having it show up in your collection
+	would quietly undercut the one rule the whole game rests on.
+]]
+function DataService.recordIndex(profile, charId, variantId)
+	profile.index = profile.index or {}
+	local key = charId .. ":" .. variantId
+	profile.index[key] = (profile.index[key] or 0) + 1
 end
 
 function DataService.findItem(profile, uid)

@@ -24,22 +24,30 @@ local Workspace = game:GetService("Workspace")
 
 local MapStyle = {}
 
--- ── palette ─────────────────────────────────────────────────────────────────
+--[[
+	Palette.
+
+	Every one of these was a muted dusk value and is now near-full saturation.
+	The genre's look isn't subtle grading, it's moulded plastic under a bright
+	sun -- so greens go vivid, rock goes light grey-blue rather than slate, and
+	the four "neon" entries stop being light sources and become bright plastic,
+	because at midday an emissive part just reads as a flat pale blob.
+]]
 local P = {
-	grass = Color3.fromRGB(92, 156, 98),
-	grassDeep = Color3.fromRGB(66, 124, 80),
-	pine = Color3.fromRGB(38, 76, 56),
-	rock = Color3.fromRGB(104, 114, 146),
-	rockDeep = Color3.fromRGB(74, 82, 112),
-	path = Color3.fromRGB(92, 88, 104),
-	wood = Color3.fromRGB(92, 74, 70),
-	roof = Color3.fromRGB(58, 74, 124),
-	fruit = Color3.fromRGB(214, 120, 76),
-	neonCyan = Color3.fromRGB(90, 226, 255),
-	neonMag = Color3.fromRGB(255, 92, 214),
-	neonViolet = Color3.fromRGB(160, 120, 255),
-	neonAmber = Color3.fromRGB(255, 176, 64),
-	stem = Color3.fromRGB(226, 224, 240),
+	grass = Color3.fromRGB(106, 208, 74),
+	grassDeep = Color3.fromRGB(72, 172, 56),
+	pine = Color3.fromRGB(42, 128, 62),
+	rock = Color3.fromRGB(176, 186, 202),
+	rockDeep = Color3.fromRGB(128, 140, 160),
+	path = Color3.fromRGB(206, 200, 186),
+	wood = Color3.fromRGB(160, 104, 62),
+	roof = Color3.fromRGB(226, 62, 62),
+	fruit = Color3.fromRGB(255, 150, 40),
+	neonCyan = Color3.fromRGB(64, 196, 255),
+	neonMag = Color3.fromRGB(255, 96, 176),
+	neonViolet = Color3.fromRGB(150, 96, 255),
+	neonAmber = Color3.fromRGB(255, 202, 40),
+	stem = Color3.fromRGB(255, 252, 240),
 }
 
 MapStyle.Palette = P
@@ -47,61 +55,71 @@ MapStyle.Palette = P
 -- ── lighting ────────────────────────────────────────────────────────────────
 
 --[[
-	Blue hour: the sun sits just BELOW the horizon. That's deliberate --
-	at 17.5 the sun disc hangs in frame and Atmosphere.Glare blows it into a
-	white blob, and anything earlier just reads as daytime with dark roofs.
+	Bright toy daylight.
+
+	This was a dusk-neon scene for a while, and dusk is the wrong instinct for
+	this genre: it makes every surface a muted version of itself and hides the
+	one thing the art is doing, which is being loudly, primary-coloured plastic.
+	The reference games all run high, near-white midday sun with the saturation
+	pushed -- colour comes from the BUILD, and the lighting's only job is to not
+	get in its way.
+
+	So: sun overhead, shadows short, saturation up hard, fog pushed far enough
+	back that the street reads end to end.
 ]]
 local function applyLighting()
-	-- Static skyboxes ignore ClockTime entirely, which is why the sky stayed
-	-- bright daylight through several attempts. Park them so the procedural
-	-- sky (which does respond) takes over.
+	--[[
+		The dusk pass parked the map's static skyboxes in ServerStorage, because
+		a Sky ignores ClockTime and kept the sky bright. Now that bright IS the
+		look, put them back -- a hand-painted skybox beats the procedural one,
+		and the reference's rainbow-streaked sky is exactly this kind of asset.
+	]]
 	local parked = ServerStorage:FindFirstChild("ParkedSkies")
-	if not parked then
-		parked = Instance.new("Folder")
-		parked.Name = "ParkedSkies"
-		parked.Parent = ServerStorage
-	end
-	for _, child in ipairs(Lighting:GetChildren()) do
-		if child:IsA("Sky") then
-			child.Parent = parked
+	if parked then
+		for _, child in ipairs(parked:GetChildren()) do
+			child.Parent = Lighting
 		end
 	end
 
-	Lighting.ClockTime = 18.45
-	Lighting.GeographicLatitude = 0
-	Lighting.Brightness = 1.9
-	Lighting.ExposureCompensation = 0.42
-	Lighting.Ambient = Color3.fromRGB(104, 114, 152)
-	Lighting.OutdoorAmbient = Color3.fromRGB(128, 140, 182)
-	Lighting.ColorShift_Top = Color3.fromRGB(150, 152, 208)
-	Lighting.ColorShift_Bottom = Color3.fromRGB(62, 70, 108)
-	Lighting.FogColor = Color3.fromRGB(88, 100, 148)
-	Lighting.FogStart = 550
+	Lighting.ClockTime = 13.6 -- just off noon, so shadows have a direction
+	Lighting.GeographicLatitude = 12
+	Lighting.Brightness = 2.6
+	Lighting.ExposureCompensation = 0.05
+	Lighting.Ambient = Color3.fromRGB(150, 158, 178)
+	Lighting.OutdoorAmbient = Color3.fromRGB(178, 190, 214)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 250, 230)
+	Lighting.ColorShift_Bottom = Color3.fromRGB(150, 172, 200)
+	Lighting.FogColor = Color3.fromRGB(186, 226, 255)
+	--[[ Fog stays SHORT of the Auction House at x=4000: that room has no walls
+	     of its own and relies on being past FogEnd to stay invisible from the
+	     street. Costs nothing to keep -- the street's longest sightline is about
+	     590 studs, so fog never actually touches it. ]]
+	Lighting.FogStart = 900
 	Lighting.FogEnd = 3000
 	Lighting.GlobalShadows = true
 
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	if atmosphere then
-		atmosphere.Density = 0.28
-		atmosphere.Haze = 0.70
-		atmosphere.Glare = 0.05 -- higher values re-create the white sun blob
-		atmosphere.Color = Color3.fromRGB(146, 162, 214)
-		atmosphere.Decay = Color3.fromRGB(74, 88, 142)
+		atmosphere.Density = 0.32
+		atmosphere.Haze = 1.1
+		atmosphere.Glare = 0.15
+		atmosphere.Color = Color3.fromRGB(210, 232, 255)
+		atmosphere.Decay = Color3.fromRGB(140, 180, 226)
 	end
 
 	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 	if bloom then
-		bloom.Intensity = 1.05
-		bloom.Size = 30
-		bloom.Threshold = 0.85 -- only the emissives bloom, not lit surfaces
+		bloom.Intensity = 0.6 -- lower: in daylight this smears instead of glows
+		bloom.Size = 24
+		bloom.Threshold = 1.05
 	end
 
 	local correction = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
 	if correction then
-		correction.Contrast = 0.14
-		correction.Saturation = 0.06 -- dusk drains colour; push some back
-		correction.Brightness = 0.03
-		correction.TintColor = Color3.fromRGB(226, 230, 255)
+		correction.Contrast = 0.10
+		correction.Saturation = 0.30 -- the whole point; plastic wants to be loud
+		correction.Brightness = 0.02
+		correction.TintColor = Color3.fromRGB(255, 252, 246)
 	end
 
 	local blur = Lighting:FindFirstChildOfClass("BlurEffect")
@@ -129,35 +147,39 @@ local function restylePart(part)
 	local isTerrain = widest > 40
 	local isDetail = widest < 3.2
 
+	--[[
+		Ground gets Plastic, not SmoothPlastic. Plastic carries Roblox's faint
+		stud-and-speckle shading, which is most of what makes the reference read
+		as toy bricks rather than flat-shaded polygons -- and it only shows up
+		under bright light, which is why this arrived with the daylight pass.
+	]]
 	if sat < 0.10 then -- greys: stone and concrete
 		part.Color = isTerrain and P.rockDeep or P.rock
-		part.Material = Enum.Material.Slate
+		part.Material = Enum.Material.Plastic
 	elseif hue > 0.20 and hue < 0.46 then -- greens: ground and canopy
 		part.Color = isTerrain and P.grassDeep or (widest > 8 and P.grass or P.pine)
-		part.Material = Enum.Material.SmoothPlastic
+		part.Material = Enum.Material.Plastic
 	elseif hue < 0.12 or hue > 0.93 then -- oranges, reds, browns
 		part.Color = isDetail and P.fruit or (isTerrain and P.path or P.wood)
-		part.Material = Enum.Material.SmoothPlastic
+		part.Material = Enum.Material.Plastic
 	elseif hue >= 0.12 and hue <= 0.20 then -- the map's tiny pure-yellow bits
-		if isDetail then -- already accent-sized: the natural emissives
-			part.Color = P.neonCyan
-			part.Material = Enum.Material.Neon
-		else
-			part.Color = P.wood
-			part.Material = Enum.Material.SmoothPlastic
-		end
+		part.Color = isDetail and P.neonAmber or P.wood
+		part.Material = Enum.Material.Plastic
 	elseif hue > 0.55 and hue < 0.80 then -- blues and purples: roofs, trim
 		part.Color = isDetail and P.neonMag or P.roof
-		part.Material = isDetail and Enum.Material.Neon or Enum.Material.SmoothPlastic
+		part.Material = Enum.Material.Plastic
 	else
-		part.Color = Color3.fromHSV(hue, sat * 0.5, value * 0.55)
-		part.Material = Enum.Material.SmoothPlastic
+		-- keep the hue, force it bright and saturated rather than darkening it
+		part.Color = Color3.fromHSV(hue, math.max(sat, 0.65), math.max(value, 0.80))
+		part.Material = Enum.Material.Plastic
 	end
 
-	-- nothing crushed so dark it loses its silhouette
-	local _, _, v2 = Color3.toHSV(part.Color)
-	if v2 < 0.16 and part.Material ~= Enum.Material.Neon then
-		part.Color = P.roof
+	--[[ Floor is now a MINIMUM brightness, not a rescue from darkness. The dusk
+	     pass pushed everything down and had to catch what fell too far; daylight
+	     pushes everything up, so the failure mode is a muddy mid-tone. ]]
+	local h2, s2, v2 = Color3.toHSV(part.Color)
+	if v2 < 0.45 then
+		part.Color = Color3.fromHSV(h2, s2, 0.55)
 	end
 end
 
@@ -242,12 +264,21 @@ end
 
 MapStyle.MUSHROOM_BUDGET = 150
 
+--[[
+	Bumped from "DuskStyled" when the scene went to daylight.
+
+	The guard exists because the remap classifies parts BY HUE, so a second pass
+	over already-restyled colours drifts them. That also means the attribute has
+	to change whenever the palette does -- a place file saved under the old pass
+	would otherwise be skipped and keep the old look forever.
+]]
+local STYLE_TAG = "StyledDay1"
+
 function MapStyle.apply()
-	-- Guard against a double pass: the remap classifies by hue, so running it
-	-- over already-restyled colours would drift them.
-	if Workspace:GetAttribute("DuskStyled") then
+	if Workspace:GetAttribute(STYLE_TAG) then
 		return 0, 0
 	end
+	Workspace:SetAttribute("DuskStyled", nil) -- retire the old marker
 
 	applyLighting()
 
@@ -261,7 +292,7 @@ function MapStyle.apply()
 	end
 
 	local mushrooms = plantMushrooms(bases, MapStyle.MUSHROOM_BUDGET)
-	Workspace:SetAttribute("DuskStyled", true)
+	Workspace:SetAttribute(STYLE_TAG, true)
 
 	return styled, mushrooms
 end

@@ -42,51 +42,57 @@ function HUD.init(ctx)
 
 	-- ── money card ──────────────────────────────────────────────────────────
 
+	--[[
+		Bottom CENTRE, and big.
+
+		It used to be a small card in the top-left corner. In this genre the
+		money number is the score -- it's what you watch tick while you decide
+		whether to bet again -- and the corner is where you put things you check
+		occasionally. Centre-bottom sits directly under where your eyes already
+		are, and it's the one HUD element the reference makes unmissable.
+
+		No panel behind it: a heavy text stroke reads cleanly over a bright map,
+		whereas a dark card would punch a hole in it.
+	]]
 	local card = Theme.frame({
 		parent = ctx.gui,
 		name = "MoneyCard",
-		color = Theme.color.panel,
-		size = UDim2.fromOffset(196, 62),
-		position = UDim2.fromOffset(16, hudTop()),
-		radius = 12,
+		transparency = 1,
+		size = UDim2.fromOffset(460, 74),
+		position = UDim2.new(0.5, 0, 1, -14),
+		anchor = Vector2.new(0.5, 1),
+		radius = false,
 	})
-	Theme.stroke(card, Theme.color.line, 1)
-	Theme.padding(card, 10)
 
 	local moneyLabel = Theme.label({
 		parent = card,
 		text = "$0",
 		font = Theme.font.black,
-		textSize = 24,
+		textSize = 42,
 		color = Theme.color.gold,
-		size = UDim2.new(1, 0, 0, 26),
+		align = Enum.TextXAlignment.Center,
+		size = UDim2.new(1, 0, 0, 46),
 	})
-
-	-- Pack icon if one is assigned, otherwise the label just keeps the whole row.
-	local moneyIcon = Theme.image({
-		parent = card,
-		slot = "money",
-		name = "MoneyIcon",
-		size = UDim2.fromOffset(26, 26),
-	})
-	if moneyIcon then
-		moneyLabel.Position = UDim2.fromOffset(32, 0)
-		moneyLabel.Size = UDim2.new(1, -32, 0, 26)
-	end
+	moneyLabel.TextStrokeColor3 = Theme.color.line
+	moneyLabel.TextStrokeTransparency = 0
 
 	local incomeLabel = Theme.label({
 		parent = card,
 		text = "$0/s",
 		font = Theme.font.medium,
-		textSize = 12,
+		textSize = 15,
 		color = Theme.color.good,
-		size = UDim2.new(1, 0, 0, 14),
-		position = UDim2.fromOffset(0, 28),
+		align = Enum.TextXAlignment.Center,
+		size = UDim2.new(1, 0, 0, 18),
+		position = UDim2.fromOffset(0, 48),
 	})
+	incomeLabel.TextStrokeColor3 = Theme.color.line
+	incomeLabel.TextStrokeTransparency = 0.25
 
 	-- ── event card ──────────────────────────────────────────────────────────
-	-- Sits under the money card. Always visible: an idle countdown is as much
-	-- information as a live event, and a card that appears and vanishes is
+	-- Top-left now that the money moved to the bottom, and it inherits the
+	-- corner the money used to hold. Always visible: an idle countdown is as
+	-- much information as a live event, and a card that appears and vanishes is
 	-- easier to miss than one that just changes colour.
 
 	local eventCard = Theme.frame({
@@ -94,10 +100,10 @@ function HUD.init(ctx)
 		name = "EventCard",
 		color = Theme.color.panel,
 		size = UDim2.fromOffset(232, 54),
-		position = UDim2.fromOffset(16, hudTop() + 70),
+		position = UDim2.fromOffset(16, hudTop()),
 		radius = 12,
 	})
-	local eventStroke = Theme.stroke(eventCard, Theme.color.line, 1)
+	local eventStroke = Theme.stroke(eventCard, Theme.color.line, 2)
 	Theme.padding(eventCard, 10)
 
 	local eventTitle = Theme.label({
@@ -184,51 +190,76 @@ function HUD.init(ctx)
 		lastActiveId = snapshot.activeId
 	end
 
-	-- ── bottom buttons ──────────────────────────────────────────────────────
+	-- ── left rail ───────────────────────────────────────────────────────────
+	--[[
+		A vertical stack of square icon buttons down the left edge, each a solid
+		primary colour with the label under the glyph.
 
-	local dock = Theme.frame({
+		It replaces a two-button dock along the bottom. The rail scales: this
+		genre accumulates entry points (index, shop, rebirth, rewards, invite)
+		and a horizontal dock runs out of room at about four, whereas a column
+		just gets longer. It also clears the bottom-centre, which is where the
+		money counter wants to be.
+	]]
+	local rail = Theme.frame({
 		parent = ctx.gui,
-		name = "Dock",
+		name = "Rail",
 		transparency = 1,
-		size = UDim2.fromOffset(300, 46),
-		position = UDim2.new(0.5, 0, 1, -20),
-		anchor = Vector2.new(0.5, 1),
+		size = UDim2.fromOffset(72, 400),
+		position = UDim2.new(0, 12, 0.5, 10),
+		anchor = Vector2.new(0, 0.5),
 		radius = false,
 	})
-	Theme.list(dock, 10, Enum.FillDirection.Horizontal)
+	Theme.list(rail, 8)
 
-	local minesButton = Theme.button({
-		parent = dock,
-		name = "MinesButton",
-		text = "MINES  [M]",
-		textSize = 14,
-		color = Theme.color.accent,
-		size = UDim2.fromOffset(145, 46),
-		order = 1,
-		radius = 12,
-	})
+	--[[ No auction button, deliberately. Listing and bidding are both gated to
+	     the consign desk server-side, so a rail button would open a panel where
+	     every control is refused -- worse than no button. It opens from the desk
+	     prompt, like the upgrade shop does. ]]
+	local RAIL = {
+		{ id = "mines", glyph = "💣", label = "MINES", color = Theme.color.accent },
+		{ id = "index", glyph = "📘", label = "INDEX", color = Color3.fromRGB(120, 100, 255) },
+		{ id = "collection", glyph = "🎒", label = "BASE", color = Color3.fromRGB(255, 120, 190) },
+	}
 
-	local collectionButton = Theme.button({
-		parent = dock,
-		name = "CollectionButton",
-		text = "COLLECTION  [C]",
-		textSize = 13,
-		color = Theme.color.raised,
-		size = UDim2.fromOffset(145, 46),
-		order = 2,
-		radius = 12,
-	})
+	for order, entry in ipairs(RAIL) do
+		local button = Theme.button({
+			parent = rail,
+			name = entry.id .. "Button",
+			text = "",
+			color = entry.color,
+			size = UDim2.fromOffset(66, 62),
+			order = order,
+			radius = 14,
+		})
 
-	minesButton.MouseButton1Click:Connect(function()
-		if hud.onMines then
-			hud.onMines()
-		end
-	end)
-	collectionButton.MouseButton1Click:Connect(function()
-		if hud.onCollection then
-			hud.onCollection()
-		end
-	end)
+		Theme.label({
+			parent = button,
+			text = entry.glyph,
+			textSize = 24,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.new(1, 0, 0, 30),
+			position = UDim2.fromOffset(0, 6),
+		})
+		local caption = Theme.label({
+			parent = button,
+			text = entry.label,
+			font = Theme.font.black,
+			textSize = 11,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.new(1, 0, 0, 14),
+			position = UDim2.fromOffset(0, 38),
+		})
+		caption.TextStrokeColor3 = Theme.color.line
+		caption.TextStrokeTransparency = 0.4
+
+		button.MouseButton1Click:Connect(function()
+			local handler = hud["on" .. entry.id:sub(1, 1):upper() .. entry.id:sub(2)]
+			if handler then
+				handler()
+			end
+		end)
+	end
 
 	-- ── toasts ──────────────────────────────────────────────────────────────
 
@@ -386,6 +417,18 @@ function HUD.init(ctx)
 			incomeLabel.Text = Format.rate(ctx.state.income or 0)
 			incomeLabel.TextColor3 = Theme.color.good
 		end
+	end
+
+	--[[
+		Hide the bottom-centre money while a full panel is open.
+
+		The panels are nearly viewport-height, so the counter sat behind them.
+		Raising its ZIndex instead would park a big gold number on top of the
+		Mines cash-out button, which is worse. The counter is for when you're
+		walking around; an open panel already shows the number that matters.
+	]]
+	function hud.setMoneyVisible(visible)
+		card.Visible = visible
 	end
 
 	ctx.onState(hud.render)

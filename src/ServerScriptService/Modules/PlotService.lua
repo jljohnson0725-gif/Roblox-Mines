@@ -128,6 +128,118 @@ local function readSlot(slot)
 	return strip, facing, stand
 end
 
+--[[
+	Lay the reference's bright checker floor over a base.
+
+	Finding the floor is the fiddly part. The base has several big flat slabs
+	stacked up its height -- including a ROOF at y=27.5 that a downward raycast
+	from above hits first -- so picking "largest flat part" gives you the ceiling.
+	Instead we take the slot strips as ground truth: they sit ON the walkable
+	floor, so the slab whose top is nearest their height is the one to tile.
+
+	Tiles are thin, non-colliding and non-queryable, so they can't shadow a
+	ProximityPrompt or trap a player on a lip. Any tile that would overlap a slot
+	is skipped rather than drawn underneath -- 0.1 studs of clearance is not
+	enough to stop z-fighting with the strips.
+
+	TILE SIZE IS MEASURED, NOT CHOSEN. The slot rows sit 18 studs apart and the
+	strips are 5.1 deep, so there are only ~12.9 studs of clear floor between
+	them. A 9.5-stud tile needs 18.6 studs of row spacing once the exclusion
+	margin is added, which is more than exists -- the first attempt rejected
+	every candidate on all eight bases and produced empty folders. At 4 studs
+	two tile rows fit in each lane.
+
+	The slab underneath is recoloured as well. Tiles can only ever cover the
+	lanes, so without that the base would read as bright stripes on a dark
+	floor rather than a bright floor.
+]]
+local TILE = 4
+local TILE_MARGIN = 0.3
+local TILE_A = Color3.fromRGB(88, 214, 58)
+local TILE_B = Color3.fromRGB(236, 62, 62)
+local FLOOR_COLOR = Color3.fromRGB(120, 222, 92)
+
+local function tilePlot(base, slotParts)
+	local existing = base:FindFirstChild("TileFloor")
+	if existing then
+		existing:Destroy()
+	end
+	if #slotParts == 0 then
+		return 0
+	end
+
+	local slotY = 0
+	for _, part in ipairs(slotParts) do
+		slotY += part.Position.Y
+	end
+	slotY /= #slotParts
+
+	local floor, bestGap
+	for _, part in ipairs(base:GetChildren()) do
+		if part:IsA("BasePart") and part.Size.Y < 6
+			and part.Size.X > 40 and part.Size.Z > 40 then
+			local top = part.Position.Y + part.Size.Y / 2
+			local gap = math.abs(top - slotY)
+			if not bestGap or gap < bestGap then
+				floor, bestGap = part, gap
+			end
+		end
+	end
+	-- More than a couple of studs off the strips means we found a roof, not a
+	-- floor. Better to leave the base alone than to tile its ceiling.
+	if not floor or bestGap > 3 then
+		return 0
+	end
+
+	local top = floor.Position.Y + floor.Size.Y / 2
+	floor.Color = FLOOR_COLOR
+	floor.Material = Enum.Material.Plastic
+
+	local root = Instance.new("Folder")
+	root.Name = "TileFloor"
+	root.Parent = base
+
+	local stepsX = math.floor((floor.Size.X / 2 - TILE) / TILE)
+	local stepsZ = math.floor((floor.Size.Z / 2 - TILE) / TILE)
+	local made = 0
+
+	for ix = -stepsX, stepsX do
+		for iz = -stepsZ, stepsZ do
+			local centre = Vector3.new(
+				floor.Position.X + ix * TILE, top + 0.08, floor.Position.Z + iz * TILE)
+
+			local blocked = false
+			for _, part in ipairs(slotParts) do
+				local d = part.Position - centre
+				if math.abs(d.X) < (part.Size.X + TILE) / 2 + TILE_MARGIN
+					and math.abs(d.Z) < (part.Size.Z + TILE) / 2 + TILE_MARGIN then
+					blocked = true
+					break
+				end
+			end
+
+			if not blocked then
+				local tile = Instance.new("Part")
+				tile.Name = "Tile"
+				tile.Anchored = true
+				tile.CanCollide = false
+				tile.CanQuery = false
+				tile.CanTouch = false
+				tile.Size = Vector3.new(TILE - 0.2, 0.16, TILE - 0.2)
+				tile.CFrame = CFrame.new(centre)
+				tile.Color = ((ix + iz) % 2 == 0) and TILE_A or TILE_B
+				tile.Material = Enum.Material.Plastic -- studs catch the light
+				tile.TopSurface = Enum.SurfaceType.Smooth
+				tile.BottomSurface = Enum.SurfaceType.Smooth
+				tile.Parent = root
+				made += 1
+			end
+		end
+	end
+
+	return made
+end
+
 local function attachPlot(base, index)
 	local slotsFolder = base:FindFirstChild("Slots")
 	local pads = {}
@@ -150,6 +262,23 @@ local function attachPlot(base, index)
 		end
 		return pa.Z < pb.Z
 	end)
+
+	-- Tiled before the pads are wired, so the strips end up sitting on the new
+	-- floor rather than the tiles landing on top of a finished plot.
+	do
+		local slotParts = {}
+		for _, entry in ipairs(entries) do
+			table.insert(slotParts, entry.pedestal)
+		end
+		for _, slot in ipairs(slotsFolder:GetChildren()) do
+			for _, part in ipairs(slot:GetChildren()) do
+				if part:IsA("BasePart") then
+					table.insert(slotParts, part)
+				end
+			end
+		end
+		tilePlot(base, slotParts)
+	end
 
 	local container = Instance.new("Folder")
 	container.Name = "PlacedBrainrots"

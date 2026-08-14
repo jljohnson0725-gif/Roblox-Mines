@@ -31,7 +31,7 @@ local MinesService = require(Modules.MinesService)
 -- Restyle first: PlotService caches each pad's colour when it attaches, so the
 -- map has to be in its final look before that happens.
 local styled, shrooms = MapStyle.apply()
-print(("[MapStyle] dusk pass: %d parts restyled, %d mushrooms"):format(styled, shrooms))
+print(("[MapStyle] daylight pass: %d parts restyled, %d mushrooms"):format(styled, shrooms))
 
 DataService.start()
 EventService.start()
