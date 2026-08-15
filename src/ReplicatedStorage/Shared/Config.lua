@@ -247,6 +247,19 @@ Config.FlightCeiling = 900 -- islands live under this; above it you stop climbin
 Config.TakeoffSeconds = 1.4 -- the scripted rise before you get the controls
 Config.TakeoffRise = 62 -- and how fast that opening climb goes
 
+-- ── Plinko ──────────────────────────────────────────────────────────────────
+--[[
+	The first island's machine. Expensive on purpose: this is not an income
+	source, it is the toll on a chapter, and a cheap drop would make the seal a
+	formality rather than a decision.
+
+	See Shared/Plinko for the board and tools/plinko.py for the modelling. The
+	headline the UI has to be able to state: 85.2% back, 7% of drops carry a
+	fragment, five fragments to a seal.
+]]
+Config.PlinkoDropCost = 450000
+Config.PlinkoRange = 26 -- how close you must stand to the machine
+
 -- ── Codes ───────────────────────────────────────────────────────────────────
 --[[
 	Redeemable codes. Each one is once per player, recorded in the profile.
