@@ -362,24 +362,68 @@ function PlinkoService.drop(player)
 		Steering rather than teleporting, and with a dead zone, so it drifts
 		into each column instead of snapping to it.
 	]]
+	--[[
+		THE PEGS ARE SCENERY, and the ball passes through them.
+
+		It collided with them at first, and wedged every single time: a ball
+		whose sideways motion is steered has no energy of its own to get off a
+		peg it lands on, so it balances there and the drop never finishes.
+		Measured over five balls at two different elasticities -- 0.02/friction
+		0.8 and 0.45/friction 0.05 -- every one stopped within two rows of the
+		top, at identical heights. When the physics properties make no
+		difference to the outcome, they are not the variable.
+
+		Since the bounces are already rolled, nothing is lost. The pegs never
+		decided anything; they only ever had to look like they did. So the ball
+		falls freely, is steered across, and is given a small hop each time it
+		crosses a row -- which reads as the clatter down the board it used to
+		get from collisions, without any way to get stuck.
+	]]
+	ball.CanCollide = false
+
 	local right = board.RightVector
+	local plane = board.LookVector
+	local planeAt = board.Position:Dot(plane)
 	local topY = PlinkoService.topPegY
+	-- world Y where the peg field ends and the bin pockets begin
+	local binTop = topY - FIELD - 2
+	local lastRow = 0
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
 		if not ball.Parent then
 			connection:Disconnect()
 			return
 		end
-		local localPos = board:PointToObjectSpace(ball.Position)
+
 		local row = math.clamp(
 			math.floor((topY - ball.Position.Y) / SPACING) + 1, 1, Plinko.ROWS)
-		local drift = targets[row] - localPos.X
-		if math.abs(drift) > 0.25 then
-			local want = math.clamp(drift * 4, -13, 13)
-			local velocity = ball.AssemblyLinearVelocity
-			ball.AssemblyLinearVelocity = velocity
-				+ right * (want - velocity:Dot(right))
+
+		--[[ Past the last peg row the ball needs its collisions back, or it
+		     falls through the bin floor as well and off the island -- which is
+		     exactly what it did the first time. Vertical speed is capped on the
+		     way in so it drops into the pocket rather than punching through. ]]
+		if ball.Position.Y <= binTop and not ball.CanCollide then
+			ball.CanCollide = true
+			local v = ball.AssemblyLinearVelocity
+			ball.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, -26), v.Z)
 		end
+
+		-- a hop on each new row: the visible bounce, minus the wedging
+		if row > lastRow and ball.Position.Y > binTop then
+			lastRow = row
+			local velocity = ball.AssemblyLinearVelocity
+			ball.AssemblyLinearVelocity = Vector3.new(velocity.X, 14, velocity.Z)
+		end
+
+		local localPos = board:PointToObjectSpace(ball.Position)
+		local drift = targets[row] - localPos.X
+		local velocity = ball.AssemblyLinearVelocity
+		local want = math.clamp(drift * 5, -16, 16)
+		velocity += right * (want - velocity:Dot(right))
+		-- and hold it in the board's plane, which collisions used to do
+		velocity += plane * ((planeAt - ball.Position:Dot(plane)) * 4
+			- velocity:Dot(plane))
+		ball.AssemblyLinearVelocity = velocity
 	end)
 
 	task.spawn(function()
@@ -389,7 +433,12 @@ function PlinkoService.drop(player)
 			if not ball.Parent then
 				break
 			end
-			if ball.Position.Y <= PlinkoService.binY + 4
+			--[[ Against binTop, which is WORLD space. PlinkoService.binY is in
+			     board space -- a number like -46 -- so comparing a world Y of
+			     226 against it never passed, and every drop sat out the full
+			     20-second deadline before paying. It resolved correctly and
+			     four times too slowly, which is the kind of bug that hides. ]]
+			if ball.Position.Y <= binTop - 4
 				and ball.AssemblyLinearVelocity.Magnitude < 3 then
 				break
 			end
