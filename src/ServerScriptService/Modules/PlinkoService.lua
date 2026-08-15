@@ -72,11 +72,15 @@ local rng = Random.new(os.clock() * 1e6 % 2 ^ 31)
 
 -- ── board geometry ──────────────────────────────────────────────────────────
 
-local W = 4 -- bin width; one coin flip moves the ball half of this
+--[[ 5.2, up from 4. Sixteen rows made the board 71 studs tall against 39 wide
+     -- a tower, where a Plinko board should be wider than it is high. The row
+     count is fixed by the odds, so the fix is to widen the bins and tighten the
+     rows rather than to drop rows. ]]
+local W = 5.2
 --[[ Tightened from 5 so sixteen rows fit a board you can stand next to. The
      row count is set by the odds we want, not by the space -- see
      Shared/Plinko -- so the spacing is what gives. ]]
-local SPACING = 3.4
+local SPACING = 2.6
 --[[ Purely a visual choice now. It used to have to fit between two pegs; the
      ball passes through them, so the only question is whether you can follow
      it. At 1.5 against a 39-stud board it was a speck you lost track of. ]]
@@ -203,7 +207,10 @@ function PlinkoService.build(island)
 
 	local marquee = Instance.new("SurfaceGui")
 	marquee.Name = "Marquee"
-	marquee.Face = Enum.NormalId.Front
+	--[[ Back, not Front. The whole board is built through a CFrame turned 180
+	     degrees about Y, so a SurfaceGui on Front points away from the player and
+	     renders where nobody stands. ]]
+	marquee.Face = Enum.NormalId.Back
 	marquee.CanvasSize = Vector2.new(600, 120)
 	marquee.LightInfluence = 0
 	marquee.Parent = header
@@ -286,7 +293,7 @@ function PlinkoService.build(island)
 			cframe = at(x, binTop - BINS_H + 3.2, DEPTH / 2 + 0.3),
 			color = COL.back, material = Enum.Material.SmoothPlastic }, root)
 		local face = Instance.new("SurfaceGui")
-		face.Face = Enum.NormalId.Front
+		face.Face = Enum.NormalId.Back
 		face.CanvasSize = Vector2.new(140, 90)
 		face.LightInfluence = 0
 		face.Parent = plate

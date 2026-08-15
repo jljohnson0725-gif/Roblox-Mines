@@ -186,14 +186,14 @@ local function buildGround(island, rng, root)
 	-- the clearing the game sits in
 	cylinder({
 		name = "Clearing",
-		size = Vector3.new(1.4, 46, 46),
+		size = Vector3.new(1.4, 58, 58),
 		cframe = CFrame.new(c + Vector3.new(0, 3.34, 0)),
 		color = P.dirt,
 		collide = true,
 	}, root)
 	cylinder({
 		name = "ClearingRim",
-		size = Vector3.new(1.2, 52, 52),
+		size = Vector3.new(1.2, 64, 64),
 		cframe = CFrame.new(c + Vector3.new(0, 2.9, 0)),
 		color = P.dirtDark,
 		collide = true,
@@ -270,7 +270,7 @@ local function buildTrees(island, rng, root)
 	     what a clearing on a floating island is for. ]]
 	for i = 1, 13 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(32, r * 0.86)
+		local dist = rng:NextNumber(36, r * 0.88)
 		local at = c + Vector3.new(math.cos(angle) * dist, 2, math.sin(angle) * dist)
 		local scale = rng:NextNumber(0.8, 1.35)
 
