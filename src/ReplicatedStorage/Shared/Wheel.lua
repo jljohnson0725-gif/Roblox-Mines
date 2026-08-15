@@ -65,19 +65,20 @@ local function buildFace()
 	end
 
 	--[[
-		Deal the wedges out in RUNS, not one at a time.
+		Deal the wedges out in RUNS, not one at a time, so the face reads as a
+		handful of wide arcs rather than a hundred stripes.
 
-		Alternating single wedges was the first attempt and it looked terrible:
-		100 one-wedge stripes at this radius read as a smear of colour rather
-		than a wheel, especially once the daylight pass got hold of it. Dealing
-		in chunks gives roughly nine repeats of a chunky
-		BUST-CASH-BUST-RETRY-SECRET motif, which reads as a carnival wheel and
-		leaves the 8 Secret wedges as thin gold slivers -- rare, and looking it.
+		The chunk sizes are chosen to land on TWELVE arcs. One wedge at a time
+		gave a smear of colour; 5/3/2/1 gave about thirty-six, which is more than
+		a wheel can be lettered with -- the labels sat on top of each other.
+		Twelve is what a real prize wheel has, and it divides the exact wedge
+		counts cleanly: secret 8 -> 2x4, retry 15 -> 3x5, cash 30 -> 3x10,
+		nothing 47 -> 12+12+12+11.
 
-		The COUNTS are untouched, so the odds the face shows are still exact.
-		Only the order changes.
+		The COUNTS are untouched throughout, so the odds the face states are
+		still exact. Only the grouping changes.
 	]]
-	local RUN = { nothing = 5, cash = 3, retry = 2, secret = 1 }
+	local RUN = { nothing = 12, cash = 10, retry = 5, secret = 4 }
 
 	local pools = {}
 	for _, outcome in ipairs(Config.WheelOdds) do
@@ -113,6 +114,36 @@ function Wheel.segmentsFor(outcomeId)
 		end
 	end
 	return list
+end
+
+--[[
+	The face as contiguous ARCS rather than individual wedges.
+
+	buildFace deals in runs, so a stretch of five BUST wedges is one visible arc.
+	This is what lets the wheel carry words: one label per arc, at its middle,
+	instead of a hundred wedges nobody can read.
+]]
+function Wheel.runs()
+	local runs, i = {}, 1
+	while i <= #Wheel.FACE do
+		local id = Wheel.FACE[i]
+		local count = 0
+		while Wheel.FACE[i + count] == id do
+			count += 1
+		end
+		local step = 360 / Wheel.SEGMENTS
+		table.insert(runs, {
+			id = id,
+			first = i,
+			count = count,
+			sweep = count * step,
+			-- middle of the arc, in the same clockwise-from-the-pointer frame
+			-- angleOf uses
+			mid = Wheel.angleOf(i) + (count - 1) * step / 2,
+		})
+		i += count
+	end
+	return runs
 end
 
 function Wheel.outcome(id)

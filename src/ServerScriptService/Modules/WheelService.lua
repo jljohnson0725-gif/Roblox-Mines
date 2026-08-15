@@ -188,7 +188,7 @@ function WheelService.spin(player)
 
 	-- turn the physical wheel to the wedge that was rolled, so anyone standing
 	-- there watches the same result the player gets
-	WheelService.playSpin(results[#results].segment, 5)
+	WheelService.playSpin(results[#results].segment, 5, outcome)
 
 	local payload = {
 		ok = true,
@@ -238,7 +238,9 @@ end
 	coordinates.
 ]]
 local SITE = Vector3.new(0, 0.3, -30)
-local RADIUS = 15
+--[[ 26, up from 15. It was asked to be bigger and it needed to be: a prize
+     wheel is a landmark, and at 15 studs it read as a signpost. ]]
+local RADIUS = 26
 --[[ NEGATIVE: the disc faces -Z, toward the street players walk in from.
      Built facing +Z first, which pointed it at the map edge -- from the
      approach you saw the blank backing plate and none of the wedges. ]]
@@ -253,6 +255,28 @@ local FACE_Z = -6
 	with enough value contrast to read from across the street, and only the eight
 	Secret wedges glow, which is exactly where the eye should go.
 ]]
+--[[
+	Taken from the fortune-wheel model you supplied (Wheel spin.rbxmx).
+
+	That model is a ScreenGui -- 335 instances and not one BasePart -- so it
+	could not be "made bigger" as a world object. What it does have that is worth
+	keeping is its arrow and its three sound effects, so those are reused here on
+	a physical wheel. Its face image is a six-slot graphic and our odds are four
+	outcomes at 8/15/30/47, which no six-segment picture can state honestly, so
+	the face stays procedural.
+]]
+local ARROW_IMAGE = "rbxassetid://14339762504"
+local SFX_TICK = "rbxassetid://421058925"
+local SFX_WIN = "rbxassetid://4612386227"
+local SFX_LOSE = "rbxassetid://70951308232500"
+
+local LABEL = {
+	secret = "SECRET",
+	retry = "RETRY",
+	cash = "$200K",
+	nothing = "BUST",
+}
+
 local TINT = {
 	secret = Color3.fromRGB(255, 214, 64),
 	retry = Color3.fromRGB(64, 132, 220),
@@ -401,15 +425,99 @@ function WheelService.build()
 		wedge:SetAttribute("Outcome", outcomeId)
 	end
 
+	--[[ WORDS ON THE FACE. One label per contiguous arc, at its middle -- a
+	     prize wheel that doesn't say what it pays is just a colour wheel, and
+	     100 wedges are far too fine to letter individually. ]]
+	for _, run in ipairs(Wheel.runs()) do
+		do
+			local angle = math.rad(run.mid)
+			local anchor = part({
+				name = "Label",
+				size = Vector3.new(0.6, 0.6, 0.6),
+				cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z - 0.4))
+					* CFrame.Angles(0, 0, -angle)
+					* CFrame.new(0, RADIUS * 0.66, 0),
+				color = TINT[run.id],
+				transparency = 1,
+				collide = false,
+			}, face)
+
+			local gui = Instance.new("BillboardGui")
+			gui.Size = UDim2.fromOffset(150, 42)
+			gui.MaxDistance = 220
+			gui.AlwaysOnTop = false
+			gui.Adornee = anchor
+			gui.Parent = anchor
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.fromScale(1, 1)
+			text.BackgroundTransparency = 1
+			text.Font = Enum.Font.FredokaOne
+			text.TextScaled = true
+			-- white with a hard dark outline on every arc: dark-on-crimson and
+			-- dark-on-blue were both unreadable, and one rule beats four
+			text.TextColor3 = Color3.fromRGB(255, 255, 255)
+			text.TextStrokeTransparency = 0
+			text.TextStrokeColor3 = Color3.fromRGB(18, 16, 28)
+			text.Text = LABEL[run.id]
+			text.Parent = gui
+			local cap = Instance.new("UITextSizeConstraint")
+			cap.MaxTextSize = run.id == "secret" and 30 or 24
+			cap.Parent = text
+		end
+	end
+
+	--[[ Rim of bulbs, like a fairground wheel. Purely decorative, and the one
+	     piece of decoration that most makes a disc read as a WHEEL. ]]
+	for i = 1, 24 do
+		local angle = (i / 24) * math.pi * 2
+		part({
+			name = "Bulb",
+			size = Vector3.new(1.5, 1.5, 1.5),
+			cframe = CFrame.new(centre + Vector3.new(
+				math.sin(angle) * (RADIUS + 1.4),
+				math.cos(angle) * (RADIUS + 1.4),
+				FACE_Z + 0.2)),
+			color = Color3.fromRGB(255, 244, 214),
+			material = Enum.Material.Neon,
+			shape = Enum.PartType.Ball,
+			collide = false,
+		}, face)
+	end
+
 	-- pointer at 12 o'clock, fixed to the frame so the FACE turns under it
-	part({
+	local pointer = part({
 		name = "Pointer",
-		size = Vector3.new(2.4, 4, 1.4),
-		cframe = CFrame.new(centre + Vector3.new(0, RADIUS + 1.5, FACE_Z - 0.8)),
+		size = Vector3.new(5, 6.5, 0.6),
+		cframe = CFrame.new(centre + Vector3.new(0, RADIUS + 1.2, FACE_Z - 1.2)),
 		color = Color3.fromRGB(255, 72, 92),
 		material = Enum.Material.Neon,
 		collide = false,
 	}, root)
+
+	do
+		-- the arrow graphic from the supplied model, so the pointer reads as a
+		-- pointer from any angle rather than as a red block
+		local decal = Instance.new("Decal")
+		decal.Texture = ARROW_IMAGE
+		decal.Face = Enum.NormalId.Front
+		decal.Parent = pointer
+		local back = decal:Clone()
+		back.Face = Enum.NormalId.Back
+		back.Parent = pointer
+		pointer.Transparency = 1
+	end
+
+	--[[ Sound, also from the supplied model. Parented to the hub so it carries
+	     from the wheel itself and falls off with distance. ]]
+	for name, id in pairs({ Tick = SFX_TICK, Win = SFX_WIN, Lose = SFX_LOSE }) do
+		local sound = Instance.new("Sound")
+		sound.Name = name
+		sound.SoundId = id
+		sound.RollOffMaxDistance = 140
+		sound.Volume = name == "Tick" and 0.35 or 0.8
+		sound.Parent = hub
+	end
 
 	-- the console you actually use, at ground level in front
 	local console = part({
@@ -480,31 +588,60 @@ end
 	theatre -- the outcome was decided before this is called, and the angle is
 	derived from it, never the other way round.
 ]]
-function WheelService.playSpin(segment, turns)
+function WheelService.playSpin(segment, turns, outcome)
 	local face = WheelService.face
 	if not face or not face.PrimaryPart then
 		return
 	end
 
+	local hub = face.PrimaryPart
 	local base = face:GetPivot()
 	local target = -math.rad(Wheel.angleOf(segment))
 	local total = math.rad(360 * (turns or 5)) + target
 
 	task.spawn(function()
-		local duration = 3.4
+		--[[ Five seconds, not three. The whole drama of a wheel is the part
+		     where it is barely moving and might still crawl one more wedge, and
+		     that needs long enough to actually hurt. ]]
+		local duration = 5.2
 		local start = os.clock()
 		local origin = base
+		local lastWedge = -1
+
 		while true do
 			local t = (os.clock() - start) / duration
 			if t >= 1 then
 				break
 			end
-			-- ease-out cubic: fast off the line, drifts into the result
-			local eased = 1 - (1 - t) ^ 3
-			face:PivotTo(origin * CFrame.Angles(0, 0, total * eased))
+			-- quartic ease-out: leaves the line hard, then a long crawl
+			local eased = 1 - (1 - t) ^ 4
+			local turned = total * eased
+			face:PivotTo(origin * CFrame.Angles(0, 0, turned))
+
+			--[[ One tick per wedge that passes the pointer. Because the easing
+			     slows, the ticks slow with it -- the sound IS the deceleration,
+			     which is why it is driven off angle rather than a timer. ]]
+			local wedge = math.floor(math.deg(turned) / (360 / Wheel.SEGMENTS))
+			if wedge ~= lastWedge then
+				lastWedge = wedge
+				local tick = hub:FindFirstChild("Tick")
+				if tick then
+					tick.PlaybackSpeed = 0.9 + math.random() * 0.2
+					tick:Play()
+				end
+			end
 			task.wait()
 		end
+
 		face:PivotTo(origin * CFrame.Angles(0, 0, total))
+
+		local sound = hub:FindFirstChild(outcome == "secret" and "Win" or "Lose")
+		if outcome == "cash" then
+			sound = hub:FindFirstChild("Win")
+		end
+		if sound then
+			sound:Play()
+		end
 	end)
 end
 
