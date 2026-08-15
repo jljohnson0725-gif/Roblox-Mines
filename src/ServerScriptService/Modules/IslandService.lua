@@ -177,14 +177,14 @@ local function buildGround(island, rng, root)
 	-- the clearing the game sits in
 	cylinder({
 		name = "Clearing",
-		size = Vector3.new(1.4, 30, 30),
+		size = Vector3.new(1.4, 46, 46),
 		cframe = CFrame.new(c + Vector3.new(0, 3.1, 0)),
 		color = P.dirt,
 		collide = true,
 	}, root)
 	cylinder({
 		name = "ClearingRim",
-		size = Vector3.new(1.2, 36, 36),
+		size = Vector3.new(1.2, 52, 52),
 		cframe = CFrame.new(c + Vector3.new(0, 2.9, 0)),
 		color = P.dirtDark,
 		collide = true,
@@ -258,7 +258,7 @@ local function buildTrees(island, rng, root)
 	local c, r = island.center, island.radius
 	for i = 1, 30 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(22, r * 0.80)
+		local dist = rng:NextNumber(30, r * 0.82)
 		local at = c + Vector3.new(math.cos(angle) * dist, 2, math.sin(angle) * dist)
 		local scale = rng:NextNumber(0.8, 1.35)
 
@@ -289,7 +289,7 @@ local function buildMushrooms(island, rng, root)
 	local c, r = island.center, island.radius
 	for i = 1, 24 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(20, r * 0.82)
+		local dist = rng:NextNumber(28, r * 0.86)
 		local base = c + Vector3.new(math.cos(angle) * dist, 3, math.sin(angle) * dist)
 
 		for j = 1, rng:NextInteger(1, 3) do -- clusters, not lone pins

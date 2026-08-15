@@ -27,6 +27,7 @@ local FUNCTIONS = {
 	"WheelStake", -- what that wager currently consists of
 	"RedeemCode", -- one-use reward codes
 	"BuyJetpack", -- the one-time purchase at the launch pad
+	"DropBall", -- one Plinko ball; resolves when it lands in a bin
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 

@@ -28,6 +28,7 @@ local WheelService = require(Modules.WheelService)
 local CodeService = require(Modules.CodeService)
 local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
+local PlinkoService = require(Modules.PlinkoService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -79,6 +80,9 @@ JetpackService.start()
 -- The sky. Islands are free-standing geometry with nothing under them, so
 -- they neither need the map nor care what it did.
 IslandService.start()
+
+-- The machine stands on ground the islands just made, so it goes after them.
+PlinkoService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)
