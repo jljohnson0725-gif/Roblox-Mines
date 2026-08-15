@@ -15,11 +15,27 @@
 	settles in is read, and that IS the result. It is the honest version, and
 	it is only available because the physics happens to be watchable.
 
-	WHICH MEANS THE ODDS ARE AN EMPIRICAL QUESTION. tools/plinko.py assumes a
-	clean binomial -- a perfect 50/50 at every peg. Real collisions are not
-	perfect, so the true distribution will be bell-shaped but not exactly
-	binomial, and the payout table is only correct once it has been measured
-	against a few thousand real drops. That measurement is still to do.
+	THE BOARD IS NOT BINOMIAL, AND THE PAYOUT TABLE IS THEREFORE WRONG.
+
+	Measured, not assumed. On a centred drop over the fixed grid the spread came
+	out 29,9,18,10,6,10,12,8,36 in 138 balls -- a BOWL, not a bell. 47% of balls
+	land in the two outer bins that a binomial says should see 0.39% each, and
+	the middle bin that should take 27% took 4%. Killing the bounce moves it
+	(52% in the middle three at elasticity 0.02, against 39% at 0.55) but does
+	not turn it into a bell.
+
+	A real ball is not eight independent coin flips. It carries sideways
+	momentum from one row into the next, so deflections compound instead of
+	cancelling and it walks to a wall and stays there. Shipping the current
+	Shared/Plinko table against this spread would pay roughly eight times the
+	stake and hand out a seal fragment on four drops in five.
+
+	THE FORK, still to be decided rather than quietly picked here:
+	  - re-tune the payouts to the measured bowl, which means the MIDDLE
+	    becomes the rare, valuable outcome -- honest, cheap, and backwards from
+	    what anyone expects Plinko to be;
+	  - or change the geometry until it bells: more rows, tighter spacing, a
+	    heavier ball, a narrower board -- and re-measure after each.
 ]]
 
 local Players = game:GetService("Players")
@@ -305,7 +321,17 @@ function PlinkoService.drop(player)
 	ball.Color = COL.ball
 	ball.Material = Enum.Material.Neon
 	ball.CanCollide = true
-	ball.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.55, 1, 1)
+	--[[
+		Nearly inelastic, and high friction. Measured across 300 drops on the
+		fixed board: elasticity 0.55 put 39% of balls in the middle three bins,
+		0.15 got 43%, and 0.02 with friction 0.8 got 52%. A bouncy ball keeps
+		its sideways speed through every peg and drifts to a wall; a dead one
+		drops more or less where it is deflected.
+
+		52% is still not the 71% a true binomial would give, and that gap is
+		the honest state of this machine -- see the note at the top of the file.
+	]]
+	ball.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.8, 0.02, 1, 1)
 	--[[ A hair off centre. Dropped exactly onto the apex peg the ball balances
 	     there, and a machine that occasionally freezes on the first peg is
 	     worse than one that is a fraction less symmetric. ]]
