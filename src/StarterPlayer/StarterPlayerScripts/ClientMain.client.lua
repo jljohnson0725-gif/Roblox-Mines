@@ -35,6 +35,7 @@ local WheelUI = require(UI.WheelUI)
 local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
 local Flight = require(UI.Flight)
+local Sky = require(UI.Sky)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -124,6 +125,8 @@ Coach.init(ctx)
 -- Not a panel: it poses characters and drives flight, so it never enters the
 -- chrome-hiding set below.
 Flight.init(ctx)
+-- Lights this client from its own altitude: bright street, sunset islands.
+Sky.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
