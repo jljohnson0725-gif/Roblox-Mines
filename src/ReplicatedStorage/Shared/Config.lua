@@ -229,14 +229,28 @@ Config.WheelOdds = {
 Config.CodeAdmins = { 873380891 } -- UserIds that may redeem testOnly codes live
 
 Config.Codes = {
-	WHEELTEST = {
-		money = 10500000,
-		testOnly = true,
-		blurb = "seven spins of the wheel",
-	},
 	RELEASE = { money = 2500, blurb = "thanks for playing" },
 	BRAINROT = { money = 1000, blurb = "a little starter cash" },
 }
+
+--[[
+	SPIN1 .. SPIN10 -- ten test codes, each worth exactly one wager.
+
+	One code per spin rather than one big grant, because that is what actually
+	exercises the wheel: redeem, commit everything, lose it, redeem the next.
+	A single lump sum would leave change sitting in the wallet after a bust and
+	the next spin would no longer be a clean all-in.
+
+	Pinned to WheelMinStake, so retuning the entry price retunes the codes with
+	it and they can never drift into being worth less than a spin.
+]]
+for i = 1, 10 do
+	Config.Codes["SPIN" .. i] = {
+		money = Config.WheelMinStake,
+		testOnly = true,
+		blurb = "one spin of the wheel",
+	}
+end
 
 -- ── Events ──────────────────────────────────────────────────────────────────
 -- Gap between events, randomised in this range. The gap AND the event type are
