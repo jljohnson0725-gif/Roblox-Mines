@@ -278,13 +278,31 @@ local LABEL = {
 }
 
 local TINT = {
-	secret = Color3.fromRGB(255, 214, 64),
-	retry = Color3.fromRGB(64, 132, 220),
-	cash = Color3.fromRGB(46, 168, 82),
-	-- deep crimson, not near-black: at (30,36,62) the 47 BUST wedges were the
-	-- same value as the backing plate and the whole face read as one dark disc
-	nothing = Color3.fromRGB(152, 42, 60),
+	secret = Color3.fromRGB(255, 206, 40),
+	retry = Color3.fromRGB(66, 176, 255),
+	cash = Color3.fromRGB(56, 200, 92),
+	nothing = Color3.fromRGB(228, 54, 76),
 }
+
+--[[
+	Each REPEAT of an outcome gets a slightly different shade.
+
+	Four flat colours over twelve arcs meant the same red sat next to itself
+	across a thin divider and the face read as a few enormous blobs rather than
+	as a wheel of segments. Shifting hue a little per repeat keeps the outcome
+	obvious -- all the reds are still clearly red -- while giving the eye the
+	segment count the reference art has.
+]]
+local function shadeFor(outcomeId, repeatIndex)
+	local base = TINT[outcomeId]
+	local h, sat, v = Color3.toHSV(base)
+	local drift = (repeatIndex % 3) -- 0, 1, 2
+	return Color3.fromHSV(
+		(h + drift * 0.035) % 1,
+		math.clamp(sat - drift * 0.06, 0, 1),
+		math.clamp(v + drift * 0.07, 0, 1)
+	)
+end
 
 local function part(props, parent)
 	local p = Instance.new("Part")
@@ -299,6 +317,10 @@ local function part(props, parent)
 	p.Color = props.color
 	p.Material = props.material or Enum.Material.SmoothPlastic
 	p.Shape = props.shape or Enum.PartType.Block
+	--[[ This line was missing, and every `transparency = 1` in this file was
+	     being silently dropped -- which turned the label plates into opaque
+	     coloured rectangles sitting on top of the wedges. ]]
+	p.Transparency = props.transparency or 0
 	p.Name = props.name or "Part"
 	p.Parent = parent
 	return p
@@ -378,27 +400,46 @@ function WheelService.build()
 	face.Name = "Face"
 	face.Parent = root
 
-	local hub = part({
-		name = "Hub",
-		-- wide enough to cap the middle: 100 wedges all converging on one point
-		-- leaves a ragged knot there, and the hub is what hides it
-		size = Vector3.new(7, 7, math.abs(FACE_Z) + 1.6),
-		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z / 2)) * CFrame.Angles(0, 0, 0),
-		color = Color3.fromRGB(255, 190, 60),
-		material = Enum.Material.Metal,
+	--[[
+		THE PIVOT MUST BE AXIS-ALIGNED.
+
+		This was the Hub, which is a Cylinder and therefore carries a 90-degree
+		Y rotation to stand it up facing the player. A model pivots about its
+		PrimaryPart's LOCAL axes, so rotating "about Z" was really rotating about
+		world X -- the wheel tumbled end over end instead of spinning. An
+		invisible identity-oriented part fixes it, and keeps the hub free to be
+		oriented however it needs to look right.
+	]]
+	local pivot = part({
+		name = "Pivot",
+		size = Vector3.new(0.4, 0.4, 0.4),
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z)),
+		color = Color3.fromRGB(255, 255, 255),
+		transparency = 1,
+		collide = false,
+	}, face)
+	face.PrimaryPart = pivot
+
+	-- white outer ring, standing proud of the coloured disc all the way round
+	part({
+		name = "Ring",
+		size = Vector3.new(1.0, (RADIUS + 3.5) * 2, (RADIUS + 3.5) * 2),
+		-- +1.6: the layers face -Z, so a LARGER z offset is further from the
+		-- viewer. Getting this backwards is what hid the wedges.
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z + 1.6))
+			* CFrame.Angles(0, math.rad(90), 0),
+		color = Color3.fromRGB(252, 252, 255),
+		material = Enum.Material.SmoothPlastic,
 		shape = Enum.PartType.Cylinder,
 	}, face)
-	hub.CFrame = CFrame.new(centre + Vector3.new(0, 0, FACE_Z / 2))
-		* CFrame.Angles(0, math.rad(90), 0)
-	face.PrimaryPart = hub
 
-	-- backing disc, so the wedge bars never show a gap at the rim
+	-- dark backing just inside the ring, so no wedge gap ever shows white
 	part({
 		name = "Backing",
-		size = Vector3.new(1.2, RADIUS * 2 + 2, RADIUS * 2 + 2),
-		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z + 0.6))
+		size = Vector3.new(1.2, RADIUS * 2 + 1, RADIUS * 2 + 1),
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z + 1.2))
 			* CFrame.Angles(0, math.rad(90), 0),
-		color = Color3.fromRGB(28, 34, 60),
+		color = Color3.fromRGB(26, 30, 52),
 		material = Enum.Material.SmoothPlastic,
 		shape = Enum.PartType.Cylinder,
 	}, face)
@@ -409,6 +450,17 @@ function WheelService.build()
 	-- Width is set from the arc at the RIM, not at mid-radius: sizing off the
 	-- middle leaves visible gaps around the outside, which is where the eye is.
 	local width = (2 * math.pi * RADIUS / Wheel.SEGMENTS) * 1.06
+
+	-- which repeat of its outcome each wedge belongs to, so shadeFor can vary
+	-- neighbouring arcs of the same result
+	local shadeOf, seen = {}, {}
+	for _, run in ipairs(Wheel.runs()) do
+		seen[run.id] = (seen[run.id] or 0) + 1
+		for w = run.first, run.first + run.count - 1 do
+			shadeOf[w] = seen[run.id]
+		end
+	end
+
 	for index, outcomeId in ipairs(Wheel.FACE) do
 		local angle = math.rad(Wheel.angleOf(index))
 		local wedge = part({
@@ -417,54 +469,88 @@ function WheelService.build()
 			cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z))
 				* CFrame.Angles(0, 0, -angle)
 				* CFrame.new(0, RADIUS / 2, 0),
-			color = TINT[outcomeId],
-			material = outcomeId == "secret" and Enum.Material.Neon
-				or Enum.Material.SmoothPlastic,
+			color = shadeFor(outcomeId, shadeOf[index] or 1),
+			-- nothing is Neon now: under the daylight pass a self-lit wedge
+			-- blows to white and takes its neighbours' edges with it
+			material = Enum.Material.SmoothPlastic,
 			collide = false,
 		}, face)
 		wedge:SetAttribute("Outcome", outcomeId)
 	end
 
-	--[[ WORDS ON THE FACE. One label per contiguous arc, at its middle -- a
-	     prize wheel that doesn't say what it pays is just a colour wheel, and
-	     100 wedges are far too fine to letter individually. ]]
+	--[[
+		Big white centre, added AFTER the wedges so it sits over them.
+
+		100 wedges all converging on one point produce a rainbow knot at the
+		middle -- the "buggy" smear. A 7-stud hub on a 52-stud wheel was nowhere
+		near enough to cover it; this is a third of the radius, like the white
+		centre on a real prize wheel.
+	]]
+	local hub = part({
+		name = "Hub",
+		size = Vector3.new(math.abs(FACE_Z) + 2.4, RADIUS * 0.62, RADIUS * 0.62),
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z / 2 - 0.4))
+			* CFrame.Angles(0, math.rad(90), 0),
+		color = Color3.fromRGB(252, 252, 255),
+		material = Enum.Material.SmoothPlastic,
+		shape = Enum.PartType.Cylinder,
+	}, face)
+	part({
+		name = "HubCap",
+		size = Vector3.new(0.8, RADIUS * 0.34, RADIUS * 0.34),
+		-- proud of the white hub, which reaches FACE_Z - 1.2
+		cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z - 2.0))
+			* CFrame.Angles(0, math.rad(90), 0),
+		color = Color3.fromRGB(255, 198, 64),
+		material = Enum.Material.Metal,
+		shape = Enum.PartType.Cylinder,
+		collide = false,
+	}, face)
+
+	--[[
+		WORDS PRINTED ON THE WHEEL.
+
+		SurfaceGui on a part inside the Face model, not a BillboardGui. A
+		billboard always faces the camera, so the labels floated free of the disc
+		and stayed upright while it turned -- which is why they read as bubbles
+		hovering around the wheel rather than as writing on it. A SurfaceGui is
+		painted onto the surface, so it rotates with its arc exactly like the
+		numbers on a real prize wheel.
+	]]
 	for _, run in ipairs(Wheel.runs()) do
-		do
-			local angle = math.rad(run.mid)
-			local anchor = part({
-				name = "Label",
-				size = Vector3.new(0.6, 0.6, 0.6),
-				cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z - 0.4))
-					* CFrame.Angles(0, 0, -angle)
-					* CFrame.new(0, RADIUS * 0.66, 0),
-				color = TINT[run.id],
-				transparency = 1,
-				collide = false,
-			}, face)
+		local angle = math.rad(run.mid)
+		local plate = part({
+			name = "Label",
+			-- sized to the arc it sits on, so a narrow SECRET wedge gets narrow
+			-- text rather than text spilling over its neighbours
+			size = Vector3.new(RADIUS * 0.46, math.rad(run.sweep) * RADIUS * 0.62, 0.18),
+			cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z - 0.42))
+				* CFrame.Angles(0, 0, -angle)
+				* CFrame.new(0, RADIUS * 0.66, 0)
+				* CFrame.Angles(0, 0, math.rad(-90)),
+			color = TINT[run.id],
+			transparency = 1,
+			collide = false,
+		}, face)
 
-			local gui = Instance.new("BillboardGui")
-			gui.Size = UDim2.fromOffset(150, 42)
-			gui.MaxDistance = 220
-			gui.AlwaysOnTop = false
-			gui.Adornee = anchor
-			gui.Parent = anchor
+		local surface = Instance.new("SurfaceGui")
+		surface.Face = Enum.NormalId.Front
+		surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		surface.PixelsPerStud = 34
+		surface.AlwaysOnTop = false
+		surface.Adornee = plate
+		surface.Parent = plate
 
-			local text = Instance.new("TextLabel")
-			text.Size = UDim2.fromScale(1, 1)
-			text.BackgroundTransparency = 1
-			text.Font = Enum.Font.FredokaOne
-			text.TextScaled = true
-			-- white with a hard dark outline on every arc: dark-on-crimson and
-			-- dark-on-blue were both unreadable, and one rule beats four
-			text.TextColor3 = Color3.fromRGB(255, 255, 255)
-			text.TextStrokeTransparency = 0
-			text.TextStrokeColor3 = Color3.fromRGB(18, 16, 28)
-			text.Text = LABEL[run.id]
-			text.Parent = gui
-			local cap = Instance.new("UITextSizeConstraint")
-			cap.MaxTextSize = run.id == "secret" and 30 or 24
-			cap.Parent = text
-		end
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.FredokaOne
+		text.TextScaled = true
+		text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		text.TextStrokeTransparency = 0
+		text.TextStrokeColor3 = Color3.fromRGB(24, 20, 36)
+		text.Text = LABEL[run.id]
+		text.Parent = surface
 	end
 
 	--[[ Rim of bulbs, like a fairground wheel. Purely decorative, and the one
