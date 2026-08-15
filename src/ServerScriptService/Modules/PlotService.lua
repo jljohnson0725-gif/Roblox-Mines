@@ -155,9 +155,44 @@ end
 ]]
 local TILE = 4
 local TILE_MARGIN = 0.3
-local TILE_A = Color3.fromRGB(88, 214, 58)
-local TILE_B = Color3.fromRGB(236, 62, 62)
-local FLOOR_COLOR = Color3.fromRGB(120, 222, 92)
+local TILE_A = Color3.fromRGB(122, 188, 100)
+local TILE_B = Color3.fromRGB(206, 104, 102)
+local FLOOR_COLOR = Color3.fromRGB(142, 196, 120)
+
+--[[
+	The map ships each base full of Neon: glowing floor pads, strips and trim,
+	about twenty-two parts apiece. MapStyle deliberately skips everything under
+	Bases -- it restyles the world, not the plots -- so none of it was ever
+	toned down, and the result was a floor that read as a lightbox.
+
+	Lasers keep their glow. They are a hazard and they are meant to shout.
+]]
+local function calmBase(base)
+	local calmed = 0
+	for _, p in ipairs(base:GetDescendants()) do
+		if p:IsA("BasePart")
+			and p.Material == Enum.Material.Neon
+			and not p.Name:match("^Laser")
+		then
+			p.Material = Enum.Material.SmoothPlastic
+			-- pull the value down too: a colour picked to glow is usually far
+			-- brighter than the same colour needs to be when it doesn't
+			local h, sat, v = Color3.toHSV(p.Color)
+			p.Color = Color3.fromHSV(h, sat * 0.9, math.min(v, 0.72))
+			calmed += 1
+		end
+
+		--[[ And the ceiling lights. Six pure-white spotlights at brightness 1.6
+		     were sized for the map's original darker interior; under the
+		     daylight pass they wash the floor out to pastel and undo the point
+		     of calming the colours. Dimmer, and warm rather than surgical. ]]
+		if p:IsA("SpotLight") or p:IsA("PointLight") then
+			p.Brightness = math.min(p.Brightness, 0.65)
+			p.Color = Color3.fromRGB(255, 248, 232)
+		end
+	end
+	return calmed
+end
 
 local function tilePlot(base, slotParts)
 	local existing = base:FindFirstChild("TileFloor")
@@ -278,6 +313,7 @@ local function attachPlot(base, index)
 			end
 		end
 		tilePlot(base, slotParts)
+		calmBase(base)
 	end
 
 	local container = Instance.new("Folder")
@@ -714,7 +750,9 @@ local function renderPad(plot, padIndex, profile)
 	local char = Brainrots.get(item.charId)
 	local tier = Rarity.get(char.tier)
 	pad.part.Color = tier.color
-	pad.part.Material = Enum.Material.Neon
+	-- tier colour, not a light source. Eight glowing strips per base turned the
+	-- floor into a lightbox; the colour alone still says which pads are filled.
+	pad.part.Material = Enum.Material.SmoothPlastic
 
 	local model = ModelFactory.build(item.charId, item.variantId)
 	if model then
