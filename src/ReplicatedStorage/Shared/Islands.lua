@@ -22,10 +22,20 @@
 local Islands = {}
 
 --[[
-	Sited directly over the launch pad. The pad then reads as pointing at it --
-	you stand on the ring, look up, and the destination is the thing overhead.
-	That is worth more than spreading the islands prettily across the sky,
-	because the first question a new jetpack owner has is "where do I go".
+	OFF TO ONE SIDE OF THE LAUNCH PAD, NOT OVER IT.
+
+	Directly overhead was the first instinct -- the pad then reads as pointing
+	at the island, and the first question a new jetpack owner has is "where do
+	I go". It also meant that flying straight up from the pad drove you into
+	the island's underside at 218 studs and stopped you dead, which reads as a
+	height limit on the jetpack rather than as a solid object, because the
+	thing blocking you is above your head where you cannot see it.
+
+	Ninety-five studs of offset against a 56-stud radius leaves the climb clear
+	while keeping the island filling the sky at about 66 degrees up from the
+	pad -- still unmistakably the thing you are being pointed at. It also makes
+	for a better arrival: you rise past the cliff edge and land on the rim,
+	instead of punching up through the floor.
 ]]
 Islands.List = {
 	{
@@ -33,7 +43,7 @@ Islands.List = {
 		name = "Plinko",
 		blurb = "Drop the ball. Watch it decide.",
 
-		center = Vector3.new(-70, 220, -50),
+		center = Vector3.new(-165, 220, -50),
 		radius = 56, -- walkable ground; the mountain ring sits outside this
 		game = "plinko",
 
