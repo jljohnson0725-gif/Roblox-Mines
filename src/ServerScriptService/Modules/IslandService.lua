@@ -159,6 +159,14 @@ local function buildGround(island, rng, root)
 	--[[ Facets: flat slabs at slightly different heights and angles in two
 	     greens. Cheaper than real low-poly terrain and, from standing height,
 	     indistinguishable from it. ]]
+	--[[
+		HEIGHTS ARE STAGGERED, and that is not cosmetic. Every facet used to sit
+		at exactly 2.2 with the same 1.6 thickness, so all fourteen top faces
+		were coplanar -- and two coplanar faces flicker against each other as
+		the camera moves, because the depth buffer cannot decide which is in
+		front. Same fault the wheel had at its hub. A hundredth of a stud
+		between them is invisible and settles it.
+	]]
 	for i = 1, 14 do
 		local angle = rng:NextNumber(0, math.pi * 2)
 		local dist = rng:NextNumber(0, r * 0.82)
@@ -167,7 +175,8 @@ local function buildGround(island, rng, root)
 			name = "Facet",
 			size = Vector3.new(size, 1.6, size * rng:NextNumber(0.7, 1.3)),
 			cframe = CFrame.new(c + Vector3.new(
-				math.cos(angle) * dist, 2.2, math.sin(angle) * dist))
+				math.cos(angle) * dist, 2.2 + (i % 7) * 0.014,
+				math.sin(angle) * dist))
 				* CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
 			color = rng:NextNumber() < 0.5 and P.grassLit or P.grassDark,
 			collide = true,
@@ -178,7 +187,7 @@ local function buildGround(island, rng, root)
 	cylinder({
 		name = "Clearing",
 		size = Vector3.new(1.4, 46, 46),
-		cframe = CFrame.new(c + Vector3.new(0, 3.1, 0)),
+		cframe = CFrame.new(c + Vector3.new(0, 3.34, 0)),
 		color = P.dirt,
 		collide = true,
 	}, root)
@@ -256,9 +265,12 @@ end
      which is the only height that matters here. ]]
 local function buildTrees(island, rng, root)
 	local c, r = island.center, island.radius
-	for i = 1, 30 do
+	--[[ Thirteen, not thirty. Thirty closed the island into a thicket you
+	     could not see the machine or the sky through, which is the opposite of
+	     what a clearing on a floating island is for. ]]
+	for i = 1, 13 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(30, r * 0.82)
+		local dist = rng:NextNumber(32, r * 0.86)
 		local at = c + Vector3.new(math.cos(angle) * dist, 2, math.sin(angle) * dist)
 		local scale = rng:NextNumber(0.8, 1.35)
 

@@ -95,6 +95,7 @@ local COL = {
 	peg = Color3.fromRGB(226, 232, 246),
 	ball = Color3.fromRGB(255, 206, 64),
 	divider = Color3.fromRGB(96, 106, 138),
+	gold = Color3.fromRGB(255, 198, 72),
 }
 
 --[[ Bin tints: hot at the edges, cold up the middle, so the payout curve is
@@ -176,6 +177,55 @@ function PlinkoService.build(island)
 		material = Enum.Material.Metal }, root)
 
 	--[[
+		TRIM AND A HEADER. Without them this is a dark rectangle with dots on
+		it -- structurally a Plinko board and visually an unfinished one. A lit
+		edge round the face and a marquee across the top are what make it read
+		as a machine somebody built rather than geometry somebody placed.
+
+		The trim sits a quarter stud proud of the frame. Flush with it would be
+		coplanar, and coplanar is what makes the grass flicker.
+	]]
+	for _, side in ipairs({ -1, 1 }) do
+		part({ name = "Trim", size = Vector3.new(0.5, total, 0.5),
+			cframe = at(side * (HALF + 0.7), 0, DEPTH / 2 + 0.55),
+			color = COL.gold, material = Enum.Material.Neon }, root)
+	end
+	for _, edge in ipairs({ -1, 1 }) do
+		part({ name = "Trim", size = Vector3.new(HALF * 2 + 4, 0.5, 0.5),
+			cframe = at(0, edge * (total / 2 + 0.3), DEPTH / 2 + 0.55),
+			color = COL.gold, material = Enum.Material.Neon }, root)
+	end
+
+	local header = part({ name = "Header",
+		size = Vector3.new(HALF * 2 + 4, 7, DEPTH + 2),
+		cframe = at(0, total / 2 + 3.6), color = COL.frame,
+		material = Enum.Material.Metal }, root)
+
+	local marquee = Instance.new("SurfaceGui")
+	marquee.Name = "Marquee"
+	marquee.Face = Enum.NormalId.Front
+	marquee.CanvasSize = Vector2.new(600, 120)
+	marquee.LightInfluence = 0
+	marquee.Parent = header
+	local mtext = Instance.new("TextLabel")
+	mtext.Size = UDim2.fromScale(1, 1)
+	mtext.BackgroundTransparency = 1
+	mtext.Font = Enum.Font.GothamBlack
+	mtext.Text = "P L I N K O"
+	mtext.TextScaled = true
+	mtext.TextColor3 = COL.gold
+	mtext.Parent = marquee
+
+	--[[ A funnel, so the ball is dropped INTO something rather than appearing
+	     in mid-air above the pegs. ]]
+	for _, side in ipairs({ -1, 1 }) do
+		part({ name = "Funnel", size = Vector3.new(HALF, 0.7, DEPTH - 0.4),
+			cframe = at(side * (HALF * 0.62), total / 2 - 3.2)
+				* CFrame.Angles(0, 0, math.rad(side * -26)),
+			color = COL.frame, material = Enum.Material.Metal }, root)
+	end
+
+	--[[
 		FULL-WIDTH STAGGERED ROWS, not a triangle.
 
 		The first build was a textbook Galton board -- row r carrying r pegs in
@@ -227,6 +277,29 @@ function PlinkoService.build(island)
 			part({ name = "Divider", size = Vector3.new(0.6, BINS_H, DEPTH - 0.4),
 				cframe = at(x + W / 2, binTop - BINS_H / 2), color = COL.divider }, root)
 		end
+
+		--[[ What each pocket pays, on the pocket. The colour coding said hot
+		     or cold and never said how much, so the whole point of aiming at
+		     the edges had to be taken on trust. ]]
+		local plate = part({ name = "BinPlate",
+			size = Vector3.new(W - 0.5, 2.6, 0.4),
+			cframe = at(x, binTop - BINS_H + 3.2, DEPTH / 2 + 0.3),
+			color = COL.back, material = Enum.Material.SmoothPlastic }, root)
+		local face = Instance.new("SurfaceGui")
+		face.Face = Enum.NormalId.Front
+		face.CanvasSize = Vector2.new(140, 90)
+		face.LightInfluence = 0
+		face.Parent = plate
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.Text = ("%gx"):format(Plinko.Bins[j].pay)
+		label.TextColor3 = Plinko.Bins[j].fragment and COL.gold
+			or Color3.fromRGB(232, 238, 252)
+		label.Parent = face
+
 		PlinkoService.bins[j] = x
 	end
 
