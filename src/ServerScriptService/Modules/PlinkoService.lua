@@ -55,6 +55,17 @@ local PlayerState = require(script.Parent.PlayerState)
 
 local PlinkoService = {}
 
+--[[ Its own collision group, so parallel balls pass through each other while
+     still landing on the bin floors. ]]
+local BALL_GROUP = "PlinkoBall"
+do
+	local PhysicsService = game:GetService("PhysicsService")
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(BALL_GROUP)
+		PhysicsService:CollisionGroupSetCollidable(BALL_GROUP, BALL_GROUP, false)
+	end)
+end
+
 --[[ One generator for the machine. Seeded from the clock so two servers do
      not deal identical sequences of drops. ]]
 local rng = Random.new(os.clock() * 1e6 % 2 ^ 31)
@@ -285,7 +296,16 @@ end
 
 -- ── dropping ────────────────────────────────────────────────────────────────
 
-local dropping = {} -- [userId] = true while a ball of theirs is in the air
+--[[ [userId] = how many of their balls are in the air. A COUNT, not a flag:
+     the machine used to refuse a second ball until the first landed, which
+     made a five-second fall the real cost of a drop and turned sixty-nine of
+     them into six minutes of waiting. Your money is the limit now. ]]
+local inFlight = {}
+
+--[[ A ceiling anyway, well above what a person can click. It is not there to
+     pace anyone -- it is there so a jammed prompt or a scripted client cannot
+     put a thousand parts on the island and take the server down with them. ]]
+local MAX_IN_FLIGHT = 25
 
 function PlinkoService.isNear(player)
 	local console = PlinkoService.console
@@ -305,8 +325,8 @@ function PlinkoService.drop(player)
 	if not profile then
 		return { ok = false, err = "Still loading, one sec." }
 	end
-	if dropping[player.UserId] then
-		return { ok = false, err = "Your ball is still falling." }
+	if (inFlight[player.UserId] or 0) >= MAX_IN_FLIGHT then
+		return { ok = false, err = "That is a lot of balls. Let some land." }
 	end
 	if not PlinkoService.isNear(player) then
 		return { ok = false, err = "Head to the Plinko machine." }
@@ -317,7 +337,7 @@ function PlinkoService.drop(player)
 
 	profile.money -= Config.PlinkoDropCost
 	PlayerState.push(player)
-	dropping[player.UserId] = true
+	inFlight[player.UserId] = (inFlight[player.UserId] or 0) + 1
 
 	--[[ Sixteen coin flips, rolled before the ball exists. Nothing here knows
 	     the bin -- it is whatever the flips add up to. ]]
@@ -330,6 +350,11 @@ function PlinkoService.drop(player)
 
 	local ball = Instance.new("Part")
 	ball.Name = "Ball"
+	-- Balls ignore one another. They only ever collide at the bottom, and a
+	-- pile-up nudging a settled ball into the next pocket would look like the
+	-- payout changing after the fact -- it would not (the rolled bin is what
+	-- pays) but it would read as a machine that cheats.
+	ball.CollisionGroup = BALL_GROUP
 	ball.Shape = Enum.PartType.Ball
 	ball.Size = Vector3.new(BALL, BALL, BALL)
 	ball.Color = COL.ball
@@ -464,7 +489,7 @@ function PlinkoService.drop(player)
 end
 
 function PlinkoService.settle(player, index)
-	dropping[player.UserId] = nil
+	inFlight[player.UserId] = math.max((inFlight[player.UserId] or 1) - 1, 0)
 	local profile = DataService.get(player)
 	if not profile then
 		return
@@ -501,7 +526,7 @@ function PlinkoService.start()
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
-		dropping[player.UserId] = nil
+		inFlight[player.UserId] = nil
 	end)
 end
 
