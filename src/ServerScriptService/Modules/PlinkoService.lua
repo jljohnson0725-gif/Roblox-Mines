@@ -137,20 +137,42 @@ function PlinkoService.build(island)
 		cframe = at(0, -total / 2), color = COL.frame,
 		material = Enum.Material.Metal }, root)
 
-	--[[ A Galton board: row r carries r pegs, each row offset half a step from
-	     the last. That stagger is the entire mechanism -- it is what turns each
-	     row into one left-or-right coin flip. ]]
+	--[[
+		FULL-WIDTH STAGGERED ROWS, not a triangle.
+
+		The first build was a textbook Galton board -- row r carrying r pegs in
+		a widening triangle -- and measuring it found two thirds of balls in the
+		two edge bins, an 849% return. The triangle leaves the outer columns
+		bare: below the widest row there was a 4.7-stud chute down each side
+		with nothing in it, and the 12x fragment bins sat directly under those
+		chutes. Any outward drift was a clean fall into the jackpot.
+
+		Real Plinko machines are a full rectangular grid offset half a step per
+		row, which is what this is now. Every column has pegs in it, so there is
+		nowhere to fall through uninterrupted, and the walls bound the walk
+		instead of feeding it.
+	]]
 	local topPeg = total / 2 - ENTRY
 	for r = 1, Plinko.ROWS do
-		for i = 1, r do
+		local wide = r % 2 == 1
+		local count = wide and Plinko.BINS or Plinko.BINS - 1
+		for i = 1, count do
+			local x = wide and (i - (Plinko.BINS + 1) / 2) * W
+				or (i - Plinko.BINS / 2) * W
 			local peg = part({
 				name = "Peg",
-				size = Vector3.new(PEG, PEG, DEPTH - 0.4),
-				cframe = at((i - (r + 1) / 2) * W, topPeg - (r - 1) * SPACING),
+				--[[ For a Cylinder, Size.X is the LENGTH along the axis and Y/Z
+				     are the diameter -- pass them the other way round and you
+				     get a stub. This was (PEG, PEG, DEPTH) and measured as a
+				     0.9 cube: a peg too shallow to reliably touch a ball
+				     crossing a four-stud channel. ]]
+				size = Vector3.new(DEPTH - 0.4, PEG, PEG),
+				cframe = at(x, topPeg - (r - 1) * SPACING),
 				color = COL.peg,
 				material = Enum.Material.Neon,
 			}, root)
 			peg.Shape = Enum.PartType.Cylinder
+			-- turn the axis to lie across the board's depth
 			peg.CFrame = peg.CFrame * CFrame.Angles(0, math.rad(90), 0)
 		end
 	end
