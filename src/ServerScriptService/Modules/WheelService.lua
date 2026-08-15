@@ -449,7 +449,25 @@ function WheelService.build()
 	     has to be 100 and not a rounder number. ]]
 	-- Width is set from the arc at the RIM, not at mid-radius: sizing off the
 	-- middle leaves visible gaps around the outside, which is where the eye is.
-	local width = (2 * math.pi * RADIUS / Wheel.SEGMENTS) * 1.06
+	--[[
+		Each wedge is built as three radial BANDS, not one long bar.
+
+		A single bar has to be as wide as the arc at the RIM, which makes it
+		three and a half times too wide near the hub -- so every wedge overlapped
+		three of its neighbours, all at identical depth. Coplanar overlapping
+		faces give the depth buffer no winner, and the renderer flickers between
+		them as the camera moves: the "vibrating middle".
+
+		Sizing each band to the arc at ITS OWN mid-radius drops the worst overlap
+		from 3.4x to about 1.5x, and the small z stagger below makes even that
+		deterministic. Bands also start outside the hub, so the point where all
+		one hundred wedges converge is simply not built.
+	]]
+	local BANDS = {
+		{ inner = RADIUS * 0.30, outer = RADIUS * 0.54 },
+		{ inner = RADIUS * 0.54, outer = RADIUS * 0.77 },
+		{ inner = RADIUS * 0.77, outer = RADIUS },
+	}
 
 	-- which repeat of its outcome each wedge belongs to, so shadeFor can vary
 	-- neighbouring arcs of the same result
@@ -463,19 +481,37 @@ function WheelService.build()
 
 	for index, outcomeId in ipairs(Wheel.FACE) do
 		local angle = math.rad(Wheel.angleOf(index))
-		local wedge = part({
-			name = "Wedge" .. index,
-			size = Vector3.new(width, RADIUS, 0.6),
-			cframe = CFrame.new(centre + Vector3.new(0, 0, FACE_Z))
-				* CFrame.Angles(0, 0, -angle)
-				* CFrame.new(0, RADIUS / 2, 0),
-			color = shadeFor(outcomeId, shadeOf[index] or 1),
-			-- nothing is Neon now: under the daylight pass a self-lit wedge
-			-- blows to white and takes its neighbours' edges with it
-			material = Enum.Material.SmoothPlastic,
-			collide = false,
-		}, face)
-		wedge:SetAttribute("Outcome", outcomeId)
+		local colour = shadeFor(outcomeId, shadeOf[index] or 1)
+
+		for bandIndex, band in ipairs(BANDS) do
+			local span = band.outer - band.inner
+			--[[ Sized from the band's OUTER edge, which is its widest point.
+
+			     Sizing from the mid-radius left each band narrower than the arc
+			     at its outer edge, so the dark backing showed through as thin
+			     radial ticks -- a moire of hairlines across every segment. A
+			     band must be at least as wide as its widest arc; the extra
+			     overlap that creates further in is harmless now that the depths
+			     are staggered. ]]
+			local width = (2 * math.pi * band.outer / Wheel.SEGMENTS) * 1.02
+
+			--[[ Stagger depth by wedge AND band. Any residual overlap then has a
+			     strict front-to-back order instead of two faces at the same z,
+			     which is what actually stops the shimmer. ]]
+			local z = FACE_Z + ((index % 5) * 0.010) + (bandIndex * 0.003)
+
+			local wedge = part({
+				name = ("Wedge%d_%d"):format(index, bandIndex),
+				size = Vector3.new(width, span, 0.6),
+				cframe = CFrame.new(centre + Vector3.new(0, 0, z))
+					* CFrame.Angles(0, 0, -angle)
+					* CFrame.new(0, band.inner + span / 2, 0),
+				color = colour,
+				material = Enum.Material.SmoothPlastic,
+				collide = false,
+			}, face)
+			wedge:SetAttribute("Outcome", outcomeId)
+		end
 	end
 
 	--[[
