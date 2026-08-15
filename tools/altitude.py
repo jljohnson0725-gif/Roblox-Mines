@@ -1,10 +1,10 @@
 """
-Model altitude-tier pricing against the real economy.
+Model the jetpack price against the real economy.
 
-The jetpack is meant to be the PROGRESSION gate -- deterministic and earned --
-so the gambling islands can go back to paying rewards rather than standing
-between a player and the next chapter. That only works if the tier prices pace
-the islands out sensibly instead of all unlocking the same afternoon.
+The jetpack opens the sky. The question this file answers is how long a player
+spends on the ground before it does, and -- once the price came down to a flat
+million -- what has to gate the islands instead, since a purchase everyone can
+afford within the hour cannot pace anything.
 
 Everything here is read out of src/ so the model cannot drift from the game.
 
@@ -99,6 +99,9 @@ DEPTH = math.log2(1.68)
 # rounds are roughly 20s of clicking, and 18% of safe tiles drop
 DROPS_PER_HOUR = 85
 
+# Decided: one flat price, not a ladder. See THE JETPACK section below.
+JETPACK = 1_000_000
+
 
 def weighted(order, table, depth, rng):
     weights = []
@@ -179,77 +182,64 @@ def main():
         print("  %-10s %-8d %14s %16s"
               % (hours(h), pads_owned(h), money(med) + "/s", money(earned)))
 
-    # cumulative earnings, so tier prices can be set against them
-    earned_at = {}
-    total, prev_h, prev_rate = 0.0, 0.0, 0.0
-    for h, rate in curve:
-        total += (rate + prev_rate) / 2 * (h - prev_h) * 3600
-        earned_at[h] = total
-        prev_h, prev_rate = h, rate
-
     print("\n" + "=" * 74)
-    print("PROPOSED ALTITUDE TIERS")
+    print("THE JETPACK")
     print("=" * 74)
     print("""
-Priced so each island lands at a target hour on the curve above, and set at
-roughly a third of everything earned by then -- the rest has to stay available
-for pads, upgrades and the wheel, which are competing for the same wallet.
+ONE PRICE, NOT A LADDER. The first draft of this file proposed four altitude
+tiers running $2M / $35M / $140M / $470M, gating each island behind a bigger
+purchase. That was rejected, correctly: it put thirty hours between a new
+player and the last island, and it made flying the most expensive thing in the
+game -- the four tiers came to $647M against $417M for the whole upgrade tree.
 """)
 
-    targets = [
-        ("Tier 1", "first island", 2),
-        ("Tier 2", "second island", 8),
-        ("Tier 3", "third island", 16),
-        ("Tier 4", "the key vault", 30),
-    ]
+    rng = random.Random(21)
+    times = []
+    for _ in range(300):
+        # walk the clock until this player has banked the price
+        t, banked, prev = 0.0, 0.0, 0.0
+        while banked < JETPACK and t < 40:
+            t += 0.25
+            rate = simulate(t, rng)
+            banked += (rate + prev) / 2 * 0.25 * 3600
+            prev = rate
+        times.append(t)
+    times.sort()
+    med = times[len(times) // 2]
+    fast = times[int(len(times) * 0.10)]
+    slow = times[int(len(times) * 0.90)]
 
-    def nice(v):
-        """Round to something a human would have chosen."""
-        if v <= 0:
-            return 0
-        mag = 10 ** (math.floor(math.log10(v)) - 1)
-        return int(round(v / mag) * mag)
+    print("  price  %s\n" % money(JETPACK))
+    print("    luckiest 10%%    %2.0f min" % (fast * 60))
+    print("    median          %2.0f min" % (med * 60))
+    print("    unluckiest 10%%  %2.0f min     spread %.1fx" % (slow * 60, slow / med))
 
-    prices = []
-    for name, label, at in targets:
-        price = nice(earned_at[at] * 0.33)
-        prices.append((name, label, at, price))
-        print("  %-8s %-16s unlocks around %-7s  cost %s"
-              % (name, label, hours(at), money(price)))
-
-    print("\nsanity: what else wants that money at the same time")
     slot_total = sum(int(CFG["slot_base"] * CFG["slot_growth"] ** s)
                      for s in range(CFG["max_slots"] - CFG["start_slots"]))
-    print("  all 8 pads        %12s" % money(slot_total))
-    print("  one wheel spin    %12s" % money(CFG["wheel_min"]))
-    print("  all four tiers    %12s" % money(sum(p for _, _, _, p in prices)))
-
-    # ── the luck spread, which is what killed the 10% key gate ──────────────
-    print("\n" + "=" * 74)
-    print("DOES LUCK STILL DECIDE? (the thing that broke the 10% key gate)")
-    print("=" * 74)
-    rng = random.Random(99)
-    for name, label, at, price in prices:
-        times = []
-        for _ in range(240):
-            # walk the clock until this player has banked `price`
-            t, banked, rate_prev = 0.0, 0.0, 0.0
-            while banked < price and t < 400:
-                t += 0.5
-                rate = simulate(t, rng)
-                banked += (rate + rate_prev) / 2 * 0.5 * 3600
-                rate_prev = rate
-            times.append(t)
-        times.sort()
-        med = times[len(times) // 2]
-        slow = times[int(len(times) * 0.9)]
-        print("  %-8s median %-8s  unluckiest 10%% %-8s  spread %.1fx"
-              % (name, hours(med), hours(slow), slow / med if med else 0))
-
+    print("\n  competing for the same wallet at that moment:")
+    print("    all 8 pads      %12s" % money(slot_total))
+    print("    one wheel spin  %12s" % money(CFG["wheel_min"]))
     print("""
-A spread near 1.0 means the gate is a SAVINGS target, not a dice roll -- every
-player gets there, the unlucky ones just take a little longer. Compare the 10%
-key gate, where the unluckiest 1% needed 6.3x the median and some never arrived.
+  Those numbers matter more than the raw time. The pads cost about the same as
+  the jetpack and pay for themselves, so nobody sensibly buys flight first --
+  in practice it lands early in the second session rather than 45 minutes in,
+  which is where an early goal belongs. Above is the floor, not the schedule.
+
+  WHAT IT COSTS THE DESIGN. At this price every player is flying within an
+  hour, so ALTITUDE CANNOT PACE THE ISLANDS. If height were the only
+  requirement they would all open at once, and the four-island structure would
+  collapse into one afternoon of hopping between minigames.
+
+  The seals have to carry that instead: the first island is open to anyone who
+  can fly, and each one above it wants the seal from the island below.
+  Progression then comes from PLAYING the games rather than from saving up for
+  the right to see them -- which suits a story game better anyway. Chapters
+  should advance because you did something, not because a balance crossed a
+  line. It also means a player who is bad at one game is stuck on that game,
+  which is the risk to watch; the fragments are the release valve, since a
+  fragment every few attempts still moves someone forward on a losing streak.
+
+  Model that here once the fragment odds and per-drop costs are settled.
 """)
 
 

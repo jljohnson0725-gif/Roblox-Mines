@@ -214,6 +214,28 @@ Config.WheelOdds = {
 	{ id = "nothing", chance = 0.47, label = "BUST" },
 }
 
+-- ── The Sky ─────────────────────────────────────────────────────────────────
+--[[
+	The jetpack, which opens the islands above the map.
+
+	ONE FLAT PRICE. An earlier plan tiered it -- $2M for the first island up to
+	$470M for the last -- so that altitude itself paced the climb. That put
+	thirty hours between a new player and the top of the map and made flying
+	cost more than the entire upgrade tree, which is the wrong shape for a thing
+	whose job is to open the game up rather than to be the game.
+
+	A million lands about 45 minutes in if every dollar goes to it, and realistically
+	early in the second session, since all eight pads cost about the same and pay
+	rent back. Early enough to be a goal you can see from the ground; far enough
+	that it isn't handed to you.
+
+	The consequence, worth stating where the number lives: altitude no longer
+	gates anything. Everyone is flying within the hour, so the ISLANDS have to be
+	paced by their seals -- each one asking for the seal earned on the island
+	below -- rather than by the right to reach them. See tools/altitude.py.
+]]
+Config.JetpackCost = 1000000
+
 -- ── Codes ───────────────────────────────────────────────────────────────────
 --[[
 	Redeemable codes. Each one is once per player, recorded in the profile.
