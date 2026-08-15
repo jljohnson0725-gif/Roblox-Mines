@@ -122,9 +122,26 @@ local BLEND_IN = 5.0 -- per second, so ~0.2s to full
 local BLEND_OUT = 3.4
 
 --[[
-	Motor6Ds live scattered across the limbs, so finding them means walking the
-	whole character. Cached per character rather than searched every frame,
-	because this runs inside a render step for every flyer on the server.
+	TWO RIG GENERATIONS, and the joint class is the entire difference.
+
+	The classic rig joins limbs with Motor6D, which is KINEMATIC: the animator
+	writes Transform during the render step, so the last write before the frame
+	is drawn wins. Roblox's newer physical rig joins them with
+	AnimationConstraint backed by a BallSocketConstraint, which is FORCE-DRIVEN:
+	Transform is a target the solver moves the limb toward during the physics
+	step.
+
+	So they need different phases, and choosing wrong fails silently rather than
+	erroring. Writing an AnimationConstraint at render time does nothing
+	whatsoever -- physics runs afterwards and overwrites it -- which is exactly
+	how this first shipped: a live character with zero Motor6Ds on it and a pose
+	being applied to nothing at all. Measured on a real character: at
+	PreSimulation the hand moves from x +1.35 to +3.35, at render time and at
+	Heartbeat it does not move.
+
+	Both classes expose .Transform and both use the same joint NAMES, so the
+	pose table above is shared. Only the phase and the blending differ, and
+	supporting both is worth it while avatars exist on either rig.
 ]]
 local joints = setmetatable({}, { __mode = "k" })
 
@@ -146,9 +163,11 @@ local function jointsFor(character)
 
 	found = {}
 	for _, item in ipairs(character:GetDescendants()) do
-		if item:IsA("Motor6D") and pose[item.Name] then
+		local physical = item:IsA("AnimationConstraint")
+		if (physical or item:IsA("Motor6D")) and pose[item.Name] then
 			table.insert(found, {
-				motor = item,
+				joint = item,
+				physical = physical,
 				cframe = pose[item.Name],
 				sway = SWAY[item.Name],
 			})
@@ -164,49 +183,74 @@ local function jointsFor(character)
 	return found
 end
 
-local function applyPose(character, weight, clock)
+local function applyPose(character, weight, clock, physical)
 	local set = jointsFor(character)
 	if not set then
 		return
 	end
 	for _, entry in ipairs(set) do
-		local target = entry.cframe
-		if entry.sway then
-			local s = entry.sway
-			target = target * CFrame.Angles(0, 0,
-				s.amp * math.sin(clock * s.speed + (s.phase or 0)))
+		if entry.physical == physical then
+			local target = entry.cframe
+			if entry.sway then
+				local s = entry.sway
+				target = target * CFrame.Angles(0, 0,
+					s.amp * math.sin(clock * s.speed + (s.phase or 0)))
+			end
+
+			if physical then
+				--[[
+					ABSOLUTE, blended out from neutral. A relative lerp off the
+					joint's own value would compound here, because the solver
+					is also moving the limb toward the last target between our
+					writes -- so each frame would blend off a value we already
+					pushed and the pose would creep past itself. The physical
+					joint gets its easing for free anyway: writing a target
+					makes the solver travel to it over several frames, which is
+					why the blend can be this blunt and still look soft.
+				]]
+				entry.joint.Transform = CFrame.identity:Lerp(target, weight)
+			else
+				--[[
+					Kinematic joints have no solver to soften anything, so the
+					blend is the animation. Lerping off the joint's CURRENT
+					value blends over whatever the animator wrote this frame --
+					the live frame of the idle or the fall -- so weight 0 is
+					exactly the animation and weight 1 exactly the pose, and
+					neither end of the transition pops.
+				]]
+				entry.joint.Transform = entry.joint.Transform:Lerp(target, weight)
+			end
 		end
-		--[[
-			Blended over whatever the animator just wrote, not over the bind
-			pose. Reading Transform here gets the current frame of the idle or
-			the fall, so weight 0 is exactly the animation and weight 1 is
-			exactly the pose -- which means takeoff eases OUT of running and
-			landing eases back INTO falling, with no snap at either end.
-		]]
-		entry.motor.Transform = entry.motor.Transform:Lerp(target, weight)
 	end
 end
 
---[[ Runs for everyone, flying or not, so remote players are posed too -- and
-     keeps running through the blend-out, after the attribute is already off. ]]
-local function poseEveryone(dt)
+--[[
+	Runs for everyone, flying or not, so remote players are posed too -- and
+	keeps running through the blend-out, after the attribute is already off.
+
+	Called from BOTH phases. PreSimulation owns the clock, because it fires once
+	a frame and is the phase the physical joints are actually read in; the
+	render pass only writes, using the weight already computed.
+]]
+local function drive(dt, physical)
 	local clock = os.clock()
 	for _, other in ipairs(Players:GetPlayers()) do
 		local character = other.Character
 		if character then
-			local wants = character:GetAttribute(ASCENDING) and 1 or 0
 			local weight = weights[character] or 0
 
-			if weight ~= wants then
-				local rate = wants == 1 and BLEND_IN or BLEND_OUT
-				local step = rate * dt
-				weight = wants == 1 and math.min(wants, weight + step)
-					or math.max(wants, weight - step)
-				weights[character] = weight
+			if physical then
+				local wants = character:GetAttribute(ASCENDING) and 1 or 0
+				if weight ~= wants then
+					local rate = wants == 1 and BLEND_IN or BLEND_OUT
+					weight = wants == 1 and math.min(1, weight + rate * dt)
+						or math.max(0, weight - rate * dt)
+					weights[character] = weight
+				end
 			end
 
 			if weight > 0.001 then
-				applyPose(character, weight, clock)
+				applyPose(character, weight, clock, physical)
 			end
 		end
 	end
@@ -256,12 +300,21 @@ function Flight.init(ctx)
 	local heading
 
 	--[[
-		Character+1. The animator writes Transform during the Character step, so
-		this is the first opportunity to overwrite it, and being late is the
-		point rather than a compromise.
+		Both phases, because the two rig generations resolve in different ones.
+
+		PreSimulation lands between the animator and the physics solve, which is
+		the only window where a written AnimationConstraint target survives to
+		be acted on. Character+1 is the first opportunity to overwrite a Motor6D
+		after the animator has written it; being late is the point there rather
+		than a compromise. Each pass touches only the joints it owns.
 	]]
+	RunService.PreSimulation:Connect(function(dt)
+		drive(dt, true)
+	end)
 	RunService:BindToRenderStep("AscensionPose",
-		Enum.RenderPriority.Character.Value + 1, poseEveryone)
+		Enum.RenderPriority.Character.Value + 1, function(dt)
+			drive(dt, false)
+		end)
 
 	local function character()
 		return player.Character
