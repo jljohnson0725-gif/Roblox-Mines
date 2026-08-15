@@ -53,6 +53,7 @@ function PlayerState.snapshot(player)
 		upgrades = profile.upgrades or {},
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		onboarding = profile.onboarding, -- drives the first-session coach
+		jetpack = profile.jetpack == true, -- whether F does anything
 		stats = profile.stats,
 	}
 end

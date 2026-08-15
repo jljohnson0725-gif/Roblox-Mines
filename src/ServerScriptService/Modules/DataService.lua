@@ -62,6 +62,7 @@ local function newProfile()
 		]]
 		index = {},
 		redeemed = {}, -- [CODE] = true; codes are one use each
+		jetpack = false, -- bought once at the launch pad, then owned forever
 		--[[ First-session state. `drops` is how many guaranteed finds are left,
 		     `collected` records that a cash pile has actually been banked (the
 		     coach's last step reads it), and `done` latches once the whole loop
@@ -99,6 +100,7 @@ local function reconcile(profile)
 	if type(profile.redeemed) ~= "table" then
 		profile.redeemed = {}
 	end
+	profile.jetpack = profile.jetpack == true
 	if type(profile.onboarding) ~= "table" then
 		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false }
 	end

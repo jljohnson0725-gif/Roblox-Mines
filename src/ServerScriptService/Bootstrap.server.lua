@@ -26,6 +26,7 @@ local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
 local WheelService = require(Modules.WheelService)
 local CodeService = require(Modules.CodeService)
+local JetpackService = require(Modules.JetpackService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -69,6 +70,10 @@ HubService.startBlockDisplay()
 -- The wheel is the only source of Secrets. Its site was cleared above.
 WheelService.start()
 CodeService.start()
+
+-- The launch pad sells the sky. Built last because it raycasts for its ground,
+-- so everything that reshapes the terrain has to be finished first.
+JetpackService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)

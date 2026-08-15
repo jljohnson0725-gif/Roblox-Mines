@@ -236,6 +236,17 @@ Config.WheelOdds = {
 ]]
 Config.JetpackCost = 1000000
 
+--[[ Bought once and owned forever. It is a way to reach the game rather than a
+     consumable, and metering it per flight would turn every trip upward into a
+     small purchase decision -- exactly the friction that keeps people on the
+     ground. One payment, then the sky is simply open. ]]
+
+Config.FlightSpeed = 74 -- horizontal cruise, about 3x walking
+Config.FlightRise = 46 -- climb rate on the boost key
+Config.FlightCeiling = 900 -- islands live under this; above it you stop climbing
+Config.TakeoffSeconds = 1.4 -- the scripted rise before you get the controls
+Config.TakeoffRise = 62 -- and how fast that opening climb goes
+
 -- ── Codes ───────────────────────────────────────────────────────────────────
 --[[
 	Redeemable codes. Each one is once per player, recorded in the profile.

@@ -26,11 +26,20 @@ local FUNCTIONS = {
 	"SpinWheel", -- wager everything on the wheel
 	"WheelStake", -- what that wager currently consists of
 	"RedeemCode", -- one-use reward codes
+	"BuyJetpack", -- the one-time purchase at the launch pad
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
--- server -> client, fire and forget
+--[[
+	Fire and forget. Server -> client unless marked otherwise: the two
+	directions share a class, and the only client -> server event here is
+	SetFlying, which is announcing something rather than asking for it.
+]]
 local EVENTS = {
+	--[[ client -> server. The client owns its own character's physics, so it
+	     flies itself and merely reports it; the server decides whether that is
+	     allowed and publishes the pose attribute. ]]
+	"SetFlying",
 	"Sync", -- full player state (money / slots / inventory)
 	"Notify", -- toast message
 	"OpenPicker", -- a pad prompt was triggered; open the inventory picker for it

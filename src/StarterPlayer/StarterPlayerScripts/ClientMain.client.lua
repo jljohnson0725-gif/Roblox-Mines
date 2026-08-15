@@ -34,6 +34,7 @@ local IndexUI = require(UI.IndexUI)
 local WheelUI = require(UI.WheelUI)
 local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
+local Flight = require(UI.Flight)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ local state = {
 	income = 0,
 	stats = {},
 	upgrades = {},
+	jetpack = false, -- owned once, then forever; gates the F key
 	event = nil, -- global event clock, filled by RequestState / EventState
 }
 
@@ -89,6 +91,8 @@ local ctx = {
 		SpinWheel = Net.get("SpinWheel"),
 		WheelStake = Net.get("WheelStake"),
 		RedeemCode = Net.get("RedeemCode"),
+		BuyJetpack = Net.get("BuyJetpack"),
+		SetFlying = Net.get("SetFlying"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -117,6 +121,9 @@ local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
 Coach.init(ctx)
+-- Not a panel: it poses characters and drives flight, so it never enters the
+-- chrome-hiding set below.
+Flight.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
