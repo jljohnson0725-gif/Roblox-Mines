@@ -31,10 +31,19 @@ local JetpackService = {}
 
 local ASCENDING = "Ascending"
 
---[[ North side of the walk, opposite the upgrade kiosk at z = -100 and well
-     clear of the wheel at x = 0. Open sky above it, which is the only siting
-     requirement a launch pad really has. ]]
-local SITE = Vector3.new(-210, 0.3, -30)
+--[[
+	On the main walk between the wheel and the upgrade kiosk -- 73 studs from
+	one, 58 from the other -- so it is somewhere you already pass rather than
+	somewhere you have to be told about.
+
+	MEASURED, NOT PICKED. The first attempt at (-210, -30) put it three studs
+	from a map wall, which is the same mistake that once buried the auction
+	portal inside an archway. This came out of a sweep of the whole street for
+	ground at walk level with 18+ studs of clearance in all eight directions,
+	clear sky overhead, and 55+ studs from every base and landmark. This site
+	has 40 in every direction, which is the most the sweep measures.
+]]
+local SITE = Vector3.new(-70, 0.3, -50)
 
 local SKY = Color3.fromRGB(96, 188, 255)
 local STONE = Color3.fromRGB(64, 70, 96)
@@ -67,12 +76,9 @@ function JetpackService.build()
 	end
 
 	--[[ Drop the pad onto whatever the ground actually is here rather than
-	     trusting y = 0.3, the same way the wheel sites itself. ]]
-	local filter = RaycastParams.new()
-	filter.FilterType = Enum.RaycastFilterType.Exclude
-	filter.FilterDescendantsInstances = { Workspace:FindFirstChild("LaunchPad") }
-	local hit = Workspace:Raycast(Vector3.new(SITE.X, 200, SITE.Z),
-		Vector3.new(0, -400, 0), filter)
+	     trusting y = 0.3, the same way the wheel sites itself. The old pad is
+	     already destroyed above, so there is nothing to filter out. ]]
+	local hit = Workspace:Raycast(Vector3.new(SITE.X, 200, SITE.Z), Vector3.new(0, -400, 0))
 	if hit then
 		SITE = Vector3.new(SITE.X, hit.Position.Y + 0.2, SITE.Z)
 	end
