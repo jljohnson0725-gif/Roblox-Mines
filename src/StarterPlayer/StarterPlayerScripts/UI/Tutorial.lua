@@ -186,11 +186,21 @@ function Tutorial.init(ctx)
 
 	local shown
 
-	--[[ Lay the four shades around a rect. Everything is in offsets against the
-	     screen, so this does not care what the layout above it is doing. ]]
+	--[[
+		Lay the four shades around a rect.
+
+		ABSOLUTEPOSITION IS NOT THIS GUI'S SPACE. It is measured from the true
+		top-left of the viewport, while these frames are children of a ScreenGui
+		with IgnoreGuiInset set, whose own origin sits at (0, -58) -- above the
+		screen. Feeding one straight into the other put every shade and ring 58
+		pixels high, which is precisely how far off the first build looked.
+		Subtracting the gui's own origin converts one to the other.
+	]]
 	local function frame(rect)
 		local view = gui.AbsoluteSize
-		local x, y = rect.Position.X - PAD, rect.Position.Y - PAD
+		local origin = gui.AbsolutePosition
+		local x = rect.Position.X - origin.X - PAD
+		local y = rect.Position.Y - origin.Y - PAD
 		local w, h = rect.Size.X + PAD * 2, rect.Size.Y + PAD * 2
 
 		shades.Top.Position = UDim2.fromOffset(0, 0)
