@@ -57,7 +57,8 @@ Rarity.Tiers = {
 	},
 	Mythic = {
 		index = 6,
-		income = 1200,
+		-- 4500 x mul 0.90-1.20 -> 4.1K to 5.4K/s, i.e. "around 5K"
+		income = 4500,
 		weight = 0.8,
 		growth = 1.90,
 		color = Color3.fromRGB(255, 82, 110),
@@ -65,7 +66,13 @@ Rarity.Tiers = {
 	},
 	Secret = {
 		index = 7,
-		income = 5000,
+		--[[ 12000 x mul 1.00-1.20 -> 12K to 14.4K/s.
+
+		     Raised from 5000 because Secrets stopped being a drop and became the
+		     8% payout on wagering everything you own. A prize that rare has to
+		     out-earn a Mythic by a wide margin or the wheel is a bad bet on its
+		     own terms. ]]
+		income = 12000,
 		--[[
 			WHEEL ONLY. Secrets cannot be rolled in the Mines at any multiplier,
 			at any mine count, under any event. The only way to own one is to

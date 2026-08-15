@@ -120,13 +120,40 @@ Coach.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
-	Centralised here rather than in each panel: every one of them is
-	viewport-height, and the rule is the same for all of them.
+
+	WATCHED, NOT PUSHED. This started as a syncChrome() call at every place a
+	panel opened or closed, and it was wrong within a day: each panel also has
+	its own close button, which calls its own setVisible directly and never
+	reaches this file. Eight such paths existed. Closing Mines with the X left
+	the money counter hidden until something else happened to open and close a
+	panel -- which is exactly the "disappears randomly, comes back later"
+	behaviour that got reported.
+
+	Polling four booleans is far cheaper than the bug, and no future panel can
+	forget to opt in.
 ]]
+local function chromeHidden()
+	return minesUI.isVisible() or inventoryUI.isVisible() or upgradeUI.isVisible()
+		or auctionUI.isVisible() or indexUI.isVisible() or wheelUI.isVisible()
+		or codesUI.isVisible()
+end
+
+task.spawn(function()
+	local last = nil
+	while true do
+		local hidden = chromeHidden()
+		if hidden ~= last then
+			last = hidden
+			hud.setMoneyVisible(not hidden)
+		end
+		task.wait(0.1)
+	end
+end)
+
+-- kept so opening a panel hides the counter on the same frame rather than up to
+-- a tenth of a second later; the watcher above is what guarantees correctness
 local function syncChrome()
-	hud.setMoneyVisible(not (minesUI.isVisible() or inventoryUI.isVisible()
-		or upgradeUI.isVisible() or auctionUI.isVisible() or indexUI.isVisible()
-		or wheelUI.isVisible() or codesUI.isVisible()))
+	hud.setMoneyVisible(not chromeHidden())
 end
 
 

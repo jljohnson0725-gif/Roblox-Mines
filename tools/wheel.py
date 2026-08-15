@@ -16,7 +16,7 @@ CASH_PRIZE = 200_000
 MIN_STAKE = 1_500_000
 
 # Secret tier income, x character mul, x variant mult
-SECRET_BASE = 5000
+SECRET_BASE = 12000
 MULS = {"low": 1.00, "high": 1.20}
 VARIANTS = {"Normal": 1, "Gold": 2.5, "Diamond": 6, "Rainbow": 15,
             "Frost": 22, "Lava": 40, "Galaxy": 110}

@@ -2,8 +2,8 @@
 	Coach
 	The first five minutes.
 
-	One card, bottom-left above the rail, showing the single next thing to do.
-	It replaces a lone toast that fired once at spawn and was gone before anyone
+	One card in the bottom-left corner, showing the single next thing to do. It
+	replaces a lone toast that fired once at spawn and was gone before anyone
 	read it.
 
 	EVERY STEP IS DERIVED FROM REAL STATE, never from a script position. The
@@ -95,12 +95,24 @@ local STEPS = {
 function Coach.init(ctx)
 	local ui = {}
 
+	--[[
+		BOTTOM left, not top.
+
+		It was anchored at half the viewport height minus 212 pixels, which put
+		it around 150px down on a short window -- straight under Roblox's own
+		topbar, behind the logo and the menu button. Any position derived from
+		the viewport centre can land there on some window size.
+
+		The bottom-left corner cannot: the topbar is a fixed offset from the TOP,
+		so anchoring to the bottom is the one placement that clears it at every
+		height. It sits below the rail and left of the money counter.
+	]]
 	local card = Theme.frame({
 		parent = ctx.gui,
 		name = "Coach",
 		color = Theme.color.panel,
 		size = UDim2.fromOffset(W, 96),
-		position = UDim2.new(0, 12, 0.5, -212),
+		position = UDim2.new(0, 12, 1, -16),
 		anchor = Vector2.new(0, 1),
 		radius = 14,
 	})
