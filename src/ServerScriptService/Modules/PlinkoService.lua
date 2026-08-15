@@ -302,9 +302,21 @@ end
      them into six minutes of waiting. Your money is the limit now. ]]
 local inFlight = {}
 
---[[ A ceiling anyway, well above what a person can click. It is not there to
-     pace anyone -- it is there so a jammed prompt or a scripted client cannot
-     put a thousand parts on the island and take the server down with them. ]]
+--[[
+	A ceiling anyway, well above what a person can click. It is not there to
+	pace anyone -- it is there so a jammed prompt or a scripted client cannot
+	put a thousand parts on the island and take the server down with them.
+
+	IT COUNTS FLIGHTS, NOT BALL PARTS, and the two differ on purpose. A ball is
+	destroyed 0.8s after it settles, so counting Ball children reads higher
+	than this number by however many landed in the last fraction of a second.
+	Thirty rapid clicks measured 29 accepted and 28 parts present, which looked
+	like the cap leaking and was not: 25 went out, the 26th was refused, and
+	four more went as early balls settled and freed their slots. A burst is
+	slower than it looks -- InvokeServer blocks on the round trip, so thirty
+	clicks spaced 0.12s apart take about 5.3 seconds, comfortably longer than
+	the 4.5s a ball takes to land.
+]]
 local MAX_IN_FLIGHT = 25
 
 function PlinkoService.isNear(player)
