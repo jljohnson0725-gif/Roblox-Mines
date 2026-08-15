@@ -180,9 +180,19 @@ function Coach.init(ctx)
 	end
 
 	local shownKey
+	--[[ Held down while the tutorial is gating a step. Two prompts for one
+	     action is worse than either alone -- the card said "Play a round of
+	     Mines" beside a spotlight saying "Open Mines", and a new player has to
+	     work out whether those are one instruction or two. ]]
+	local suppressed = false
 
 	local function render()
 		local state = ctx.state
+
+		if suppressed then
+			card.Visible = false
+			return
+		end
 
 		local current, index
 		for i, step in ipairs(STEPS) do
@@ -230,6 +240,18 @@ function Coach.init(ctx)
 
 	ctx.onState(render)
 	render()
+
+	--[[ Published on ctx rather than returned, because Coach is initialised
+	     before Tutorial and the caller does not thread handles between them. ]]
+	ctx.coach = {
+		suppress = function(on)
+			local want = on and true or false
+			if want ~= suppressed then
+				suppressed = want
+				render()
+			end
+		end,
+	}
 
 	ui.root = card
 	return ui

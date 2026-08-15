@@ -185,6 +185,17 @@ function Tutorial.init(ctx)
 	body.ZIndex = 43
 
 	local shown
+	--[[ Only on change. Calling every frame would re-render Coach sixty times a
+	     second to tell it the same thing. ]]
+	local gating = false
+	local function setGating(on)
+		if on ~= gating then
+			gating = on
+			if ctx.coach then
+				ctx.coach.suppress(on)
+			end
+		end
+	end
 
 	--[[
 		Lay the four shades around a rect.
@@ -228,6 +239,7 @@ function Tutorial.init(ctx)
 		     whole loop has worked once, so this cannot reappear. ]]
 		if state.onboarding and state.onboarding.done then
 			root.Visible = false
+			setGating(false)
 			return
 		end
 
@@ -242,6 +254,7 @@ function Tutorial.init(ctx)
 
 		if not step then
 			root.Visible = false
+			setGating(false)
 			return
 		end
 
@@ -251,10 +264,12 @@ function Tutorial.init(ctx)
 		     rect at the origin, which is where a missing GuiObject reports. ]]
 		if not target or target.AbsoluteSize.X < 1 then
 			root.Visible = false
+			setGating(false)
 			return
 		end
 
 		root.Visible = true
+		setGating(true)
 		frame({ Position = target.AbsolutePosition, Size = target.AbsoluteSize })
 
 		if shown ~= step.key then
