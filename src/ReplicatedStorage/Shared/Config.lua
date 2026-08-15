@@ -231,6 +231,18 @@ Config.CodeAdmins = { 873380891 } -- UserIds that may redeem testOnly codes live
 Config.Codes = {
 	RELEASE = { money = 2500, blurb = "thanks for playing" },
 	BRAINROT = { money = 1000, blurb = "a little starter cash" },
+
+	--[[
+		Every Secret in the roster, one each, Normal variant.
+
+		`secrets = true` rather than a hardcoded pair of ids, so adding a third
+		Secret to Brainrots.lua extends this code automatically instead of
+		leaving it silently short.
+
+		testOnly, obviously. Handing these out free on a live server would empty
+		the wheel of its only reason to exist.
+	]]
+	SECRETS = { secrets = true, testOnly = true, blurb = "every Secret, one each" },
 }
 
 --[[

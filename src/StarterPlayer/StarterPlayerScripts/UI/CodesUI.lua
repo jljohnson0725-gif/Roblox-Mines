@@ -134,7 +134,17 @@ function CodesUI.init(ctx)
 		redeem.Text = "REDEEM"
 
 		if ok and result and result.ok then
-			status.Text = ("+%s — %s"):format(Format.money(result.money), result.blurb or "redeemed")
+			-- a code can pay money, brainrots, or both; "+$0" for a brainrot
+			-- code would read as a failure
+			local won
+			if result.granted and #result.granted > 0 and (result.money or 0) > 0 then
+				won = ("+%s and %d brainrots"):format(Format.money(result.money), #result.granted)
+			elseif result.granted and #result.granted > 0 then
+				won = table.concat(result.granted, ", ")
+			else
+				won = "+" .. Format.money(result.money or 0)
+			end
+			status.Text = ("%s — %s"):format(won, result.blurb or "redeemed")
 			status.TextColor3 = Theme.color.good
 			field.Text = ""
 		else

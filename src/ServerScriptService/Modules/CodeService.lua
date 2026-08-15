@@ -20,9 +20,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Net = require(Shared.Net)
 local Format = require(Shared.Format)
+local Brainrots = require(Shared.Brainrots)
+local Economy = require(Shared.Economy)
 
 local DataService = require(script.Parent.DataService)
 local PlayerState = require(script.Parent.PlayerState)
+local PlotService = require(script.Parent.PlotService)
 
 local CodeService = {}
 
@@ -74,14 +77,46 @@ function CodeService.redeem(player, input)
 	profile.redeemed[code] = true
 	profile.money += reward.money or 0
 
+	--[[ Granted brainrots go through the same door as a Mines cash-out: into the
+	     inventory AND into the Index, so a code-granted Secret counts as
+	     discovered exactly like an earned one. ]]
+	local granted = {}
+	if reward.secrets then
+		for _, char in ipairs(Brainrots.ByTier.Secret or {}) do
+			local item = {
+				uid = DataService.nextUid(profile),
+				charId = char.id,
+				variantId = "Normal",
+			}
+			table.insert(profile.inventory, item)
+			DataService.recordIndex(profile, item.charId, item.variantId)
+			table.insert(granted, Economy.displayName(item.charId, item.variantId))
+		end
+	end
+
+	--[[ Placed brainrots are rendered from the plot, so a code that hands out
+	     new ones has to refresh or they don't appear until something else does. ]]
+	if #granted > 0 then
+		PlotService.refresh(player)
+	end
+
 	PlayerState.push(player)
-	PlayerState.notify(player,
-		("%s — %s"):format(Format.money(reward.money or 0), reward.blurb or "redeemed"), "good")
+
+	local summary
+	if #granted > 0 and (reward.money or 0) > 0 then
+		summary = ("%s and %d brainrots"):format(Format.money(reward.money), #granted)
+	elseif #granted > 0 then
+		summary = table.concat(granted, ", ")
+	else
+		summary = Format.money(reward.money or 0)
+	end
+	PlayerState.notify(player, ("%s — %s"):format(summary, reward.blurb or "redeemed"), "good")
 
 	return {
 		ok = true,
 		code = code,
 		money = reward.money or 0,
+		granted = granted,
 		blurb = reward.blurb,
 	}
 end
