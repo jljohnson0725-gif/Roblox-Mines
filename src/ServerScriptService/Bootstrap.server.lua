@@ -27,6 +27,7 @@ local UpgradeService = require(Modules.UpgradeService)
 local WheelService = require(Modules.WheelService)
 local CodeService = require(Modules.CodeService)
 local JetpackService = require(Modules.JetpackService)
+local IslandService = require(Modules.IslandService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -74,6 +75,10 @@ CodeService.start()
 -- The launch pad sells the sky. Built last because it raycasts for its ground,
 -- so everything that reshapes the terrain has to be finished first.
 JetpackService.start()
+
+-- The sky. Islands are free-standing geometry with nothing under them, so
+-- they neither need the map nor care what it did.
+IslandService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)
