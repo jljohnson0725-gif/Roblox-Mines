@@ -31,28 +31,52 @@ local Sky = {}
 local GROUND_Y = 70 -- below this, exactly what MapStyle set
 local SKY_Y = 190 -- above this, full sunset; the island sits at 220
 
---[[ Where the climb ends up. Tuned on screen against the reference: a warm low
-     sun with enough ambient fill that the conifers stay green instead of going
-     to silhouette. Dropping brightness alone just turns everything black. ]]
+--[[
+	BLUE HOUR, NOT GOLDEN HOUR. The reference's palette is cool -- blue-grey
+	rock, dark green, neon accents -- and that is the light AFTER the sun has
+	gone, not during it. An orange sun sitting on the horizon at 17.9 gilds
+	every surface it touches and fights the whole palette; 18.45 puts it below
+	and leaves the sky doing the work.
+
+	THE GRADE COMES DOWN TOO. MapStyle runs a ColorCorrection at +0.30
+	saturation and Bloom at 0.60, which is right for a bright cartoon town at
+	midday and turns everything neon under a low sun. Twilight wants that
+	mostly off.
+
+	Ambient stays high. The failure mode when tuning this was reaching for
+	brightness to make it darker, which does not produce dusk -- it produces
+	black conifers.
+]]
 local SUNSET = {
-	clock = 17.9,
-	brightness = 1.8,
-	ambient = Color3.fromRGB(126, 122, 126),
-	outdoor = Color3.fromRGB(140, 137, 142),
-	top = Color3.fromRGB(78, 58, 32),
-	bottom = Color3.fromRGB(34, 38, 58),
-	fog = Color3.fromRGB(196, 172, 168),
-	density = 0.30,
-	haze = 1.5,
-	atmColor = Color3.fromRGB(198, 194, 212),
+	clock = 18.45,
+	brightness = 1.1,
+	ambient = Color3.fromRGB(128, 134, 158),
+	outdoor = Color3.fromRGB(140, 148, 176),
+	top = Color3.fromRGB(96, 104, 136),
+	bottom = Color3.fromRGB(40, 46, 72),
+	fog = Color3.fromRGB(150, 160, 196),
+	exposure = -0.1,
+	density = 0.2,
+	haze = 0.6,
+	atmColor = Color3.fromRGB(176, 186, 216),
+	saturation = -0.02,
+	contrast = 0.02,
+	ccTint = Color3.fromRGB(240, 234, 244),
+	bloom = 0.25,
 }
 
 local function atmosphere()
 	return Lighting:FindFirstChildOfClass("Atmosphere")
 end
 
+local function grade()
+	return Lighting:FindFirstChildWhichIsA("ColorCorrectionEffect"),
+		Lighting:FindFirstChildWhichIsA("BloomEffect")
+end
+
 local function capture()
 	local atm = atmosphere()
+	local cc, bloom = grade()
 	return {
 		clock = Lighting.ClockTime,
 		brightness = Lighting.Brightness,
@@ -61,15 +85,25 @@ local function capture()
 		top = Lighting.ColorShift_Top,
 		bottom = Lighting.ColorShift_Bottom,
 		fog = Lighting.FogColor,
+		exposure = Lighting.ExposureCompensation,
 		density = atm and atm.Density or 0.32,
 		haze = atm and atm.Haze or 1.1,
 		atmColor = atm and atm.Color or Color3.fromRGB(199, 209, 255),
+		saturation = cc and cc.Saturation or 0,
+		contrast = cc and cc.Contrast or 0,
+		ccTint = cc and cc.TintColor or Color3.new(1, 1, 1),
+		bloom = bloom and bloom.Intensity or 0,
 	}
 end
 
+local function lerp(a, b, t)
+	return a + (b - a) * t
+end
+
 local function apply(from, t)
-	Lighting.ClockTime = from.clock + (SUNSET.clock - from.clock) * t
-	Lighting.Brightness = from.brightness + (SUNSET.brightness - from.brightness) * t
+	Lighting.ClockTime = lerp(from.clock, SUNSET.clock, t)
+	Lighting.Brightness = lerp(from.brightness, SUNSET.brightness, t)
+	Lighting.ExposureCompensation = lerp(from.exposure, SUNSET.exposure, t)
 	Lighting.Ambient = from.ambient:Lerp(SUNSET.ambient, t)
 	Lighting.OutdoorAmbient = from.outdoor:Lerp(SUNSET.outdoor, t)
 	Lighting.ColorShift_Top = from.top:Lerp(SUNSET.top, t)
@@ -78,9 +112,19 @@ local function apply(from, t)
 
 	local atm = atmosphere()
 	if atm then
-		atm.Density = from.density + (SUNSET.density - from.density) * t
-		atm.Haze = from.haze + (SUNSET.haze - from.haze) * t
+		atm.Density = lerp(from.density, SUNSET.density, t)
+		atm.Haze = lerp(from.haze, SUNSET.haze, t)
 		atm.Color = from.atmColor:Lerp(SUNSET.atmColor, t)
+	end
+
+	local cc, bloom = grade()
+	if cc then
+		cc.Saturation = lerp(from.saturation, SUNSET.saturation, t)
+		cc.Contrast = lerp(from.contrast, SUNSET.contrast, t)
+		cc.TintColor = from.ccTint:Lerp(SUNSET.ccTint, t)
+	end
+	if bloom then
+		bloom.Intensity = lerp(from.bloom, SUNSET.bloom, t)
 	end
 end
 

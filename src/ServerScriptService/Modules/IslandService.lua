@@ -393,10 +393,21 @@ local function buildBeacon(island, rng, root)
 		color = island.accent,
 		material = Enum.Material.Neon,
 	}, root)
+	--[[
+		SHORT RANGE, and this matters more than it looks. At range 120 this one
+		light reached the whole island and floodlit it amber -- which made the
+		ground immune to every global lighting change, because it was not being
+		lit by the sun at all. Hours can disappear into retuning Lighting while
+		a single PointLight quietly overrides the lot.
+
+		The ring is Neon, so it glows on its own and needs no help to read from
+		the street. The light is only local spill, and at 64 studs up a range of
+		30 never touches the ground.
+	]]
 	local light = Instance.new("PointLight")
 	light.Color = island.accent
-	light.Brightness = 4
-	light.Range = 120
+	light.Brightness = 2
+	light.Range = 30
 	light.Parent = core
 
 	-- rocks caught in its pull, which is what makes the ring read as doing
