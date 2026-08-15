@@ -93,11 +93,44 @@ local POSE = {
 }
 
 --[[
+	Drift, so the pose is held rather than frozen.
+
+	A body pinned to six exact angles reads as a mannequin no matter how good
+	the angles are -- the eye notices the absence of motion faster than it
+	notices the pose. These are tiny: three degrees at the shoulders, under two
+	at the hips, on slow periods that don't share a common multiple, so the
+	limbs never visibly resynchronise into a pulse.
+
+	Left amplitudes are NEGATIVE because the left joints are mirrored. Adding
+	the same delta to both sides would raise one arm while lowering the other,
+	which is a flap; negating it makes both rise together, which is a breath.
+]]
+local SWAY = {
+	RightShoulder = { amp = math.rad(3.1), speed = 2.1 },
+	LeftShoulder = { amp = math.rad(-3.1), speed = 2.1 },
+	RightHip = { amp = math.rad(1.5), speed = 1.43, phase = 0.7 },
+	LeftHip = { amp = math.rad(-1.5), speed = 1.43, phase = 0.7 },
+}
+SWAY["Right Shoulder"] = SWAY.RightShoulder
+SWAY["Left Shoulder"] = SWAY.LeftShoulder
+SWAY["Right Hip"] = SWAY.RightHip
+SWAY["Left Hip"] = SWAY.LeftHip
+
+--[[ How fast the pose takes over and lets go. Fast in, because takeoff is a
+     burst; slower out, because landing should settle rather than snap. ]]
+local BLEND_IN = 5.0 -- per second, so ~0.2s to full
+local BLEND_OUT = 3.4
+
+--[[
 	Motor6Ds live scattered across the limbs, so finding them means walking the
 	whole character. Cached per character rather than searched every frame,
 	because this runs inside a render step for every flyer on the server.
 ]]
 local joints = setmetatable({}, { __mode = "k" })
+
+--[[ How much of the pose each character is currently wearing, 0 to 1. Weak
+     keys: a character that leaves the world takes its entry with it. ]]
+local weights = setmetatable({}, { __mode = "k" })
 
 local function jointsFor(character)
 	local found = joints[character]
@@ -114,7 +147,11 @@ local function jointsFor(character)
 	found = {}
 	for _, item in ipairs(character:GetDescendants()) do
 		if item:IsA("Motor6D") and pose[item.Name] then
-			table.insert(found, { motor = item, cframe = pose[item.Name] })
+			table.insert(found, {
+				motor = item,
+				cframe = pose[item.Name],
+				sway = SWAY[item.Name],
+			})
 		end
 	end
 
@@ -127,22 +164,50 @@ local function jointsFor(character)
 	return found
 end
 
-local function applyPose(character)
+local function applyPose(character, weight, clock)
 	local set = jointsFor(character)
 	if not set then
 		return
 	end
 	for _, entry in ipairs(set) do
-		entry.motor.Transform = entry.cframe
+		local target = entry.cframe
+		if entry.sway then
+			local s = entry.sway
+			target = target * CFrame.Angles(0, 0,
+				s.amp * math.sin(clock * s.speed + (s.phase or 0)))
+		end
+		--[[
+			Blended over whatever the animator just wrote, not over the bind
+			pose. Reading Transform here gets the current frame of the idle or
+			the fall, so weight 0 is exactly the animation and weight 1 is
+			exactly the pose -- which means takeoff eases OUT of running and
+			landing eases back INTO falling, with no snap at either end.
+		]]
+		entry.motor.Transform = entry.motor.Transform:Lerp(target, weight)
 	end
 end
 
---[[ Runs for everyone, flying or not, so remote players are posed too. ]]
-local function poseEveryone()
+--[[ Runs for everyone, flying or not, so remote players are posed too -- and
+     keeps running through the blend-out, after the attribute is already off. ]]
+local function poseEveryone(dt)
+	local clock = os.clock()
 	for _, other in ipairs(Players:GetPlayers()) do
 		local character = other.Character
-		if character and character:GetAttribute(ASCENDING) then
-			applyPose(character)
+		if character then
+			local wants = character:GetAttribute(ASCENDING) and 1 or 0
+			local weight = weights[character] or 0
+
+			if weight ~= wants then
+				local rate = wants == 1 and BLEND_IN or BLEND_OUT
+				local step = rate * dt
+				weight = wants == 1 and math.min(wants, weight + step)
+					or math.max(wants, weight - step)
+				weights[character] = weight
+			end
+
+			if weight > 0.001 then
+				applyPose(character, weight, clock)
+			end
 		end
 	end
 end
@@ -186,6 +251,9 @@ function Flight.init(ctx)
 	local player = Players.LocalPlayer
 	local flying = false
 	local rig, takeoffAt
+	-- Facing, held between frames so a hover keeps the heading you arrived with
+	-- rather than snapping back to whatever the humanoid last wanted.
+	local heading
 
 	--[[
 		Character+1. The animator writes Transform during the Character step, so
@@ -247,6 +315,7 @@ function Flight.init(ctx)
 
 		flying = true
 		takeoffAt = os.clock()
+		heading = root.CFrame.Rotation -- take off facing where you were standing
 		rig = buildRig(root)
 		model:SetAttribute(ASCENDING, true) -- locally, so the pose is instant
 		ctx.remotes.SetFlying:FireServer(true)
@@ -294,8 +363,15 @@ function Flight.init(ctx)
 				The opening climb is on rails and ignores input. It is the beat
 				the pose exists for -- letting someone strafe out of it would
 				turn an ascension into a jump.
+
+				It ACCELERATES rather than holding one speed: a third of the
+				rise at the start, full by the end. A constant velocity from a
+				standing start looks like being pulled up on a wire, because
+				nothing in the world begins moving at its top speed. Easing in
+				reads as lift building underneath you.
 			]]
-			vertical = Config.TakeoffRise
+			local t = elapsed / Config.TakeoffSeconds
+			vertical = Config.TakeoffRise * (0.34 + 0.66 * t * t)
 			horizontal = Vector3.zero
 		else
 			--[[
@@ -319,10 +395,28 @@ function Flight.init(ctx)
 
 		rig.velocity.VectorVelocity = Vector3.new(horizontal.X, vertical, horizontal.Z)
 
-		-- Face the direction of travel; hold the last heading when hovering.
-		if horizontal.Magnitude > 1 then
-			rig.orientation.CFrame = CFrame.lookAt(Vector3.zero,
+		--[[
+			Face the direction of travel and LEAN INTO IT, up to 20 degrees at
+			full speed. This is the one piece of the animation that isn't in the
+			joints, and it does more work than any of them: a spread-eagle body
+			travelling perfectly upright looks like it is being slid across the
+			sky, whereas the same body tipped forward looks like it is driving
+			itself. Negative pitch, because the character's forward is -Z and a
+			forward lean means the nose goes down.
+
+			Eased rather than set, so changing direction banks over instead of
+			flicking. Heading holds when you stop, so a hover keeps the facing
+			you arrived with.
+		]]
+		local speed = Vector3.new(horizontal.X, 0, horizontal.Z).Magnitude
+		local lean = math.rad(20) * math.min(speed / Config.FlightSpeed, 1)
+		if speed > 1 then
+			heading = CFrame.lookAt(Vector3.zero,
 				Vector3.new(horizontal.X, 0, horizontal.Z).Unit)
+		end
+		if heading then
+			rig.orientation.CFrame = rig.orientation.CFrame:Lerp(
+				heading * CFrame.Angles(-lean, 0, 0), 0.18)
 		end
 	end)
 
