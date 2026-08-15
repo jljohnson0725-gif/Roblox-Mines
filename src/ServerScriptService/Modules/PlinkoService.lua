@@ -343,7 +343,12 @@ function PlinkoService.build(island)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Price"
 	gui.Size = UDim2.fromOffset(190, 26)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 2.2, 0)
+	--[[ BELOW the console, not above it. Above put it level with the bin
+	     plates and it drew straight across the payout numbers -- the same
+	     collision the PLINKO billboard had, moved down a few studs and
+	     repeated, because I fixed the sign without checking what else the
+	     console sits beside. ]]
+	gui.StudsOffsetWorldSpace = Vector3.new(0, -2.6, 0)
 	gui.MaxDistance = 150
 	gui.Adornee = console
 	gui.Parent = console
