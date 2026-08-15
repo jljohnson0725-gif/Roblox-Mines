@@ -154,7 +154,11 @@ function PlinkoService.build(island)
 	--[[ Stood at the middle of the island's clearing, face turned toward the
 	     rim you arrive over, so the board is side-on as you land rather than
 	     edge-on. ]]
-	local base = island.center + Vector3.new(0, 4, 0)
+	--[[ Nine, not four. At four the frame met the clearing right where the
+	     ground rises, so the machine read as sinking into the dirt rather than
+	     standing on it. It sits on a plinth now, which is what gives the eye
+	     the line between object and ground that was missing. ]]
+	local base = island.center + Vector3.new(0, 9, 0)
 	board = CFrame.new(base) * CFrame.Angles(0, math.rad(180), 0)
 		* CFrame.new(0, BINS_H + FIELD / 2, 0)
 
@@ -180,23 +184,35 @@ function PlinkoService.build(island)
 		cframe = at(0, -total / 2), color = COL.frame,
 		material = Enum.Material.Metal }, root)
 
+	-- the plinth: two courses, so it steps down to the ground instead of
+	-- meeting it in one abrupt edge
+	part({ name = "Plinth", size = Vector3.new(HALF * 2 + 7, 3, DEPTH + 5),
+		cframe = at(0, -total / 2 - 2.1), color = COL.frame,
+		material = Enum.Material.Metal, collide = true }, root)
+	part({ name = "PlinthBase", size = Vector3.new(HALF * 2 + 11, 3.4, DEPTH + 9),
+		cframe = at(0, -total / 2 - 5.3), color = COL.back,
+		material = Enum.Material.Slate, collide = true }, root)
+
 	--[[
 		TRIM AND A HEADER. Without them this is a dark rectangle with dots on
 		it -- structurally a Plinko board and visually an unfinished one. A lit
 		edge round the face and a marquee across the top are what make it read
 		as a machine somebody built rather than geometry somebody placed.
 
-		The trim sits a quarter stud proud of the frame. Flush with it would be
-		coplanar, and coplanar is what makes the grass flicker.
+		THE TRIM HAS TO CLEAR THE FRAME, not touch it. At DEPTH/2 + 0.55 its
+		front face landed on z = 2.80 -- exactly the side frame's front plane --
+		and flickered for the same depth-buffer reason the grass did. Proud of a
+		surface is not the same as clear of it; the number has to be checked
+		against what is actually there.
 	]]
 	for _, side in ipairs({ -1, 1 }) do
 		part({ name = "Trim", size = Vector3.new(0.5, total, 0.5),
-			cframe = at(side * (HALF + 0.7), 0, DEPTH / 2 + 0.55),
+			cframe = at(side * (HALF + 0.7), 0, DEPTH / 2 + 1.15),
 			color = COL.gold, material = Enum.Material.Neon }, root)
 	end
 	for _, edge in ipairs({ -1, 1 }) do
 		part({ name = "Trim", size = Vector3.new(HALF * 2 + 4, 0.5, 0.5),
-			cframe = at(0, edge * (total / 2 + 0.3), DEPTH / 2 + 0.55),
+			cframe = at(0, edge * (total / 2 + 0.3), DEPTH / 2 + 1.15),
 			color = COL.gold, material = Enum.Material.Neon }, root)
 	end
 
