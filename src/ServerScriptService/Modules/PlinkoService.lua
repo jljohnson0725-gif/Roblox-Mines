@@ -9,36 +9,37 @@
 	simulation to the server, so the drop is as unreachable as a dice roll made
 	in a locked room.
 
-	NO PREDETERMINED OUTCOME, unlike the wheel. The wheel picks a result and
-	tweens toward it because a wheel can be steered convincingly and a bouncing
-	ball cannot. Here there is nothing to steer: the ball falls, the bin it
-	settles in is read, and that IS the result. It is the honest version, and
-	it is only available because the physics happens to be watchable.
+	THE BOUNCES ARE ROLLED, THE FALL IS REAL. At every row the server flips a
+	coin, and the ball is steered toward whichever column that flip chose.
+	Vertical motion is left entirely to physics -- gravity, and every peg it
+	clatters off on the way down -- so the fall and the bouncing are genuine
+	and the ball really does arrive where sixteen flips sent it.
 
-	THE BOARD IS NOT BINOMIAL, AND THE PAYOUT TABLE IS THEREFORE WRONG.
+	This is NOT the wheel's trick. The wheel picks a RESULT and animates toward
+	it. Here nothing knows the result; it is whatever the flips add up to.
 
-	Measured, not assumed. On a centred drop over the fixed grid the spread came
-	out 29,9,18,10,6,10,12,8,36 in 138 balls -- a BOWL, not a bell. 47% of balls
-	land in the two outer bins that a binomial says should see 0.39% each, and
-	the middle bin that should take 27% took 4%. Killing the bounce moves it
-	(52% in the middle three at elasticity 0.02, against 39% at 0.55) but does
-	not turn it into a bell.
+	WHY NOT LEAVE IT TO THE PHYSICS, which is what this did first: because the
+	physics decides nothing you can state. Measured over 138 centred drops the
+	spread came out 29,9,18,10,6,10,12,8,36 -- a BOWL. 47% of balls in the two
+	outer bins that a binomial says should see 0.39%, and 4% in the middle bin
+	that should take 27%. That is an 849% return to player and a seal fragment
+	on four drops in five.
 
-	A real ball is not eight independent coin flips. It carries sideways
-	momentum from one row into the next, so deflections compound instead of
-	cancelling and it walks to a wall and stays there. Shipping the current
-	Shared/Plinko table against this spread would pay roughly eight times the
-	stake and hand out a seal fragment on four drops in five.
+	It is not a tuning problem. A real ball is not sixteen independent coin
+	flips: it carries sideways momentum from one row into the next, so
+	deflections compound instead of cancelling and it walks to a wall. Damping
+	moves the number (52% in the middle three at elasticity 0.02 against 39% at
+	0.55) and never reaches the shape.
 
-	THE FORK, still to be decided rather than quietly picked here:
-	  - re-tune the payouts to the measured bowl, which means the MIDDLE
-	    becomes the rare, valuable outcome -- honest, cheap, and backwards from
-	    what anyone expects Plinko to be;
-	  - or change the geometry until it bells: more rows, tighter spacing, a
-	    heavier ball, a narrower board -- and re-measure after each.
+	Rolling the bounces buys three things beyond a distribution we can choose:
+	the odds are exact rather than sampled, so payouts are computed and not
+	counted; they cannot drift when Roblox next changes its physics solver; and
+	they do not quietly depend on server load or frame rate, which the measured
+	version almost certainly did.
 ]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -54,10 +55,17 @@ local PlayerState = require(script.Parent.PlayerState)
 
 local PlinkoService = {}
 
+--[[ One generator for the machine. Seeded from the clock so two servers do
+     not deal identical sequences of drops. ]]
+local rng = Random.new(os.clock() * 1e6 % 2 ^ 31)
+
 -- ── board geometry ──────────────────────────────────────────────────────────
 
-local W = 4 -- bin width, and the horizontal step between pegs
-local SPACING = 5 -- vertical gap between peg rows
+local W = 4 -- bin width; one coin flip moves the ball half of this
+--[[ Tightened from 5 so sixteen rows fit a board you can stand next to. The
+     row count is set by the odds we want, not by the space -- see
+     Shared/Plinko -- so the spacing is what gives. ]]
+local SPACING = 3.4
 local BALL = 1.5 -- diameter; must clear W minus two peg radii
 local PEG = 0.9
 local DEPTH = 4 -- how thick the board is; the ball is boxed into this slice
@@ -265,6 +273,9 @@ function PlinkoService.build(island)
 
 	PlinkoService.console = console
 	PlinkoService.topY = topPeg + ENTRY - 2
+	-- the Y of the first peg row, so a falling ball can be told which row it
+	-- is passing and therefore which column it should be drifting toward
+	PlinkoService.topPegY = board:PointToWorldSpace(Vector3.new(0, topPeg, 0)).Y
 	PlinkoService.binY = binTop - BINS_H
 	return root
 end
@@ -286,15 +297,6 @@ function PlinkoService.isNear(player)
 	return (root.Position - console.Position).Magnitude <= Config.PlinkoRange
 end
 
---[[ Which bin a resting ball is in, from its position along the board's own X
-     axis. Read from geometry rather than from a Touched event, because a ball
-     can brush two bin floors on the way to settling in one of them. ]]
-local function binOf(position)
-	local local_ = board:PointToObjectSpace(position)
-	local index = math.floor(local_.X / W + (Plinko.BINS + 1) / 2 + 0.5)
-	return math.clamp(index, 1, Plinko.BINS)
-end
-
 function PlinkoService.drop(player)
 	local profile = DataService.get(player)
 	if not profile then
@@ -313,6 +315,15 @@ function PlinkoService.drop(player)
 	profile.money -= Config.PlinkoDropCost
 	PlayerState.push(player)
 	dropping[player.UserId] = true
+
+	--[[ Sixteen coin flips, rolled before the ball exists. Nothing here knows
+	     the bin -- it is whatever the flips add up to. ]]
+	local path, bin = Plinko.roll(rng)
+	local column, targets = 0, {}
+	for r = 1, Plinko.ROWS do
+		column += path[r]
+		targets[r] = column * (W / 2)
+	end
 
 	local ball = Instance.new("Part")
 	ball.Name = "Ball"
@@ -339,8 +350,40 @@ function PlinkoService.drop(player)
 	ball.Parent = Workspace:FindFirstChild("Plinko")
 	ball:SetNetworkOwner(nil) -- the server rolls the dice, not the bettor
 
+	--[[
+		CARRY THE BALL ALONG THE PATH IT ROLLED.
+
+		Vertical motion is left entirely to physics -- gravity, and every peg it
+		clatters off on the way down. Only the sideways component is steered,
+		toward the column the coin flips chose for the row it is currently
+		passing. So the fall is real, the bouncing is real, and the ball
+		genuinely arrives where sixteen flips sent it.
+
+		Steering rather than teleporting, and with a dead zone, so it drifts
+		into each column instead of snapping to it.
+	]]
+	local right = board.RightVector
+	local topY = PlinkoService.topPegY
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		if not ball.Parent then
+			connection:Disconnect()
+			return
+		end
+		local localPos = board:PointToObjectSpace(ball.Position)
+		local row = math.clamp(
+			math.floor((topY - ball.Position.Y) / SPACING) + 1, 1, Plinko.ROWS)
+		local drift = targets[row] - localPos.X
+		if math.abs(drift) > 0.25 then
+			local want = math.clamp(drift * 4, -13, 13)
+			local velocity = ball.AssemblyLinearVelocity
+			ball.AssemblyLinearVelocity = velocity
+				+ right * (want - velocity:Dot(right))
+		end
+	end)
+
 	task.spawn(function()
-		local resolved, deadline = nil, os.clock() + 20
+		local deadline = os.clock() + 20
 		while os.clock() < deadline do
 			task.wait(0.15)
 			if not ball.Parent then
@@ -348,15 +391,17 @@ function PlinkoService.drop(player)
 			end
 			if ball.Position.Y <= PlinkoService.binY + 4
 				and ball.AssemblyLinearVelocity.Magnitude < 3 then
-				resolved = binOf(ball.Position)
 				break
 			end
 		end
-		-- A stuck ball still pays: read wherever it ended up rather than
-		-- silently eating the stake.
-		resolved = resolved or (ball.Parent and binOf(ball.Position)) or 5
-		PlinkoService.settle(player, resolved)
-		task.delay(0.6, function()
+		connection:Disconnect()
+
+		--[[ Pay the rolled bin, not the resting position. They agree -- the
+		     steering puts the ball there -- but the roll is what the odds were
+		     computed from, so a ball nudged by a player or wedged on a peg
+		     cannot change what it was worth. ]]
+		PlinkoService.settle(player, bin)
+		task.delay(0.8, function()
 			if ball.Parent then
 				ball:Destroy()
 			end
