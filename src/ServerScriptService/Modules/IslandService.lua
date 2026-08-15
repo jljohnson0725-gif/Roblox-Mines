@@ -364,7 +364,13 @@ end
 ]]
 local function buildBeacon(island, rng, root)
 	local c = island.center
-	local at = c + Vector3.new(0, 64, 0)
+	--[[ 104, not 64. The Plinko board grew to sixteen rows and 71 studs tall,
+	     and its top reached y+76 -- straight through a ring placed for a much
+	     shorter machine. The 9-stud neon core ended up hanging in front of the
+	     peg field, which from the front reads as a giant yellow blob sitting on
+	     the board. Anything sited over the clearing has to clear whatever is
+	     standing in it. ]]
+	local at = c + Vector3.new(0, 104, 0)
 	-- high and wide enough to clear the outcrops and read from the street
 	local segments, ringRadius = 16, 32
 

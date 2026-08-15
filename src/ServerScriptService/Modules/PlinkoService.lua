@@ -66,7 +66,10 @@ local W = 4 -- bin width; one coin flip moves the ball half of this
      row count is set by the odds we want, not by the space -- see
      Shared/Plinko -- so the spacing is what gives. ]]
 local SPACING = 3.4
-local BALL = 1.5 -- diameter; must clear W minus two peg radii
+--[[ Purely a visual choice now. It used to have to fit between two pegs; the
+     ball passes through them, so the only question is whether you can follow
+     it. At 1.5 against a 39-stud board it was a speck you lost track of. ]]
+local BALL = 2.8
 local PEG = 0.9
 local DEPTH = 4 -- how thick the board is; the ball is boxed into this slice
 
