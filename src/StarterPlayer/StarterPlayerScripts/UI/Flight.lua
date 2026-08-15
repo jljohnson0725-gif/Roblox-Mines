@@ -122,6 +122,21 @@ local BLEND_IN = 5.0 -- per second, so ~0.2s to full
 local BLEND_OUT = 3.4
 
 --[[
+	BELLY TO THE SKY. The body lies back until its front faces straight up, so
+	you rise on your back with the chest leading -- lifted, rather than
+	steering. This is the orientation the spread pose was always for; standing
+	bolt upright made the same six angles read as a man doing star jumps.
+
+	It also replaces the forward lean, which was the wrong instinct. Pitching
+	the nose DOWN at speed turned the ascension into a dive: legs up, face
+	down, the exact opposite of the shape. Travel now tips the body back TOWARD
+	upright instead, so moving fast reads as leading with the head while the
+	belly still faces the sky.
+]]
+local BELLY_UP = math.rad(90)
+local LEAN = math.rad(25) -- taken off BELLY_UP at full speed, never added to it
+
+--[[
 	TWO RIG GENERATIONS, and the joint class is the entire difference.
 
 	The classic rig joins limbs with Motor6D, which is KINEMATIC: the animator
@@ -449,27 +464,29 @@ function Flight.init(ctx)
 		rig.velocity.VectorVelocity = Vector3.new(horizontal.X, vertical, horizontal.Z)
 
 		--[[
-			Face the direction of travel and LEAN INTO IT, up to 20 degrees at
-			full speed. This is the one piece of the animation that isn't in the
-			joints, and it does more work than any of them: a spread-eagle body
-			travelling perfectly upright looks like it is being slid across the
-			sky, whereas the same body tipped forward looks like it is driving
-			itself. Negative pitch, because the character's forward is -Z and a
-			forward lean means the nose goes down.
+			Lie back until the belly faces the sky, and give some of that back
+			as you pick up speed.
 
-			Eased rather than set, so changing direction banks over instead of
-			flicking. Heading holds when you stop, so a hover keeps the facing
-			you arrived with.
+			Positive pitch, because the character's forward is -Z: rotating
+			about X by +90 swings that -Z to point straight up, which puts the
+			chest and face to the sky and the head away from the direction of
+			travel. Hovering, that is a body being lifted. Moving, LEAN takes
+			25 degrees back off it so you lead with the head rather than
+			travelling flat on your back like cargo.
+
+			Eased rather than set, so a change of direction banks over instead
+			of flicking. Heading holds when you stop, so a hover keeps the
+			facing you arrived with.
 		]]
 		local speed = Vector3.new(horizontal.X, 0, horizontal.Z).Magnitude
-		local lean = math.rad(20) * math.min(speed / Config.FlightSpeed, 1)
+		local lean = LEAN * math.min(speed / Config.FlightSpeed, 1)
 		if speed > 1 then
 			heading = CFrame.lookAt(Vector3.zero,
 				Vector3.new(horizontal.X, 0, horizontal.Z).Unit)
 		end
 		if heading then
 			rig.orientation.CFrame = rig.orientation.CFrame:Lerp(
-				heading * CFrame.Angles(-lean, 0, 0), 0.18)
+				heading * CFrame.Angles(BELLY_UP - lean, 0, 0), 0.18)
 		end
 	end)
 
