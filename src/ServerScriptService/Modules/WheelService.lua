@@ -41,6 +41,12 @@ local WheelService = {}
 
 local rng = Random.new()
 local spinning = {} -- [userId] = true while a spin resolves
+--[[ Ten seconds and nine turns. The whole drama of a wheel is the stretch where
+     it is barely moving and might still crawl one more segment, and that only
+     works if there is enough of it. Nine turns keeps the opening fast enough
+     that the long tail reads as deceleration rather than as a slow wheel. ]]
+local SPIN_SECONDS = 10
+local SPIN_TURNS = 9
 
 -- Set by WheelBuild once the machine exists.
 WheelService.anchor = nil
@@ -188,7 +194,7 @@ function WheelService.spin(player)
 
 	-- turn the physical wheel to the wedge that was rolled, so anyone standing
 	-- there watches the same result the player gets
-	WheelService.playSpin(results[#results].segment, 5, outcome)
+	WheelService.playSpin(results[#results].segment, SPIN_TURNS, outcome)
 
 	local payload = {
 		ok = true,
@@ -245,6 +251,7 @@ local RADIUS = 26
      Built facing +Z first, which pointed it at the map edge -- from the
      approach you saw the blank backing plate and none of the wedges. ]]
 local FACE_Z = -6
+
 
 --[[
 	Deliberately NOT neon, except the Secret slivers.
@@ -719,36 +726,51 @@ function WheelService.playSpin(segment, turns, outcome)
 	local hub = face.PrimaryPart
 	local base = face:GetPivot()
 	local target = -math.rad(Wheel.angleOf(segment))
-	local total = math.rad(360 * (turns or 5)) + target
+	local total = math.rad(360 * (turns or SPIN_TURNS)) + target
+
+	--[[ Which ARC each wedge belongs to. The tick fires on arc changes, not
+	     wedge changes: a real wheel has one peg per segment, and ticking per
+	     wedge meant 100 a turn -- peaking near 400 a second, which is a buzz
+	     rather than a tick. Twelve a turn is a wheel. ]]
+	local arcOf = {}
+	for arcIndex, run in ipairs(Wheel.runs()) do
+		for w = run.first, run.first + run.count - 1 do
+			arcOf[w] = arcIndex
+		end
+	end
 
 	task.spawn(function()
-		--[[ Five seconds, not three. The whole drama of a wheel is the part
-		     where it is barely moving and might still crawl one more wedge, and
-		     that needs long enough to actually hurt. ]]
-		local duration = 5.2
 		local start = os.clock()
 		local origin = base
-		local lastWedge = -1
+		local lastArc = -1
 
 		while true do
-			local t = (os.clock() - start) / duration
+			local t = (os.clock() - start) / SPIN_SECONDS
 			if t >= 1 then
 				break
 			end
-			-- quartic ease-out: leaves the line hard, then a long crawl
-			local eased = 1 - (1 - t) ^ 4
+
+			--[[ Power 2.6, not 4.
+
+			     Quartic was fine over five seconds and useless over ten: it
+			     leaves 0.4% of the rotation after seven and a half, so the wheel
+			     appears to stop and then creeps through three seconds of dead
+			     air. 2.6 still throws it off the line hard but keeps 16% of the
+			     turn for the last half, which is where the tension lives. ]]
+			local eased = 1 - (1 - t) ^ 2.6
 			local turned = total * eased
 			face:PivotTo(origin * CFrame.Angles(0, 0, turned))
 
-			--[[ One tick per wedge that passes the pointer. Because the easing
-			     slows, the ticks slow with it -- the sound IS the deceleration,
-			     which is why it is driven off angle rather than a timer. ]]
+			--[[ Driven off ANGLE, never a timer, so the ticks slow exactly as
+			     the wheel does -- the sound IS the deceleration. ]]
 			local wedge = math.floor(math.deg(turned) / (360 / Wheel.SEGMENTS))
-			if wedge ~= lastWedge then
-				lastWedge = wedge
+				% Wheel.SEGMENTS + 1
+			local arc = arcOf[wedge]
+			if arc ~= lastArc then
+				lastArc = arc
 				local tick = hub:FindFirstChild("Tick")
 				if tick then
-					tick.PlaybackSpeed = 0.9 + math.random() * 0.2
+					tick.PlaybackSpeed = 0.92 + math.random() * 0.16
 					tick:Play()
 				end
 			end
@@ -757,10 +779,8 @@ function WheelService.playSpin(segment, turns, outcome)
 
 		face:PivotTo(origin * CFrame.Angles(0, 0, total))
 
-		local sound = hub:FindFirstChild(outcome == "secret" and "Win" or "Lose")
-		if outcome == "cash" then
-			sound = hub:FindFirstChild("Win")
-		end
+		local sound = hub:FindFirstChild(
+			(outcome == "secret" or outcome == "cash") and "Win" or "Lose")
 		if sound then
 			sound:Play()
 		end
