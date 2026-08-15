@@ -37,6 +37,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 
+local Theme = require(script.Parent.Theme)
+
 local Flight = {}
 
 --[[ Set by the server on any character that is currently flying. ]]
@@ -306,10 +308,52 @@ local function buildRig(root)
 	return { attachment = attachment, velocity = velocity, orientation = orientation }
 end
 
+--[[
+	The controls, on screen, for as long as you are in the air.
+
+	WITHOUT THIS THE JETPACK LOOKS BROKEN. The takeoff is on rails for 1.4
+	seconds and climbs about fifty studs, and then vertical speed drops to zero
+	unless the climb key is held -- so a player who doesn't know about the key
+	rises to roughly the height of the wheel, stops dead, and reads that as the
+	jetpack having a ceiling. It was reported exactly that way, twice, and the
+	first time I went looking for a collision instead of an unlabelled control.
+
+	Shown only while flying. A permanent legend would be clutter for the
+	twenty-nine minutes an hour nobody is in the air.
+]]
+local function buildHint(gui)
+	local hint = Theme.frame({
+		parent = gui,
+		name = "FlightHint",
+		color = Theme.color.panel,
+		transparency = 0.15,
+		size = UDim2.fromOffset(310, 30),
+		-- above the money counter, clear of the coach card in the corner
+		position = UDim2.new(0.5, 0, 1, -92),
+		anchor = Vector2.new(0.5, 1),
+		radius = 10,
+	})
+	hint.Visible = false
+	Theme.stroke(hint, Theme.color.line, 2)
+
+	local label = Theme.label({
+		parent = hint,
+		name = "Keys",
+		text = "SPACE  climb     SHIFT  drop     F  land",
+		font = Theme.font.black,
+		textSize = 12,
+		color = Theme.color.dim,
+		size = UDim2.fromScale(1, 1),
+	})
+	label.TextStrokeTransparency = 0.6
+	return hint
+end
+
 function Flight.init(ctx)
 	local player = Players.LocalPlayer
 	local flying = false
 	local rig, takeoffAt
+	local hint = buildHint(ctx.gui)
 	-- Facing, held between frames so a hover keeps the heading you arrived with
 	-- rather than snapping back to whatever the humanoid last wanted.
 	local heading
@@ -382,6 +426,7 @@ function Flight.init(ctx)
 		end
 
 		flying = true
+		hint.Visible = true
 		takeoffAt = os.clock()
 		heading = root.CFrame.Rotation -- take off facing where you were standing
 		rig = buildRig(root)
@@ -505,6 +550,7 @@ function Flight.init(ctx)
 	     replaced, and the next spawn inherits nothing. ]]
 	player.CharacterRemoving:Connect(function()
 		flying = false
+		hint.Visible = false
 		rig = nil
 	end)
 
