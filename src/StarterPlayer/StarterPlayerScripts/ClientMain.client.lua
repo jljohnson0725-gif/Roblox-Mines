@@ -35,6 +35,7 @@ local WheelUI = require(UI.WheelUI)
 local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
 local Flight = require(UI.Flight)
+local Tutorial = require(UI.Tutorial)
 local Sky = require(UI.Sky)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
@@ -122,6 +123,8 @@ local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
 Coach.init(ctx)
+-- Gates the first two steps; Coach carries the rest as a suggestion.
+Tutorial.init(ctx)
 -- Not a panel: it poses characters and drives flight, so it never enters the
 -- chrome-hiding set below.
 Flight.init(ctx)
