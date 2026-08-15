@@ -27,6 +27,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
+local Cutscene = require(script.Parent.Cutscene)
 
 local Tutorial = {}
 
@@ -68,9 +69,55 @@ local STEPS = {
 	},
 }
 
+--[[
+	The opening shots, against anchors the world builds itself around rather
+	than coordinates typed in by hand: the Mines console at the west end of the
+	street, and the player. Move the landmark and the cutscene follows it.
+]]
+local function opening(character)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	--[[ The model's pivot, not a named part inside it. The first version looked
+	     for a "Console" child, which MinesLandmark does not build -- it makes
+	     Seg, Shaft and SignAnchor -- so the lookup returned nil and quietly
+	     dropped the only shot the cutscene exists for. A pivot cannot be
+	     misspelled. ]]
+	local mines = workspace:FindFirstChild("MinesLandmark")
+	local landmark = mines and mines:GetPivot().Position
+	local here = root and root.Position or Vector3.new(0, 6, 0)
+
+	local shots = {
+		{ focus = here, offset = Vector3.new(-30, 46, 52), aim = Vector3.new(0, 6, 0),
+			hold = 1.4 },
+	}
+	if landmark then
+		table.insert(shots, { focus = landmark, offset = Vector3.new(34, 20, 44),
+			aim = Vector3.new(0, 8, 0), move = 2.8, hold = 1.7 })
+	end
+	table.insert(shots, { focus = here, offset = Vector3.new(0, 7, 15),
+		aim = Vector3.new(0, 4, 0), move = 1.8, hold = 0.6 })
+	return shots
+end
+
 function Tutorial.init(ctx)
 	local player = Players.LocalPlayer
 	local gui = ctx.gui
+	Cutscene.init(ctx)
+
+	--[[ Once per session, and only for someone who has not finished the loop.
+	     A module-local flag rather than a state field: replaying it because a
+	     Sync arrived is worse than never showing it. ]]
+	local opened = false
+	task.spawn(function()
+		repeat task.wait(0.3) until ctx.state.onboarding
+		if ctx.state.onboarding.done or opened then
+			return
+		end
+		opened = true
+		local character = player.Character or player.CharacterAdded:Wait()
+		character:WaitForChild("HumanoidRootPart")
+		task.wait(1.2)
+		Cutscene.play(opening(character), "Skip intro")
+	end)
 
 	local root = Instance.new("Frame")
 	root.Name = "Tutorial"
