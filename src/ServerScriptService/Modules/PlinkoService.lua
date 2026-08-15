@@ -318,35 +318,27 @@ function PlinkoService.build(island)
 		material = Enum.Material.Metal,
 	}, root)
 
+	--[[
+		The floating sign is gone; the marquee on the machine says PLINKO now,
+		and two of them fought -- the billboard drew straight over the bin
+		plates, hiding the very numbers it was duplicating. Only the price is
+		left, low and small, where the prompt already draws the eye.
+	]]
 	local gui = Instance.new("BillboardGui")
-	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(250, 62)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
-	gui.MaxDistance = 260
+	gui.Name = "Price"
+	gui.Size = UDim2.fromOffset(190, 26)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 2.2, 0)
+	gui.MaxDistance = 150
 	gui.Adornee = console
-	gui.Parent = console -- on the console, never the model: streaming + origin
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0.58, 0)
-	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBlack
-	title.TextScaled = true
-	title.TextColor3 = Color3.fromRGB(236, 240, 255)
-	title.TextStrokeTransparency = 0.3
-	title.Text = "PLINKO"
-	title.Parent = gui
-	local cap = Instance.new("UITextSizeConstraint")
-	cap.MaxTextSize = 28
-	cap.Parent = title
+	gui.Parent = console
 
 	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, 0, 0.42, 0)
-	sub.Position = UDim2.new(0, 0, 0.58, 0)
+	sub.Size = UDim2.fromScale(1, 1)
 	sub.BackgroundTransparency = 1
 	sub.Font = Enum.Font.GothamMedium
 	sub.TextScaled = true
-	sub.TextColor3 = Color3.fromRGB(255, 206, 64)
-	sub.TextStrokeTransparency = 0.45
+	sub.TextColor3 = COL.gold
+	sub.TextStrokeTransparency = 0.4
 	sub.Text = Format.money(Config.PlinkoDropCost) .. " a ball"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
