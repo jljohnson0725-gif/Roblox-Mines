@@ -81,8 +81,18 @@ local function opening(character)
 	     Seg, Shaft and SignAnchor -- so the lookup returned nil and quietly
 	     dropped the only shot the cutscene exists for. A pivot cannot be
 	     misspelled. ]]
+	--[[ The BASE of the landmark, not its pivot. The pivot is the centre of a
+	     34-stud-tall structure and sits 46 studs up, so aiming above it looked
+	     clean over the top of the thing it was supposed to show -- and framed
+	     the Auction House standing behind it instead. GetBoundingBox gives the
+	     height to subtract; a pivot on its own never tells you how tall
+	     something is. ]]
 	local mines = workspace:FindFirstChild("MinesLandmark")
-	local landmark = mines and mines:GetPivot().Position
+	local landmark
+	if mines then
+		local centre, size = mines:GetBoundingBox()
+		landmark = centre.Position - Vector3.new(0, size.Y / 2, 0)
+	end
 	local here = root and root.Position or Vector3.new(0, 6, 0)
 
 	local shots = {
@@ -90,8 +100,8 @@ local function opening(character)
 			hold = 1.4 },
 	}
 	if landmark then
-		table.insert(shots, { focus = landmark, offset = Vector3.new(34, 20, 44),
-			aim = Vector3.new(0, 8, 0), move = 2.8, hold = 1.7 })
+		table.insert(shots, { focus = landmark, offset = Vector3.new(26, 14, 40),
+			aim = Vector3.new(0, 14, 0), move = 2.8, hold = 1.7 })
 	end
 	table.insert(shots, { focus = here, offset = Vector3.new(0, 7, 15),
 		aim = Vector3.new(0, 4, 0), move = 1.8, hold = 0.6 })
