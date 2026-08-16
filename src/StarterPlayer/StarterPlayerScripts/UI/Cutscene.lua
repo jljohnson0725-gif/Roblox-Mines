@@ -33,6 +33,11 @@ local player = Players.LocalPlayer
 
 local playing = false
 
+--[[ So other UI can stand down while a cutscene owns the screen. ]]
+function Cutscene.isPlaying()
+	return playing
+end
+
 --[[ Where a shot actually puts the camera. `focus` may be a live part, so this
      is resolved at the moment the shot starts rather than when it is written. ]]
 local function resolve(shot)

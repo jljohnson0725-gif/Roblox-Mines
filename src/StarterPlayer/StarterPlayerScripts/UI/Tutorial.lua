@@ -245,6 +245,21 @@ function Tutorial.init(ctx)
 
 	RunService.RenderStepped:Connect(function()
 		local state = ctx.state
+
+		--[[
+			Stand down while a cutscene is running. Two overlays owning the
+			screen at once is bad on its own -- the spotlight drew over the
+			letterbox and told the player to press a button they could not see
+			-- but the real damage was the gate: the shades swallow input, and
+			the cutscene treats input as a skip, so the intro was being
+			dismissed by its own tutorial before the second shot arrived.
+		]]
+		if Cutscene.isPlaying() then
+			root.Visible = false
+			setGating(false)
+			return
+		end
+
 		--[[ Never for a returning player. `done` latches server-side once the
 		     whole loop has worked once, so this cannot reappear. ]]
 		if state.onboarding and state.onboarding.done then
