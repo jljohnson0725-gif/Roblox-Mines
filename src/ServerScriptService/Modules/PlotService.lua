@@ -768,54 +768,6 @@ local function renderPad(plot, padIndex, profile)
 		model.Parent = plot.modelFolder
 		pad.model = model
 
-		--[[
-			The nameplate. Rarity above the name above the rent, because that is
-			the order the eye wants them: what it is, which one, what it pays.
-
-			On the PEDESTAL, never on the model. A BillboardGui outlives its
-			Adornee when streaming unloads it, and one left with a nil Adornee
-			renders at the world origin -- which is how text ended up lying in
-			the middle of the street once already.
-		]]
-		local variant = Variants.get(item.variantId)
-		local plate = Instance.new("BillboardGui")
-		plate.Name = "Nameplate"
-		plate.Size = UDim2.fromOffset(210, 74)
-		plate.StudsOffsetWorldSpace = Vector3.new(0, 7.4, 0)
-		plate.MaxDistance = 130
-		plate.Adornee = pad.stand and pad.part or pad.part
-		plate.Parent = pad.part
-
-		local function line(order, text, color, size, weight)
-			local label = Instance.new("TextLabel")
-			label.Size = UDim2.new(1, 0, 0.32, 0)
-			label.Position = UDim2.new(0, 0, 0.32 * (order - 1), 0)
-			label.BackgroundTransparency = 1
-			label.Font = weight or Enum.Font.GothamBlack
-			label.TextScaled = true
-			label.TextColor3 = color
-			--[[ The heavy outline is the whole look. Without it bright text on a
-			     bright plot is unreadable at any distance. ]]
-			label.TextStrokeColor3 = Color3.new(0, 0, 0)
-			label.TextStrokeTransparency = 0
-			label.Text = text
-			label.Parent = plate
-			local cap = Instance.new("UITextSizeConstraint")
-			cap.MaxTextSize = size
-			cap.Parent = label
-			return label
-		end
-
-		--[[ The variant id IS its name -- Variants keys its table by it and the
-		     entries carry no name field, so reading variant.name would have been
-		     nil concatenated onto a string. ]]
-		local prefix = (item.variantId and item.variantId ~= "Normal")
-			and (item.variantId .. " ") or ""
-		line(1, prefix .. tier.name,
-			(variant and variant.color) or tier.color, 17)
-		line(2, char.name, Color3.fromRGB(255, 255, 255), 20)
-		line(3, "+" .. Format.money(Economy.incomeOf(item.charId, item.variantId)) .. "/s",
-			Color3.fromRGB(96, 255, 128), 18)
 	end
 
 	pad.prompt.Enabled = true

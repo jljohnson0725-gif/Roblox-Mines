@@ -135,7 +135,10 @@ local function addAura(model, tier, ext)
 end
 
 local function addLabel(model, charId, variantId, ext)
-	local tier = Rarity.get(Brainrots.get(charId).tier)
+	--[[ Kept, not discarded inline: the plate needs the character's own name and
+	     tier as well as the tier's colour. ]]
+	local char = Brainrots.get(charId)
+	local tier = Rarity.get(char.tier)
 	local income = Economy.incomeOf(charId, variantId)
 	local centre = ext.centre
 
@@ -151,36 +154,50 @@ local function addLabel(model, charId, variantId, ext)
 	anchor:SetAttribute("NoTint", true)
 	anchor.Parent = model
 
+	--[[
+		THREE LINES: rarity, name, rent -- what it is, which one, what it pays,
+		in the order the eye wants them. It was two before, with the variant
+		folded into the name, which meant the thing players actually compare
+		(the tier) was the hardest part to read.
+
+		Full-opacity strokes, not the 0.4 and 0.5 these had. The outline is the
+		entire reason bright text stays legible against a bright plot floor, and
+		a half-transparent one on green grass is barely an outline at all.
+	]]
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Nameplate"
-	billboard.Size = UDim2.fromOffset(200, 52)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 0.5, 0)
+	billboard.Size = UDim2.fromOffset(210, 76)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 0.9, 0)
 	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 90
+	billboard.MaxDistance = 110
 	billboard.Parent = anchor
 
-	local name = Instance.new("TextLabel")
-	name.Size = UDim2.new(1, 0, 0.55, 0)
-	name.BackgroundTransparency = 1
-	name.Font = Enum.Font.GothamBold
-	name.TextScaled = true
-	name.TextColor3 = tier.color
-	name.TextStrokeTransparency = 0.4
-	name.TextStrokeColor3 = Color3.new(0, 0, 0)
-	name.Text = Economy.displayName(charId, variantId)
-	name.Parent = billboard
+	local function line(order, text, color, font, cap)
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1 / 3, 0)
+		label.Position = UDim2.new(0, 0, (order - 1) / 3, 0)
+		label.BackgroundTransparency = 1
+		label.Font = font
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.TextStrokeColor3 = Color3.new(0, 0, 0)
+		label.TextStrokeTransparency = 0
+		label.Text = text
+		label.Parent = billboard
+		local limit = Instance.new("UITextSizeConstraint")
+		limit.MaxTextSize = cap
+		limit.Parent = label
+	end
 
-	local rate = Instance.new("TextLabel")
-	rate.Size = UDim2.new(1, 0, 0.45, 0)
-	rate.Position = UDim2.new(0, 0, 0.55, 0)
-	rate.BackgroundTransparency = 1
-	rate.Font = Enum.Font.GothamMedium
-	rate.TextScaled = true
-	rate.TextColor3 = Color3.fromRGB(120, 235, 150)
-	rate.TextStrokeTransparency = 0.5
-	rate.TextStrokeColor3 = Color3.new(0, 0, 0)
-	rate.Text = Format.rate(income)
-	rate.Parent = billboard
+	--[[ Both of these are keyed BY name in their tables and carry no `name`
+	     field, so tier.name and variant.name are nil. The id is the name. ]]
+	local prefix = (variantId and variantId ~= "Normal") and (variantId .. " ") or ""
+	local variant = Variants.get(variantId)
+	line(1, prefix .. char.tier, (variant and variant.color) or tier.color,
+		Enum.Font.GothamBlack, 16)
+	line(2, char.name, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack, 19)
+	line(3, Format.rate(income), Color3.fromRGB(96, 255, 128),
+		Enum.Font.GothamBlack, 17)
 end
 
 --[[
