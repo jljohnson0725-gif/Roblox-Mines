@@ -123,5 +123,61 @@ def main():
 """)
 
 
+
+# ── what a rebirth should cost ──────────────────────────────────────────────
+
+#[[ Not everything earned goes toward the next rebirth: pads, the upgrade tree
+#   and Plinko are all competing for the same wallet. ]]
+TOWARD_REBIRTH = 0.40
+
+
+def pads_at(hours, extra):
+    """Pads owned this run. Rebirth hands you `extra` from the start."""
+    return min(A.CFG["max_slots"], A.CFG["start_slots"] + extra + int(hours / 0.6))
+
+
+def hours_to(cost, level, rng, cap=200.0):
+    """Hours for a player at rebirth `level` to bank `cost`."""
+    bonus = 0.35 * level
+    banked, prev, t = 0.0, 0.0, 0.0
+    while banked < cost and t < cap:
+        t += 0.5
+        rate = simulate_income(BASE_DEPTH + bonus, rng,
+                               int(t * A.DROPS_PER_HOUR), pads_at(t, level))
+        banked += (rate + prev) / 2 * 0.5 * 3600 * TOWARD_REBIRTH
+        prev = rate
+    return t
+
+
+def cost_curve():
+    print("\n" + "=" * 74)
+    print("WHAT A REBIRTH SHOULD COST")
+    print("=" * 74)
+    print(f"""
+Each rebirth should take about as long as the last, or a shade less. Cost
+rising faster than income makes the loop stall; slower, and rebirths become
+something you collect rather than earn. Income rose 4.4x over five rebirths,
+which is {4.4 ** (1/5):.2f}x a step -- so the cost growth has to sit near that.
+
+Assuming {TOWARD_REBIRTH*100:.0f}% of earnings go toward it, the rest to pads, upgrades and Plinko.
+""")
+    rng = random.Random(5)
+    for base, growth in ((250e6, 2.20), (250e6, 1.55), (150e6, 1.35), (120e6, 1.30)):
+        times = []
+        for level in range(5):
+            cost = base * (growth ** level)
+            times.append(hours_to(cost, level, rng))
+        drift = times[-1] / times[0]
+        print(f"  base {A.money(base):>9}  x{growth:<5.2f} -> "
+              + "  ".join(f"{t:4.1f}h" for t in times)
+              + f"   drift {drift:.2f}x")
+
+    print("""
+  drift is the fifth rebirth against the first. Near 1.0 is a loop that holds;
+  well above it stalls, well below it trivialises.
+""")
+
+
 if __name__ == "__main__":
     main()
+    cost_curve()
