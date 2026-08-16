@@ -29,6 +29,7 @@ local CodeService = require(Modules.CodeService)
 local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
+local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ IslandService.start()
 
 -- The machine stands on ground the islands just made, so it goes after them.
 PlinkoService.start()
+RebirthService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)

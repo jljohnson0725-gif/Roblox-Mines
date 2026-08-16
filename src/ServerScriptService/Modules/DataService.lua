@@ -63,6 +63,7 @@ local function newProfile()
 		index = {},
 		redeemed = {}, -- [CODE] = true; codes are one use each
 		jetpack = false, -- bought once at the launch pad, then owned forever
+		rebirths = 0, -- permanent luck; see Shared/Rebirth
 		--[[ [sealId] = fragments held. Fragments rather than whole seals so a
 		     losing streak still advances you; see Shared/Islands. ]]
 		fragments = {},
@@ -105,6 +106,7 @@ local function reconcile(profile)
 		profile.redeemed = {}
 	end
 	profile.jetpack = profile.jetpack == true
+	profile.rebirths = math.max(math.floor(tonumber(profile.rebirths) or 0), 0)
 	if type(profile.fragments) ~= "table" then profile.fragments = {} end
 	if type(profile.seals) ~= "table" then profile.seals = {} end
 	if type(profile.onboarding) ~= "table" then

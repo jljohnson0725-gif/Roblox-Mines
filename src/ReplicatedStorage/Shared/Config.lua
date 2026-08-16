@@ -214,6 +214,21 @@ Config.WheelOdds = {
 	{ id = "nothing", chance = 0.47, label = "BUST" },
 }
 
+-- ── Rebirth ─────────────────────────────────────────────────────────────────
+--[[
+	Modelled in tools/rebirth.py before any of it was built. See Shared/Rebirth
+	for what the numbers mean and which of them overturned a guess.
+
+	Cost growth is the income growth read back: income rises 1.34x a rebirth, so
+	anything above ~1.35 outruns the player and the loop stalls. Base only sets
+	where the ladder starts -- lower it if 13 hours to the first reads long.
+]]
+Config.RebirthBaseCost = 150000000
+Config.RebirthCostGrowth = 1.35
+Config.RebirthLuckPerLevel = 0.35 -- bonus drop depth, permanently
+Config.RebirthPadsPerLevel = 1
+Config.RebirthMaxStartPads = 6 -- short of MaxSlots: still a base to build
+
 -- ── The Sky ─────────────────────────────────────────────────────────────────
 --[[
 	The jetpack, which opens the islands above the map.

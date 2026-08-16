@@ -60,7 +60,11 @@ end
 local function weightedPick(order, source, depth, rng, opts)
 	local total = 0
 	local weights = table.create(#order)
+	--[[ Events SCALE depth; rebirth ADDS to it. Multiplying rebirth luck would
+	     make it worth nothing on a shallow round and everything on a deep one,
+	     when the point of it is that you are permanently luckier. ]]
 	local effectiveDepth = depth * ((opts and opts.depthMul) or 1)
+		+ ((opts and opts.depthBonus) or 0)
 
 	for i, name in ipairs(order) do
 		local def = source[name]
@@ -92,10 +96,12 @@ local function axisOpts(mods)
 	return {
 		mul = mods.tierMul,
 		depthMul = mods.depthMul,
+		depthBonus = mods.depthBonus,
 	}, {
 		mul = mods.variantMul,
 		add = mods.variantAdd,
 		depthMul = mods.variantDepthMul,
+		depthBonus = mods.depthBonus,
 	}
 end
 

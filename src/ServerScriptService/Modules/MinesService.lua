@@ -26,6 +26,7 @@ local Brainrots = require(Shared.Brainrots)
 local Sounds = require(Shared.Sounds)
 
 local DataService = require(script.Parent.DataService)
+local Rebirth = require(Shared.Rebirth)
 local PlayerState = require(script.Parent.PlayerState)
 local EventService = require(script.Parent.EventService)
 
@@ -221,6 +222,17 @@ function MinesService.revealTile(player, index)
 	if guaranteed or rng:NextNumber() < DropTable.dropChance(round.mines, mods) then
 		-- roll() returns nil only if the roster is misconfigured; treat that as
 		-- "no drop this tile" rather than failing the reveal.
+		--[[ Rebirth luck rides in as a depth BONUS on the same mods table the
+		     events use. One path into DropTable, so a lucky player and a lucky
+		     server are the same mechanism rather than two that can disagree. ]]
+		local luck = Rebirth.luck(profile and profile.rebirths)
+		if luck > 0 then
+			local merged = { depthBonus = luck }
+			for key, value in pairs(mods or {}) do
+				merged[key] = value
+			end
+			mods = merged
+		end
 		drop = DropTable.roll(round.multiplier, rng, mods)
 		if drop then
 			drop.income = Economy.incomeOf(drop.charId, drop.variantId)

@@ -54,6 +54,7 @@ function PlayerState.snapshot(player)
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		onboarding = profile.onboarding, -- drives the first-session coach
 		jetpack = profile.jetpack == true, -- whether F does anything
+		rebirths = profile.rebirths or 0,
 		stats = profile.stats,
 	}
 end

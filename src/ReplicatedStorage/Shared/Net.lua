@@ -28,6 +28,7 @@ local FUNCTIONS = {
 	"RedeemCode", -- one-use reward codes
 	"BuyJetpack", -- the one-time purchase at the launch pad
 	"DropBall", -- one Plinko ball; resolves when it lands in a bin
+	"DoRebirth", -- spend the run for permanent luck
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
