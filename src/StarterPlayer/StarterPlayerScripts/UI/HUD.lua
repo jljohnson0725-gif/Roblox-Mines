@@ -201,16 +201,28 @@ function HUD.init(ctx)
 		just gets longer. It also clears the bottom-centre, which is where the
 		money counter wants to be.
 	]]
+	--[[
+		A 2x2 GRID IN THE CORNER, not a vertical strip up the side.
+
+		The strip was centred on the viewport edge, which put its top button
+		near the Roblox topbar on short windows -- the same trap the coach card
+		fell into. A corner block cannot drift into it, reads as one object
+		rather than four, and leaves the middle of the screen to the game.
+	]]
 	local rail = Theme.frame({
 		parent = ctx.gui,
 		name = "Rail",
 		transparency = 1,
-		size = UDim2.fromOffset(72, 400),
-		position = UDim2.new(0, 12, 0.5, 10),
-		anchor = Vector2.new(0, 0.5),
+		size = UDim2.fromOffset(152, 152),
+		position = UDim2.new(0, 14, 1, -104),
+		anchor = Vector2.new(0, 1),
 		radius = false,
 	})
-	Theme.list(rail, 8)
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(72, 72)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = rail
 
 	--[[ No auction button, deliberately. Listing and bidding are both gated to
 	     the consign desk server-side, so a rail button would open a panel where
@@ -229,7 +241,8 @@ function HUD.init(ctx)
 			name = entry.id .. "Button",
 			text = "",
 			color = entry.color,
-			size = UDim2.fromOffset(66, 62),
+			-- sized by the grid; UIGridLayout ignores this but Theme wants it
+			size = UDim2.fromOffset(72, 72),
 			order = order,
 			radius = 14,
 		})
