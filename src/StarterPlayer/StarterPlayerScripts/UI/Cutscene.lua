@@ -130,6 +130,19 @@ function Cutscene.init(ctx)
 		camera.CameraType = Enum.CameraType.Scriptable
 		root.Visible = true
 		skip.Text = (label or "Skip") .. "  —  press any key"
+
+		--[[
+			Hide the tutorial overlay directly, rather than asking it to hide
+			itself. It already checks Cutscene.isPlaying() every frame and that
+			SHOULD be enough -- but it was still drawing over the letterbox in
+			practice, and a cooperating flag only works if both halves agree
+			about when they run. Reaching across is uglier and cannot lose a
+			race. Tutorial's own loop puts it back the frame after this ends.
+		]]
+		local overlay = gui:FindFirstChild("Tutorial")
+		if overlay then
+			overlay.Visible = false
+		end
 		bars_to(BAR, 0.4)
 
 		--[[ Frozen, or they wander out of frame while being shown something --
