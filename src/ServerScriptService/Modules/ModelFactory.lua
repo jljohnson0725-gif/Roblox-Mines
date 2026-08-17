@@ -226,24 +226,32 @@ function ModelFactory.build(charId, variantId)
 
 	--[[
 		A VARIANT WITH REAL ART BEATS A TINTED SHELL. The pack ships an authored
-		texture per variant, so BrainrotModels/Gold/<id> is a genuine gold paint
-		job -- highlights, shading, the face still readable -- where the shell is
-		a coloured film stretched over the normal skin.
+		texture per variant -- a genuine gold paint job with highlights, shading
+		and a readable face -- where the shell is a coloured film stretched over
+		the normal skin.
 
-		Only some variants have that art. Rainbow is untextured in the pack (it
-		is a plain mesh plus a particle effect) and Frost was never in it, so
-		both still take the shell path below. Anything missing falls back the
-		same way, which is also what covers the one gap in the set,
+		IT IS A TEXTURE SWAP, NOT A SECOND MODEL. MeshPart.TextureID is writable
+		at runtime; MeshId is not, and throws "lacking capability
+		NotAccessible". Since the pack's variants are pure retextures of the
+		same geometry, one model per character plus a string is the whole of it.
+		This used to be 347 extra Models in the place, each holding a MeshPart
+		identical to the normal one but for a single id.
+
+		Only some variants have that art. Rainbow ships untextured in the pack
+		(a plain mesh plus a particle effect) and Frost was never in it, so both
+		take the shell path below, as does the one gap in the set,
 		Lava Lionel Cactuseli.
 	]]
-	local skinned = false
-	local source
-	if library then
-		local variantFolder = variantId and library:FindFirstChild(variantId)
-		source = variantFolder and variantFolder:FindFirstChild(charId)
-		skinned = source ~= nil
-		source = source or library:FindFirstChild(charId)
+	local source = library and library:FindFirstChild(charId)
+
+	local skin
+	if library and variantId then
+		local skins = library:FindFirstChild("Skins")
+		local entry = skins and skins:FindFirstChild(charId)
+		local value = entry and entry:FindFirstChild(variantId)
+		skin = value and value.Value
 	end
+	local skinned = skin ~= nil
 
 	if source then
 		model = source:Clone()
@@ -267,6 +275,9 @@ function ModelFactory.build(charId, variantId)
 		local plain = model:FindFirstChild("BodyPlain")
 		if body then
 			body:SetAttribute("NoTint", true) -- the texture is the point; leave it alone
+			if skinned then
+				body.TextureID = skin
+			end
 		end
 		if body and plain then
 			if variant.color and not skinned then

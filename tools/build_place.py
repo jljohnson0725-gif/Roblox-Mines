@@ -37,11 +37,11 @@ OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
 
-#[[ Variants that get a REAL model rather than a tinted shell. Only the ones
-#   whose art actually exists in meshes.json: Rainbow ships untextured in the
-#   pack and Frost was never in it, so both stay on the shell. Hacker has art
-#   but no variant in Variants.lua, so emitting it would be dead weight in the
-#   place -- add the name here the day that variant exists. ]]
+#[[ Variants that get REAL art rather than a tinted shell. Only the ones whose
+#   texture actually exists in meshes.json: Rainbow ships untextured in the pack
+#   and Frost was never in it, so both stay on the shell. Hacker has art but no
+#   variant in Variants.lua, so shipping it would be dead weight -- add the name
+#   here the day that variant exists. ]]
 VARIANT_MODELS = ["Gold", "Diamond", "Lava", "Galaxy"]
 
 # classes that hold children and should be merged into rather than replaced
@@ -109,6 +109,11 @@ def build_tree(directory):
     return items
 
 
+def _string(props, name, value):
+    e = ET.SubElement(props, "string", {"name": name})
+    e.text = value
+
+
 def _bool(props, name, value):
     e = ET.SubElement(props, "bool", {"name": name})
     e.text = "true" if value else "false"
@@ -163,8 +168,20 @@ def build_mesh_library():
     default_target = data.get("defaultTarget", 4.4)
 
     folder = make_item("Folder", "BrainrotModels")
-    variant_folders = {}
-    variant_count = 0
+
+    #[[ Variant TEXTURES, not variant models. MeshPart.TextureID is writable at
+    #   runtime (MeshId is not -- that throws "lacking capability
+    #   NotAccessible"), so a variant is a texture swap on a clone of the normal
+    #   model. This used to emit a whole Model per character per variant: 347 of
+    #   them, all pointing at the same mesh as the normal one, to carry a single
+    #   string each.
+    #
+    #   Kept as instances rather than a generated Lua table so meshes.json stays
+    #   the one source of truth, and readable in the Explorer rather than packed
+    #   into an encoded string. ]]
+    skins = make_item("Folder", "Skins")
+    folder.append(skins)
+    skin_count = 0
 
     for char_id in sorted(models):
         entry = models[char_id]
@@ -179,25 +196,18 @@ def build_mesh_library():
         model.append(make_meshpart("BodyPlain", entry["mesh"], "", native, scale))
         folder.append(model)
 
-        #[[ A variant with real art becomes its own Model under a folder named
-        #   after the variant, and needs no BodyPlain -- the shell exists only to
-        #   fake a colour we don't have a texture for. Same mesh id as Normal,
-        #   because the pack's variants are pure retextures. ]]
-        for variant in VARIANT_MODELS:
-            texture = entry.get("variants", {}).get(variant)
-            if not texture:
-                continue
-            sub = variant_folders.get(variant)
-            if sub is None:
-                sub = make_item("Folder", variant)
-                variant_folders[variant] = sub
-                folder.append(sub)
-            skin = make_item("Model", char_id)
-            skin.append(make_meshpart("Body", entry["mesh"], texture, native, scale))
-            sub.append(skin)
-            variant_count += 1
+        available = {v: t for v, t in entry.get("variants", {}).items()
+                     if v in VARIANT_MODELS and t}
+        if available:
+            per_char = make_item("Folder", char_id)
+            for variant in sorted(available):
+                value = make_item("StringValue", variant)
+                _string(value.find("Properties"), "Value", available[variant])
+                per_char.append(value)
+                skin_count += 1
+            skins.append(per_char)
 
-    return folder, len(models), variant_count
+    return folder, len(models), skin_count
 
 
 def merge_into(dest, new_child):
