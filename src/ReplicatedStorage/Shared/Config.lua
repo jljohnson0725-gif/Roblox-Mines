@@ -287,29 +287,6 @@ Config.PlinkoRange = 26 -- how close you must stand to the machine
 	Matching is case-insensitive and trims whitespace, because players paste
 	codes out of videos with a trailing space more often than not.
 ]]
---[[
-	One code per rebirth, and three of them rather than one big one, because a
-	rebirth resets money to StartingMoney -- banking the total up front would
-	be spent entirely on the first and leave nothing for the second.
-
-	Each covers its own rebirth plus the eight pads that rebirth also demands,
-	with a little slack. Derived from the same constants the cost curve uses, so
-	retuning RebirthBaseCost or the growth rate carries these along instead of
-	quietly leaving them short.
-]]
-for level = 0, 2 do
-	local cost = Config.RebirthBaseCost * (Config.RebirthCostGrowth ^ level)
-	local pads = 0
-	for step = 0, Config.MaxSlots - Config.StartingSlots - 1 do
-		pads += Config.SlotBaseCost * (Config.SlotCostGrowth ^ step)
-	end
-	Config.Codes["REBIRTH" .. (level + 1)] = {
-		money = math.floor((cost + pads) * 1.05),
-		testOnly = true,
-		blurb = "enough for rebirth " .. (level + 1),
-	}
-end
-
 Config.CodeAdmins = { 873380891 } -- UserIds that may redeem testOnly codes live
 
 Config.Codes = {
@@ -362,5 +339,34 @@ Config.EventGapMax = 360
 -- ── Data ────────────────────────────────────────────────────────────────────
 Config.DataStoreName = "BrainrotMines_Profiles_v1"
 Config.AutoSaveInterval = 120
+
+--[[
+	One code per rebirth, and three of them rather than one big one, because a
+	rebirth resets money to StartingMoney -- banking the total up front would
+	be spent entirely on the first and leave nothing for the second.
+
+	Each covers its own rebirth plus the eight pads that rebirth also demands,
+	with a little slack. Derived from the same constants the cost curve uses, so
+	retuning RebirthBaseCost or the growth rate carries these along instead of
+	quietly leaving them short.
+
+	DEFINED AT THE END OF THE FILE, after Config.Codes exists. Anchored above
+	it first, where Config.Codes is still nil, and indexing that took the whole
+	module down -- Bootstrap and ClientMain both failed to load and every
+	remote call timed out, which looks nothing like a typo in a code table.
+]]
+for level = 0, 2 do
+	local cost = Config.RebirthBaseCost * (Config.RebirthCostGrowth ^ level)
+	local pads = 0
+	for step = 0, Config.MaxSlots - Config.StartingSlots - 1 do
+		pads += Config.SlotBaseCost * (Config.SlotCostGrowth ^ step)
+	end
+	Config.Codes["REBIRTH" .. (level + 1)] = {
+		money = math.floor((cost + pads) * 1.05),
+		testOnly = true,
+		blurb = "enough for rebirth " .. (level + 1),
+	}
+end
+
 
 return Config
