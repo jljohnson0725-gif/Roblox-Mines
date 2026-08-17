@@ -36,6 +36,7 @@ local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
 local Flight = require(UI.Flight)
 local Tutorial = require(UI.Tutorial)
+local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ local ctx = {
 		WheelStake = Net.get("WheelStake"),
 		RedeemCode = Net.get("RedeemCode"),
 		BuyJetpack = Net.get("BuyJetpack"),
+		DoRebirth = Net.get("DoRebirth"),
 		SetFlying = Net.get("SetFlying"),
 		RequestState = Net.get("RequestState"),
 	},
@@ -122,6 +124,7 @@ local auctionUI = AuctionUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
+local rebirthUI = RebirthUI.init(ctx)
 Coach.init(ctx)
 -- Gates the first two steps; Coach carries the rest as a suggestion.
 Tutorial.init(ctx)
@@ -148,7 +151,7 @@ Sky.init(ctx)
 local function chromeHidden()
 	return minesUI.isVisible() or inventoryUI.isVisible() or upgradeUI.isVisible()
 		or auctionUI.isVisible() or indexUI.isVisible() or wheelUI.isVisible()
-		or codesUI.isVisible()
+		or codesUI.isVisible() or rebirthUI.isVisible()
 end
 
 task.spawn(function()
@@ -206,6 +209,10 @@ end
 
 hud.onCollection = function()
 	showInventory(not inventoryUI.isVisible())
+end
+
+hud.onRebirth = function()
+	rebirthUI.setVisible(not rebirthUI.isVisible())
 end
 
 hud.onCodes = function()

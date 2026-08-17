@@ -213,7 +213,7 @@ function HUD.init(ctx)
 		parent = ctx.gui,
 		name = "Rail",
 		transparency = 1,
-		size = UDim2.fromOffset(152, 152),
+		size = UDim2.fromOffset(152, 232),
 		position = UDim2.new(0, 14, 1, -104),
 		anchor = Vector2.new(0, 1),
 		radius = false,
@@ -233,6 +233,7 @@ function HUD.init(ctx)
 		{ id = "index", glyph = "📘", label = "INDEX", color = Color3.fromRGB(120, 100, 255) },
 		{ id = "collection", glyph = "🎒", label = "BASE", color = Color3.fromRGB(255, 120, 190) },
 		{ id = "codes", glyph = "🎁", label = "CODES", color = Color3.fromRGB(64, 200, 120) },
+		{ id = "rebirth", glyph = "🔁", label = "REBIRTH", color = Color3.fromRGB(255, 176, 48) },
 	}
 
 	for order, entry in ipairs(RAIL) do
