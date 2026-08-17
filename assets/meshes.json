@@ -19,6 +19,8 @@
   "",
   "native  = the size the source reported for the raw asset.",
   "target  = what the model's LARGEST dimension should become on a pad.",
+  "          6.4 -> 9.0: at 6.4 the models read as smaller than their own",
+  "          nameplates, which inverts what the pad is for.",
   "          Largest-dimension rather than height, because these come in all",
   "          shapes and normalising a flat wide one to a standard height",
   "          leaves it enormous across.",
@@ -382,7 +384,7 @@
     5.0,
     1.43
    ],
-   "target": 7.4
+   "target": 10.41
   },
   "tralalita_tralala": {
    "mesh": "rbxassetid://89107335865808",
@@ -408,7 +410,7 @@
     3.317,
     4.0
    ],
-   "target": 7.6
+   "target": 10.69
   },
   "graipuss_medussi": {
    "mesh": "rbxassetid://132313012916794",
@@ -418,7 +420,7 @@
     4.0,
     4.387
    ],
-   "target": 7.6
+   "target": 10.69
   },
   "garama_madundung": {
    "mesh": "rbxassetid://97584028184460",
@@ -428,7 +430,7 @@
     4.923,
     1.924
    ],
-   "target": 7.6
+   "target": 10.69
   },
   "chimpanzini_spiderini": {
    "mesh": "rbxassetid://140700562552938",
@@ -438,7 +440,7 @@
     4.0,
     3.205
    ],
-   "target": 7.9
+   "target": 11.11
   },
   "grande_combinasion": {
    "mesh": "rbxassetid://80351797193483",
@@ -1480,5 +1482,5 @@
    }
   }
  },
- "defaultTarget": 6.4
+ "defaultTarget": 9.0
 }

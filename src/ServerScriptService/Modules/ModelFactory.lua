@@ -164,9 +164,13 @@ local function addLabel(model, charId, variantId, ext)
 		entire reason bright text stays legible against a bright plot floor, and
 		a half-transparent one on green grass is barely an outline at all.
 	]]
+	--[[ SMALLER THAN THE THING IT LABELS. At 210x76 with 16/19/17pt caps the
+	     plate stood taller on screen than most of the models, so the pad read
+	     as a sign with a toy under it. The label should be the second thing
+	     you notice. ]]
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Nameplate"
-	billboard.Size = UDim2.fromOffset(210, 76)
+	billboard.Size = UDim2.fromOffset(148, 54)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, 0.9, 0)
 	billboard.AlwaysOnTop = false
 	billboard.MaxDistance = 110
@@ -194,10 +198,10 @@ local function addLabel(model, charId, variantId, ext)
 	local prefix = (variantId and variantId ~= "Normal") and (variantId .. " ") or ""
 	local variant = Variants.get(variantId)
 	line(1, prefix .. char.tier, (variant and variant.color) or tier.color,
-		Enum.Font.GothamBlack, 16)
-	line(2, char.name, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack, 19)
+		Enum.Font.GothamBlack, 11)
+	line(2, char.name, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack, 13)
 	line(3, Format.rate(income), Color3.fromRGB(96, 255, 128),
-		Enum.Font.GothamBlack, 17)
+		Enum.Font.GothamBlack, 12)
 end
 
 --[[
