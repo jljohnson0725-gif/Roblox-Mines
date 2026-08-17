@@ -150,7 +150,7 @@ function JetpackService.build()
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(230, 60)
+	gui.Size = UDim2.fromOffset(138, 36)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
 	gui.MaxDistance = 240
 	gui.Adornee = console
@@ -168,7 +168,7 @@ function JetpackService.build()
 	title.Text = "LAUNCH PAD"
 	title.Parent = gui
 	local cap = Instance.new("UITextSizeConstraint")
-	cap.MaxTextSize = 26
+	cap.MaxTextSize = 16
 	cap.Parent = title
 
 	local sub = Instance.new("TextLabel")
@@ -182,7 +182,7 @@ function JetpackService.build()
 	sub.Text = Format.money(Config.JetpackCost) .. " — yours for good"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
-	subCap.MaxTextSize = 14
+	subCap.MaxTextSize = 8
 	subCap.Parent = sub
 
 	local prompt = Instance.new("ProximityPrompt")

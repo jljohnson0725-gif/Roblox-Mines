@@ -2,10 +2,11 @@
 	MinesLandmark
 	The beacon over the street portal.
 
-	Named for what it used to be. Mines is playable from anywhere again, so this
-	no longer points at the gambling -- it points at the western doorway through
-	the archway beneath it, which is where upgrades and every service after them
-	live. The sign says so; only the module name is historical.
+	Named for what it used to be, and it has now outlived a second purpose.
+	Mines became playable from anywhere, so it stopped pointing at the gambling;
+	then the hub it pointed at instead was removed with the auction, so it stops
+	pointing anywhere at all. What it still does is real: the rings and the sign
+	carry the live event, which is why it survived both changes.
 
 	What it is: two counter-rotating neon rings hanging over the archway, high
 	enough to clear both the lintel and the baseplate outside the map, visible
@@ -153,7 +154,7 @@ function MinesLandmark.build()
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(260, 76)
+	gui.Size = UDim2.fromOffset(156, 46)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
 	gui.MaxDistance = 320
 	gui.Parent = anchor
@@ -165,10 +166,10 @@ function MinesLandmark.build()
 	title.TextScaled = true
 	title.TextColor3 = Color3.fromRGB(236, 240, 255)
 	title.TextStrokeTransparency = 0.3
-	title.Text = "AUCTION HOUSE"
+	title.Text = "BRAINROT MINES"
 	title.Parent = gui
 	local titleCap = Instance.new("UITextSizeConstraint")
-	titleCap.MaxTextSize = 34
+	titleCap.MaxTextSize = 20
 	titleCap.Parent = title
 
 	local status = Instance.new("TextLabel")
@@ -180,10 +181,10 @@ function MinesLandmark.build()
 	status.TextScaled = true
 	status.TextColor3 = IDLE_OUTER
 	status.TextStrokeTransparency = 0.45
-	status.Text = "upgrades through the portal"
+	status.Text = "no event running"
 	status.Parent = gui
 	local statusCap = Instance.new("UITextSizeConstraint")
-	statusCap.MaxTextSize = 17
+	statusCap.MaxTextSize = 10
 	statusCap.Parent = status
 
 	MinesLandmark.status = status
@@ -233,7 +234,7 @@ function MinesLandmark.startEventSync()
 				end
 
 				if MinesLandmark.status then
-					MinesLandmark.status.Text = def and string.upper(def.name) or "upgrades through the portal"
+					MinesLandmark.status.Text = def and string.upper(def.name) or "no event running"
 					MinesLandmark.status.TextColor3 = outer
 				end
 			end

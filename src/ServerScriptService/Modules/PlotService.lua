@@ -355,7 +355,7 @@ local function attachPlot(base, index)
 
 		local pileGui = Instance.new("BillboardGui")
 		pileGui.Name = "PileLabel"
-		pileGui.Size = UDim2.fromOffset(120, 26)
+		pileGui.Size = UDim2.fromOffset(72, 16)
 		pileGui.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
 		pileGui.MaxDistance = 70
 		pileGui.Adornee = pedestal
@@ -402,7 +402,7 @@ local function attachPlot(base, index)
 		]]
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "OwnerLabel"
-		gui.Size = UDim2.fromOffset(210, 52)
+		gui.Size = UDim2.fromOffset(126, 31)
 		gui.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
 		gui.MaxDistance = 120
 		gui.AlwaysOnTop = false
@@ -419,7 +419,7 @@ local function attachPlot(base, index)
 		ownerLabel.Parent = gui
 
 		local ownerCap = Instance.new("UITextSizeConstraint")
-		ownerCap.MaxTextSize = 21
+		ownerCap.MaxTextSize = 13
 		ownerCap.Parent = ownerLabel
 
 		rateLabel = Instance.new("TextLabel")
@@ -434,7 +434,7 @@ local function attachPlot(base, index)
 		rateLabel.Parent = gui
 
 		local rateCap = Instance.new("UITextSizeConstraint")
-		rateCap.MaxTextSize = 15
+		rateCap.MaxTextSize = 9
 		rateCap.Parent = rateLabel
 	end
 
@@ -575,7 +575,7 @@ local function buildPlot(index, parent)
 
 	local signGui = Instance.new("BillboardGui")
 	signGui.Name = "OwnerLabel"
-	signGui.Size = UDim2.fromOffset(280, 70)
+	signGui.Size = UDim2.fromOffset(168, 42)
 	signGui.StudsOffsetWorldSpace = Vector3.new(0, 3.6, 0)
 	signGui.MaxDistance = 220
 	signGui.Parent = signPost

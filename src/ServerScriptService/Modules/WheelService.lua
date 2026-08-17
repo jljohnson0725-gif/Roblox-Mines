@@ -672,7 +672,7 @@ function WheelService.build()
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(280, 74)
+	gui.Size = UDim2.fromOffset(168, 44)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
 	gui.MaxDistance = 260
 	gui.Adornee = console
@@ -688,7 +688,7 @@ function WheelService.build()
 	title.Text = "THE WHEEL"
 	title.Parent = gui
 	local cap = Instance.new("UITextSizeConstraint")
-	cap.MaxTextSize = 32
+	cap.MaxTextSize = 19
 	cap.Parent = title
 
 	local sub = Instance.new("TextLabel")
@@ -702,7 +702,7 @@ function WheelService.build()
 	sub.Text = "everything you own, for a Secret"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
-	subCap.MaxTextSize = 15
+	subCap.MaxTextSize = 9
 	subCap.Parent = sub
 
 	WheelService.anchor = console

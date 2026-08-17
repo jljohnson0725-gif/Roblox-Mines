@@ -620,17 +620,20 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 --[[
-	Close a counter panel when you walk away from its counter.
+	Close the shop panel when you walk away from its counter.
 
 	Not Mines -- that's playable from anywhere again, so there's nowhere to walk
 	away FROM, and the server agrees. A UI rule the server doesn't share is
-	theatre; these two match real server-side gates.
+	theatre; this one matches a real server-side gate.
 
-	A MISSING part closes the panel as well. StreamingEnabled is on, and the two
-	counters are ~4300 studs apart (one in the street, one through the portal),
-	so leaving either unloads it -- waiting on a part that will never stream back
-	would leave the panel stuck open. You can only open these standing at the
-	counter, so "not there" is the only thing nil can mean.
+	A MISSING part closes the panel as well. StreamingEnabled is on, so walking
+	far enough unloads the counter -- and waiting on a part that will never
+	stream back would leave the panel stuck open. You can only open this
+	standing at the counter, so "not there" is the only thing nil can mean.
+
+	It was written for two counters, the second being the one through the hub
+	portal. That one went with the auction; the loop is unchanged because it was
+	never counting them.
 ]]
 task.spawn(function()
 	local function walkedAway(modelName, partName)

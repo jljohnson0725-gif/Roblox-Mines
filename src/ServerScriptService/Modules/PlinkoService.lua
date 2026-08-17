@@ -343,7 +343,7 @@ function PlinkoService.build(island)
 	]]
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Price"
-	gui.Size = UDim2.fromOffset(190, 26)
+	gui.Size = UDim2.fromOffset(114, 16)
 	--[[ BELOW the console, not above it. Above put it level with the bin
 	     plates and it drew straight across the payout numbers -- the same
 	     collision the PLINKO billboard had, moved down a few studs and
@@ -364,7 +364,7 @@ function PlinkoService.build(island)
 	sub.Text = Format.money(Config.PlinkoDropCost) .. " a ball"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
-	subCap.MaxTextSize = 15
+	subCap.MaxTextSize = 9
 	subCap.Parent = sub
 
 	local prompt = Instance.new("ProximityPrompt")

@@ -120,7 +120,7 @@ function ShopService.build()
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(220, 58)
+	gui.Size = UDim2.fromOffset(132, 35)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
 	gui.MaxDistance = 220
 	gui.Adornee = counter
@@ -138,7 +138,7 @@ function ShopService.build()
 	title.Text = "UPGRADES"
 	title.Parent = gui
 	local cap = Instance.new("UITextSizeConstraint")
-	cap.MaxTextSize = 26
+	cap.MaxTextSize = 16
 	cap.Parent = title
 
 	local sub = Instance.new("TextLabel")
@@ -152,7 +152,7 @@ function ShopService.build()
 	sub.Text = "spend it to make it"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
-	subCap.MaxTextSize = 14
+	subCap.MaxTextSize = 8
 	subCap.Parent = sub
 
 	local prompt = Instance.new("ProximityPrompt")
