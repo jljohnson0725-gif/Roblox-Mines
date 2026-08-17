@@ -38,7 +38,7 @@ Sounds.Library = {
 	--[[ Speed back to 1.00. The old 0.55 existed to drag a generic bass hit
 	     down into something that felt like a loss; a real file is already in
 	     the key it was written in and pitching it is only damage. ]]
-	bust = { id = "rbxassetid://132442290182354", volume = 1.00, speed = 1.00 },
+	bust = { id = "rbxassetid://132442290182354", volume = 0.50, speed = 1.00 },
 	cashout = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.55, speed = 1.30 },
 	betPlace = { id = "rbxasset://sounds/switch.wav", volume = 0.50, speed = 1.00 },
 
