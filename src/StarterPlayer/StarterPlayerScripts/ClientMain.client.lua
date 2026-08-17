@@ -38,6 +38,7 @@ local Flight = require(UI.Flight)
 local Tutorial = require(UI.Tutorial)
 local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
+local Audio = require(UI.Audio)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,8 @@ Tutorial.init(ctx)
 Flight.init(ctx)
 -- Lights this client from its own altitude: bright street, sunset islands.
 Sky.init(ctx)
+-- Buses first, so anything that makes a noise after this can be routed.
+Audio.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.

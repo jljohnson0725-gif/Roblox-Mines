@@ -139,6 +139,13 @@ function Sounds.play(name, speedMultiplier, volumeMultiplier)
 	sound.PlaybackSpeed = def.speed * (speedMultiplier or 1)
 	sound.Parent = SoundService
 
+	--[[ Routed to a mixing bus when the client has set one up. Absent -- on the
+	     server, or before Audio.init -- this is a no-op and the cue behaves
+	     exactly as it always did. ]]
+	if Sounds.router then
+		Sounds.router(sound, def.bus or "SFX")
+	end
+
 	sound:Play()
 	sound.Ended:Once(function()
 		sound:Destroy()

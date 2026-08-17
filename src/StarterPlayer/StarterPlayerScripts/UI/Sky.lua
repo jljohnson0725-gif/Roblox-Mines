@@ -28,6 +28,14 @@ local RunService = game:GetService("RunService")
 
 local Sky = {}
 
+--[[ How far up the ground-to-sunset blend currently is, 0 to 1. Published so
+     the music can cross-fade on the same number the lighting uses -- one
+     definition of "how high am I" rather than two that can disagree. ]]
+local blend = 0
+function Sky.blend()
+	return blend
+end
+
 local GROUND_Y = 70 -- below this, exactly what MapStyle set
 local SKY_Y = 190 -- above this, full sunset; the island sits at 220
 
@@ -130,7 +138,7 @@ end
 
 function Sky.init(ctx)
 	local player = Players.LocalPlayer
-	local ground, current = nil, 0
+	local ground = nil
 
 	--[[ Captured on the first sync rather than at require time. Bootstrap runs
 	     MapStyle before it opens the remotes, so a state payload arriving is
@@ -164,9 +172,9 @@ function Sky.init(ctx)
 		     changes the sky as quickly as it changes altitude, which reads as
 		     the sun being yanked rather than the player rising through
 		     evening. ]]
-		if math.abs(target - current) > 0.0005 then
-			current += (target - current) * math.min(dt * 2.2, 1)
-			apply(ground, current)
+		if math.abs(target - blend) > 0.0005 then
+			blend += (target - blend) * math.min(dt * 2.2, 1)
+			apply(ground, blend)
 		end
 	end)
 
