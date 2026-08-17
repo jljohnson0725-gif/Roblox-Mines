@@ -82,8 +82,22 @@ Rarity.Tiers = {
 			ever made rollable again, but DropTable skips it entirely -- see
 			Rarity.Rollable.
 		]]
-		wheelOnly = true,
-		weight = 0.05,
+		--[[
+			ROLLABLE NOW, and far below Mythic. This was wheelOnly, so the wheel
+			was the only route to a Secret and that exclusivity was its whole
+			reason to exist. Opening Mines to Secrets costs the wheel that, so
+			the weight is set an order of magnitude under Mythic's 0.8 -- the
+			wheel stays overwhelmingly the faster route, and a Secret out of
+			Mines stays a story rather than a plan.
+
+			0.18, not the 0.02 tried first. That put a Secret at one drop in
+			36,800 -- about 433 hours of mining -- which is rollable on paper
+			and never in practice. "Rarer than Mythic" has to still be
+			reachable, so this sits about four times under it: roughly one in
+			4,000 drops, or a couple of days of play. The wheel offers 9.4% a
+			spin, so it remains the route anyone actually takes.
+		]]
+		weight = 0.18,
 		growth = 2.20,
 		-- Near-white so it reads on the dark UI; the model itself is void-black.
 		color = Color3.fromRGB(238, 238, 250),

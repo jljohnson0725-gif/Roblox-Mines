@@ -139,7 +139,7 @@ local STINGS = {
 	Mythic = {
 		id = "rbxassetid://130326607016455",
 		after = "rbxassetid://93989620006639",
-		volume = 1.15,
+		volume = 0.70,
 	},
 	Secret = { id = "rbxassetid://139682612041479", volume = 1.20 },
 }

@@ -43,7 +43,7 @@ local Audio = {}
      same loudness and a single volume on the player cannot fix one without
      moving the other. Tune the quiet one up or the loud one down here. ]]
 local GROUND_PLAYLIST = {
-	{ id = "rbxassetid://1841647093", gain = 0.55 },
+	{ id = "rbxassetid://1841647093", gain = 0.28 },
 	{ id = "rbxassetid://1848354536", gain = 1.00 },
 }
 local SKY_TRACK = "rbxassetid://139997523791273"
