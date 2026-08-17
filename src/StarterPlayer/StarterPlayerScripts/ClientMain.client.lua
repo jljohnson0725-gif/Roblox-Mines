@@ -39,6 +39,7 @@ local Tutorial = require(UI.Tutorial)
 local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
 local Audio = require(UI.Audio)
+local Idle = require(UI.Idle)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,8 @@ Flight.init(ctx)
 Sky.init(ctx)
 -- Buses first, so anything that makes a noise after this can be routed.
 Audio.init(ctx)
+-- Bobs the brainrots on their pads. Purely local: nothing here replicates.
+Idle.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
