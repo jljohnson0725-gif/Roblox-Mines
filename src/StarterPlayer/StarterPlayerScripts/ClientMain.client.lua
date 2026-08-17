@@ -421,6 +421,53 @@ end)
 local ANIMATE_RADIUS = 130
 local tracked = {}
 
+--[[
+	The parts this model animates, and where each sits relative to the pivot.
+
+	CALLED AGAIN LATER IF IT COMES BACK EMPTY, which it does. A tagged model
+	replicates before its parts do, so GetDescendants on the frame the tag
+	arrives can legitimately find nothing -- and a list captured empty then
+	stays empty, leaving that brainrot frozen for the rest of the session. It
+	survived one test because three models replicate faster than eight.
+
+	The old PivotTo had no such failure mode: it addressed the model rather
+	than a remembered list. Holding the Aura and LabelAnchor still is what
+	requires naming parts individually, so this is the cost of that, paid with
+	a re-check instead of a race.
+]]
+local function collectParts(model, data)
+	local pivot = data.pivot
+	table.clear(data.moving)
+	table.clear(data.offset)
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart")
+			and descendant.Name ~= "Aura"
+			and descendant.Name ~= "LabelAnchor"
+		then
+			table.insert(data.moving, descendant)
+			data.offset[descendant] = pivot:ToObjectSpace(descendant.CFrame)
+		end
+	end
+
+	--[[
+		THE AURA IS THE ONLY HONEST ANCHOR. We never move it, so wherever it is,
+		the model is genuinely resting -- unlike the pivot, which we displace
+		every frame and which is a bounding box over parts we are shifting.
+
+		This is what makes the capture race survivable. A tagged model can reach
+		the client before the server has placed it, at the origin, and a pivot
+		cached there is 250 studs from the camera: outside ANIMATE_RADIUS, never
+		animated, frozen for the session. Two of eight hit exactly that. Since
+		the offsets are all pivot-RELATIVE, recomputing the pivot from the aura
+		each frame fixes the placement without touching them, and needs no
+		distance threshold to guess with.
+	]]
+	data.aura = model:FindFirstChild("Aura")
+	data.auraRel = data.aura and pivot:ToObjectSpace(data.aura.CFrame) or nil
+
+	return #data.moving > 0
+end
+
 local function track(model)
 	task.defer(function()
 		if not model:IsDescendantOf(Workspace) then
@@ -453,25 +500,15 @@ local function track(model)
 			means addressing the rest individually. Offsets are stored relative
 			to the pivot so the model still turns about its own centre.
 		]]
-		local pivot = model:GetPivot()
-		local moving, offset = {}, {}
-		for _, descendant in ipairs(model:GetDescendants()) do
-			if descendant:IsA("BasePart")
-				and descendant.Name ~= "Aura"
-				and descendant.Name ~= "LabelAnchor"
-			then
-				table.insert(moving, descendant)
-				offset[descendant] = pivot:ToObjectSpace(descendant.CFrame)
-			end
-		end
-
-		tracked[model] = {
-			pivot = pivot,
+		local data = {
+			pivot = model:GetPivot(),
 			tintable = tintable,
-			moving = moving,
-			offset = offset,
+			moving = {},
+			offset = {},
 			phase = math.random() * math.pi * 2,
 		}
+		collectParts(model, data)
+		tracked[model] = data
 	end)
 end
 
@@ -549,27 +586,57 @@ RunService.Heartbeat:Connect(function(dt)
 	for model, data in pairs(tracked) do
 		if not model.Parent then
 			tracked[model] = nil
-		elseif not eye or (data.pivot.Position - eye).Magnitude < ANIMATE_RADIUS then
-			--[[ The spin carries `phase` too. Without it the yaw is raw clock,
-			     so every brainrot on the map points the same way at the same
-			     moment and eight pads read as one mechanism -- the bob was
-			     already offset per model, the turn was not. ]]
-			local bob = math.sin(clock * 1.7 + data.phase) * 0.22
-			local cf = data.pivot
-				* CFrame.new(0, bob, 0)
-				* CFrame.Angles(0, clock * 0.7 + data.phase, 0)
-			for _, part in ipairs(data.moving) do
-				local rest = data.offset[part]
-				if rest then
-					part.CFrame = cf * rest
-				end
+		else
+			--[[
+				NO ANCHOR YET MEANS RE-READ EVERYTHING. The Aura replicates
+				separately from the Body, so the first look can find one and not
+				the other -- and an anchor missed once was missed for the
+				session, leaving that model with a pivot cached wherever it
+				happened to be and failing the radius test forever. One of eight
+				landed there even after the pivot fix.
+
+				Safe to re-collect precisely because we have not animated this
+				model: with no anchor it never passed the radius test, so its
+				parts are still exactly where the server put them and GetPivot
+				is its true rest pose.
+			]]
+			if not data.aura then
+				data.pivot = model:GetPivot()
+				collectParts(model, data)
 			end
 
-			if #data.tintable > 0 then
-				local hue = (clock * 0.16 + data.phase * 0.08) % 1
-				local color = Color3.fromHSV(hue, 0.85, 1)
-				for _, part in ipairs(data.tintable) do
-					part.Color = color
+			-- re-derive the resting pivot from the part we never move, so a
+			-- model placed after we cached it still lands in the right spot
+			if data.aura and data.auraRel then
+				data.pivot = data.aura.CFrame * data.auraRel:Inverse()
+			end
+			if not eye or (data.pivot.Position - eye).Magnitude < ANIMATE_RADIUS then
+				-- late replication: try again rather than stay frozen forever
+				local ready = #data.moving > 0 or collectParts(model, data)
+				if ready then
+					--[[ The spin carries `phase` too. Without it the yaw is raw
+					     clock, so every brainrot on the map points the same way
+					     at the same moment and eight pads read as one
+					     mechanism -- the bob was already offset per model, the
+					     turn was not. ]]
+					local bob = math.sin(clock * 1.7 + data.phase) * 0.22
+					local cf = data.pivot
+						* CFrame.new(0, bob, 0)
+						* CFrame.Angles(0, clock * 0.7 + data.phase, 0)
+					for _, part in ipairs(data.moving) do
+						local rest = data.offset[part]
+						if rest then
+							part.CFrame = cf * rest
+						end
+					end
+				end
+
+				if #data.tintable > 0 then
+					local hue = (clock * 0.16 + data.phase * 0.08) % 1
+					local color = Color3.fromHSV(hue, 0.85, 1)
+					for _, part in ipairs(data.tintable) do
+						part.Color = color
+					end
 				end
 			end
 		end
