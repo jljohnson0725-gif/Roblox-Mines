@@ -266,10 +266,10 @@ function HUD.init(ctx)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = rail
 
-	--[[ No auction button, deliberately. Listing and bidding are both gated to
-	     the consign desk server-side, so a rail button would open a panel where
-	     every control is refused -- worse than no button. It opens from the desk
-	     prompt, like the upgrade shop does. ]]
+	--[[ The rail carries only what can be opened from anywhere. Anything gated
+	     to a place -- the upgrade shop at its counter, the wheel at the wheel --
+	     opens from that place's prompt instead, because a rail button leading to
+	     a panel where every control is refused is worse than no button. ]]
 	local RAIL = {
 		{ id = "mines", glyph = "💣", label = "MINES", color = Theme.color.accent },
 		{ id = "index", glyph = "📘", label = "INDEX", color = Color3.fromRGB(120, 100, 255) },

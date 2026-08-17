@@ -20,8 +20,6 @@ local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
 local MinesLandmark = require(Modules.MinesLandmark)
-local AuctionService = require(Modules.AuctionService)
-local HubService = require(Modules.HubService)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
 local WheelService = require(Modules.WheelService)
@@ -57,18 +55,10 @@ MinesService.start()
 
 -- Built after the restyle so they sit on the final map, and after EventService
 -- so the landmark's rings can pick up whatever event is already running.
-HubService.start()
 ShopService.start()
 MinesLandmark.build()
 MinesLandmark.startEventSync()
 UpgradeService.start()
-
--- The auction's proximity gate is the hub's consign desk, which only exists
--- once HubService has built the room -- so the handoff happens here rather than
--- either module reaching into the other.
-AuctionService.desk = HubService.desk
-AuctionService.start()
-HubService.startBlockDisplay()
 
 -- The wheel is the only source of Secrets. Its site was cleared above.
 WheelService.start()

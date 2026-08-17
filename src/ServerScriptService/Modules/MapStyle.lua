@@ -90,7 +90,7 @@ local function applyLighting()
 	Lighting.ColorShift_Top = Color3.fromRGB(255, 250, 230)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(150, 172, 200)
 	Lighting.FogColor = Color3.fromRGB(186, 226, 255)
-	--[[ Fog stays SHORT of the Auction House at x=4000: that room has no walls
+	--[[ Fog stays SHORT of the far room at x=4000: that room has no walls
 	     of its own and relies on being past FogEnd to stay invisible from the
 	     street. Costs nothing to keep -- the street's longest sightline is about
 	     590 studs, so fog never actually touches it. ]]

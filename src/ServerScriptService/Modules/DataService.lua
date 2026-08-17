@@ -54,7 +54,7 @@ local function newProfile()
 		--[[
 			Everything you have EVER secured, as ["charId:variantId"] = count.
 
-			Separate from inventory on purpose: the auction house takes brainrots
+			Separate from inventory on purpose: storage takes brainrots
 			out of your inventory permanently, and a collection you can lose by
 			selling isn't a collection. String keys because a pair needs both
 			halves, and because JSON round-trips string keys unchanged -- the

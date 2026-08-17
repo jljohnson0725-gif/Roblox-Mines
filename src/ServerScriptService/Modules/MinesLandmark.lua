@@ -3,7 +3,7 @@
 	The beacon over the street portal.
 
 	Named for what it used to be. Mines is playable from anywhere again, so this
-	no longer points at the gambling -- it points at the Auction House through
+	no longer points at the gambling -- it points at the western doorway through
 	the archway beneath it, which is where upgrades and every service after them
 	live. The sign says so; only the module name is historical.
 

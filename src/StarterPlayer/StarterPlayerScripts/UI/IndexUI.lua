@@ -5,7 +5,7 @@
 
 	Two things it is NOT:
 
-	  - It is not your inventory. Selling a brainrot at the auction house removes
+	  - It is not your inventory. Losing a brainrot removes
 	    it from your inventory forever, and a collection you can lose by selling
 	    isn't a collection. The server keeps a separate `index` count that only
 	    ever goes up.

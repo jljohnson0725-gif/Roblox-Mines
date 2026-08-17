@@ -1,6 +1,6 @@
 --[[
 	UpgradeUI
-	The shop panel. Opens at the counter in the Auction House, never remotely,
+	The shop panel. Opens at the street shop counter, never remotely,
 	and the server enforces the same rule -- spending is the trip you make, now
 	that Mines isn't.
 

@@ -109,7 +109,7 @@ Config.RingTag = "MinesRing"
 
 -- ── Upgrades ────────────────────────────────────────────────────────────────
 -- How close you must stand to a counter to use it. Shared by the street
--- upgrade shop and the auction consign desk.
+-- upgrade shop counter.
 Config.ShopRange = 30
 
 --[[
@@ -148,40 +148,13 @@ Config.BaseWalkSpeed = 25
 ]]
 Config.OnboardingDrops = 2
 
--- ── Auction house ───────────────────────────────────────────────────────────
---[[
-	The house's standing offer on any listed brainrot is FLAT RENT: it pays
-	`AuctionFloorSeconds` worth of that brainrot's income, whatever the tier.
-	Linear in income on purpose -- it gives one rule that reads the same at
-	every tier: KEEPING IT BEATS SELLING IT AFTER 15 MINUTES OF COLLECTED RENT.
-
-	900 rather than something bigger because pads cap at 8 and drops far
-	outrun them, so the auction's real job is liquidating brainrots you have
-	nowhere to put -- where the alternative is zero -- not out-earning a pad.
-
-	The eye-watering numbers this produces at the top (a Secret Galaxy floors
-	around $594M) are not the auction's doing: that brainrot makes the same
-	money in 15 minutes on a pad. Rent is what's unbounded up there. See
-	tools/auction.py before changing this.
-]]
-Config.AuctionFloorSeconds = 900
-
-Config.AuctionDuration = 120 -- seconds a lot stays open
-Config.AuctionMaxListings = 3 -- concurrent lots per seller, stops board spam
-Config.AuctionBidStep = 0.10 -- each bid must beat the last by 10%
-
--- A bid inside the last `AuctionSnipeWindow` seconds pushes the end out by that
--- much again, so a lot can't be stolen on the final tick. Uncapped on purpose:
--- a contested lot SHOULD run long, that's the drama.
-Config.AuctionSnipeWindow = 15
-
 -- ── The Wheel ───────────────────────────────────────────────────────────────
 --[[
 	One machine, one bet: EVERYTHING. All your cash and every brainrot you own,
 	placed or stored, for a shot at a Secret.
 
 	Secrets exist nowhere else. The Mines cannot roll one (Rarity marks the tier
-	wheelOnly) and the auction can only ever resell one that came from here, so
+	wheelOnly) and nothing else can mint one, so
 	the only source in the game is this wager.
 
 	NUMBERS WORTH KNOWING, from tools/wheel.py:

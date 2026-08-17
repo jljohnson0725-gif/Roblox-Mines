@@ -29,7 +29,6 @@ local Fx = require(UI.Fx)
 local MinesUI = require(UI.MinesUI)
 local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
-local AuctionUI = require(UI.AuctionUI)
 local IndexUI = require(UI.IndexUI)
 local WheelUI = require(UI.WheelUI)
 local CodesUI = require(UI.CodesUI)
@@ -83,9 +82,6 @@ end
 local ctx = {
 	gui = gui,
 	state = state,
-	-- The auction has to tell your own lots and bids apart from everyone
-	-- else's, and DisplayNames aren't unique.
-	userId = player.UserId,
 	remotes = {
 		StartRound = Net.get("StartRound"),
 		RevealTile = Net.get("RevealTile"),
@@ -94,8 +90,6 @@ local ctx = {
 		BuySlot = Net.get("BuySlot"),
 		EquipBest = Net.get("EquipBest"),
 		BuyUpgrade = Net.get("BuyUpgrade"),
-		ListBrainrot = Net.get("ListBrainrot"),
-		PlaceBid = Net.get("PlaceBid"),
 		SpinWheel = Net.get("SpinWheel"),
 		WheelStake = Net.get("WheelStake"),
 		RedeemCode = Net.get("RedeemCode"),
@@ -125,7 +119,6 @@ ctx.fx = Fx.init(ctx)
 local minesUI = MinesUI.init(ctx)
 local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
-local auctionUI = AuctionUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
@@ -159,7 +152,7 @@ SealTracker.init(ctx)
 ]]
 local function chromeHidden()
 	return minesUI.isVisible() or inventoryUI.isVisible() or upgradeUI.isVisible()
-		or auctionUI.isVisible() or indexUI.isVisible() or wheelUI.isVisible()
+		or indexUI.isVisible() or wheelUI.isVisible()
 		or codesUI.isVisible() or rebirthUI.isVisible()
 end
 
@@ -186,7 +179,6 @@ local function showMines(visible)
 	if visible then
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
-		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
 		wheelUI.setVisible(false)
 	end
@@ -201,7 +193,6 @@ local function showInventory(visible)
 	if visible then
 		minesUI.setVisible(false)
 		upgradeUI.setVisible(false)
-		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
 		wheelUI.setVisible(false)
 	end
@@ -230,7 +221,6 @@ hud.onCodes = function()
 		minesUI.setVisible(false)
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
-		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
 		wheelUI.setVisible(false)
 	end
@@ -245,7 +235,6 @@ hud.onIndex = function()
 		minesUI.setVisible(false)
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
-		auctionUI.setVisible(false)
 		wheelUI.setVisible(false)
 	end
 	Sounds.play(opening and "uiOpen" or "uiClose")
@@ -293,27 +282,10 @@ end)
 Net.get("OpenUpgrades").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)
-	auctionUI.setVisible(false)
 	indexUI.setVisible(false)
 	Sounds.play("uiOpen")
 	upgradeUI.setVisible(true)
 	syncChrome()
-end)
-
-Net.get("OpenAuction").OnClientEvent:Connect(function()
-	minesUI.setVisible(false)
-	inventoryUI.setVisible(false)
-	upgradeUI.setVisible(false)
-	indexUI.setVisible(false)
-	Sounds.play("uiOpen")
-	auctionUI.setVisible(true)
-	syncChrome()
-end)
-
--- Broadcast to everyone, not just the floor: a lot closing is worth knowing
--- about wherever you are, and the panel is ready the moment you walk in.
-Net.get("AuctionState").OnClientEvent:Connect(function(list)
-	auctionUI.setLots(list or {})
 end)
 
 --[[ The wheel pulls its stake fresh on open rather than reading cached state:
@@ -323,7 +295,6 @@ Net.get("OpenWheel").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)
 	upgradeUI.setVisible(false)
-	auctionUI.setVisible(false)
 	indexUI.setVisible(false)
 	Sounds.play("uiOpen")
 	local ok, stake = pcall(function()
@@ -411,7 +382,6 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		minesUI.setVisible(false)
 		inventoryUI.setVisible(false)
 		upgradeUI.setVisible(false)
-		auctionUI.setVisible(false)
 		indexUI.setVisible(false)
 		syncChrome()
 	end
@@ -675,10 +645,6 @@ task.spawn(function()
 		task.wait(0.5)
 		if upgradeUI.isVisible() and walkedAway("UpgradeShop", "Counter") then
 			upgradeUI.setVisible(false)
-			syncChrome()
-		end
-		if auctionUI.isVisible() and walkedAway("AuctionHouse", "ConsignDesk") then
-			auctionUI.setVisible(false)
 			syncChrome()
 		end
 	end

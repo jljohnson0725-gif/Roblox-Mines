@@ -12,7 +12,7 @@
 	a rejoin mid-way.
 
 	It shows the FIRST incomplete step, which is not the same as skipping ahead.
-	Someone who buys a brainrot at the auction and places it without ever opening
+	Someone who wins a brainrot and places it without ever opening
 	Mines still gets "Play a round of Mines" -- correctly, because they haven't.
 	The pips are what tell them the later steps are already behind them, so they
 	light by whether each step is DONE rather than by position in the list.

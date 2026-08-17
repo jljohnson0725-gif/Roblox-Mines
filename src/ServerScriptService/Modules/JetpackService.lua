@@ -37,7 +37,7 @@ local ASCENDING = "Ascending"
 	somewhere you have to be told about.
 
 	MEASURED, NOT PICKED. The first attempt at (-210, -30) put it three studs
-	from a map wall, which is the same mistake that once buried the auction
+	from a map wall, which is the same mistake that once buried the hub
 	portal inside an archway. This came out of a sweep of the whole street for
 	ground at walk level with 18+ studs of clearance in all eight directions,
 	clear sky overhead, and 55+ studs from every base and landmark. This site

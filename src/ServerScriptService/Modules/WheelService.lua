@@ -4,7 +4,7 @@
 
 	THE ONLY SOURCE OF SECRETS. Rarity marks that tier wheelOnly and DropTable
 	skips it, so no tile reveal at any multiplier under any event can produce
-	one. The auction can resell a Secret, but it can never mint one.
+	one. Nothing else in the game can mint a Secret.
 
 	WHAT "EVERYTHING" MEANS. All cash, and every brainrot -- placed on pads,
 	stored, no exceptions. It is taken BEFORE the roll, so a disconnect

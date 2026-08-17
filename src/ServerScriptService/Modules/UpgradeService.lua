@@ -1,6 +1,6 @@
 --[[
 	UpgradeService
-	Purchase logic for the upgrades sold in the Auction House.
+	Purchase logic for the upgrades sold at the street shop.
 
 	ShopService builds and owns the street kiosk. This module keeps only the
 	purchase logic, which is the part that has to be server-authoritative.

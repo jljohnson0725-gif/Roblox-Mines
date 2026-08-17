@@ -2,8 +2,8 @@
 	ShopService
 	The upgrade shop, back out in the street where it started.
 
-	It lived in the hub for a while. That room is an auction house now, and
-	sharing it would have made the auction floor a lobby with a shop counter in
+	It lived in the hub for a while. The hub is gone now, and it was already
+	clear before that a shared room made the shop a counter in the corner of
 	it -- the thing the move indoors was supposed to fix.
 
 	Deliberately a KIOSK, not a monument. The two structures this replaces were

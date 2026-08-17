@@ -84,7 +84,7 @@ local function opening(character)
 	--[[ The BASE of the landmark, not its pivot. The pivot is the centre of a
 	     34-stud-tall structure and sits 46 studs up, so aiming above it looked
 	     clean over the top of the thing it was supposed to show -- and framed
-	     the Auction House standing behind it instead. GetBoundingBox gives the
+	     the building standing behind it instead. GetBoundingBox gives the
 	     height to subtract; a pivot on its own never tells you how tall
 	     something is. ]]
 	local mines = workspace:FindFirstChild("MinesLandmark")
