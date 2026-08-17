@@ -49,7 +49,15 @@ Islands.List = {
 
 		--[[ What playing here drops. Fragments rather than the whole seal, so a
 		     losing streak still moves you forward -- the release valve for a
-		     player who is simply bad at this particular game. ]]
+		     player who is simply bad at this particular game.
+
+		     Seal ids match island ids on purpose: the seal earned here is named
+		     for the chapter that issues it, which is what lets a gate look up
+		     the island it should name in its refusal.
+
+		     The other half of the pair is `requires`, a seal id this island
+		     demands before its game will run -- absent here, because nothing
+		     gates the chapter you start in. Shared/Seals owns both rules. ]]
 		seal = "plinko",
 		sealFragments = 5,
 

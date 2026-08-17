@@ -31,8 +31,48 @@ local Theme = require(script.Parent.Theme)
 	the bar itself, but the menu and chat buttons hang BELOW it on the left, so
 	an inset-only offset still collides. The extra clearance clears the buttons.
 ]]
+--[[
+	Clearance below the Roblox topbar. The ScreenGui sets IgnoreGuiInset, so
+	nothing is pushed down for us and every top-anchored element has to add
+	this itself.
+
+	IT IS RACED AT STARTUP. GetGuiInset returns 0 until the topbar has been
+	measured, and which modules read before that point varies run to run --
+	caught with the event card at y=44, tucked under the topbar, while a card
+	built moments later correctly used 58. A one-off read at build time is
+	therefore not safe, so `topAnchored` re-applies the offset once the value
+	settles.
+]]
 local function hudTop()
 	return GuiService:GetGuiInset().Y + 44
+end
+
+--[[ Remember a top-anchored element and its X, and keep its Y correct. ]]
+local topAnchored = {}
+local function anchorTop(frame, x)
+	table.insert(topAnchored, { frame = frame, x = x })
+	frame.Position = UDim2.new(x.Scale, x.Offset, 0, hudTop())
+end
+
+task.spawn(function()
+	--[[ Cheap and short: the inset settles within the first frames, and a
+	     resize or a topbar change is the only other thing that moves it, both
+	     of which the ViewportSize signal below covers. ]]
+	for _ = 1, 12 do
+		task.wait(0.1)
+		for _, entry in ipairs(topAnchored) do
+			entry.frame.Position = UDim2.new(entry.x.Scale, entry.x.Offset, 0, hudTop())
+		end
+	end
+end)
+
+local camera = workspace.CurrentCamera
+if camera then
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		for _, entry in ipairs(topAnchored) do
+			entry.frame.Position = UDim2.new(entry.x.Scale, entry.x.Offset, 0, hudTop())
+		end
+	end)
 end
 
 local HUD = {}
@@ -103,6 +143,8 @@ function HUD.init(ctx)
 		position = UDim2.fromOffset(16, hudTop()),
 		radius = 12,
 	})
+	anchorTop(eventCard, UDim.new(0, 16))
+
 	local eventStroke = Theme.stroke(eventCard, Theme.color.line, 2)
 	Theme.padding(eventCard, 10)
 
@@ -287,6 +329,8 @@ function HUD.init(ctx)
 		anchor = Vector2.new(0.5, 0),
 		radius = false,
 	})
+	anchorTop(toastStack, UDim.new(0.5, 0))
+
 	local toastLayout = Theme.list(toastStack, 6)
 	toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
@@ -294,6 +338,11 @@ function HUD.init(ctx)
 		good = Theme.color.good,
 		bad = Theme.color.bad,
 		info = Theme.color.dim,
+		--[[ Above `good`, for the handful of things that happen once a chapter
+		     rather than once a minute -- a completed seal is 69 drops of
+		     expected play. Gold because that is already the game's colour for
+		     the rarest outcome, on the wheel and on the fragment bins. ]]
+		great = Theme.color.gold,
 	}
 
 	function hud.notify(text, kind)

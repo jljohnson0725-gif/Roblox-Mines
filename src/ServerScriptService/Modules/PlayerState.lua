@@ -56,6 +56,11 @@ function PlayerState.snapshot(player)
 		jetpack = profile.jetpack == true, -- whether F does anything
 		rebirths = profile.rebirths or 0,
 		stats = profile.stats,
+		--[[ Named exactly as the profile names them, because Shared/Seals reads
+		     both through the same functions -- the client tracker and the
+		     server's gate must never be able to disagree about a seal. ]]
+		fragments = profile.fragments or {},
+		seals = profile.seals or {},
 	}
 end
 
@@ -79,7 +84,8 @@ function PlayerState.pushMoney(player)
 	})
 end
 
---[[ kind: "good" | "bad" | "info" ]]
+--[[ kind: "great" | "good" | "bad" | "info" -- "great" is reserved for
+     once-a-chapter events, currently only a completed seal. ]]
 function PlayerState.notify(player, text, kind)
 	Net.get("Notify"):FireClient(player, text, kind or "info")
 end

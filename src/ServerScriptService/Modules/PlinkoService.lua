@@ -49,6 +49,7 @@ local Net = require(Shared.Net)
 local Format = require(Shared.Format)
 local Islands = require(Shared.Islands)
 local Plinko = require(Shared.Plinko)
+local Seals = require(Shared.Seals)
 
 local DataService = require(script.Parent.DataService)
 local PlayerState = require(script.Parent.PlayerState)
@@ -436,6 +437,16 @@ function PlinkoService.drop(player)
 	if not PlinkoService.isNear(player) then
 		return { ok = false, err = "Head to the Plinko machine." }
 	end
+	--[[ The seal gate. Plinko declares no `requires`, being the chapter you
+	     start in, so this always passes today -- it is here so the second
+	     island's game is a table entry with a `requires` field and not a hunt
+	     through every service for where permission should have been checked. ]]
+	local allowed, needs = Seals.canEnter(profile, Islands.get("plinko"))
+	if not allowed then
+		local gate = Islands.get(needs)
+		return { ok = false, err = ("Needs the %s seal."):format(
+			(gate and gate.name) or needs) }
+	end
 	if profile.money < Config.PlinkoDropCost then
 		return { ok = false, err = "Need " .. Format.money(Config.PlinkoDropCost) .. "." }
 	end
@@ -607,16 +618,26 @@ function PlinkoService.settle(player, index)
 	local island = Islands.get("plinko")
 	local message = ("Bin %d — %.1fx, %s"):format(index, bin.pay, Format.money(won))
 
+	--[[ The award, the forging and the "already held" case all live in
+	     Shared/Seals, so the second island's game is one call rather than a
+	     copy of this arithmetic. ]]
+	local sealed = false
 	if bin.fragment and island then
-		profile.fragments = profile.fragments or {}
-		local held = (profile.fragments[island.seal] or 0) + 1
-		profile.fragments[island.seal] = held
-		message = ("%s  +1 seal fragment (%d/%d)"):format(
-			message, math.min(held, island.sealFragments), island.sealFragments)
+		local held, need, justSealed = Seals.award(profile, island)
+		sealed = justSealed
+		if justSealed then
+			message = ("%s  —  %s SEAL COMPLETE"):format(message, island.name:upper())
+		elseif Seals.held(profile, island.seal) then
+			message = ("%s  (seal already held)"):format(message)
+		else
+			message = ("%s  +1 seal fragment (%d/%d)"):format(message, held, need)
+		end
 	end
 
 	PlayerState.push(player)
-	PlayerState.notify(player, message, bin.pay >= 1 and "good" or "info")
+	--[[ A seal is the rarest thing this machine produces -- 69 drops of
+	     expected play -- so it does not share the tone of a 0.3x bin. ]]
+	PlayerState.notify(player, message, sealed and "great" or (bin.pay >= 1 and "good" or "info"))
 end
 
 function PlinkoService.start()

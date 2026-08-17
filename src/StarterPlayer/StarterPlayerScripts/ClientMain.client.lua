@@ -39,6 +39,7 @@ local Tutorial = require(UI.Tutorial)
 local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
 local Audio = require(UI.Audio)
+local SealTracker = require(UI.SealTracker)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,9 @@ local state = {
 	upgrades = {},
 	jetpack = false, -- owned once, then forever; gates the F key
 	event = nil, -- global event clock, filled by RequestState / EventState
+	-- Named as the profile names them, so Shared/Seals reads either one.
+	fragments = {}, -- [sealId] = how many toward that island's seal
+	seals = {}, -- [sealId] = true once forged; the key to the next chapter
 }
 
 local listeners = {}
@@ -136,6 +140,8 @@ Flight.init(ctx)
 Sky.init(ctx)
 -- Buses first, so anything that makes a noise after this can be routed.
 Audio.init(ctx)
+-- Fragment progress, under the event card. Hides itself until you hold one.
+SealTracker.init(ctx)
 
 --[[
 	The bottom-centre money counter steps aside while any full panel is open.
