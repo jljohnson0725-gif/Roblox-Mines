@@ -233,7 +233,17 @@ function MinesService.revealTile(player, index)
 			end
 			mods = merged
 		end
-		drop = DropTable.roll(round.multiplier, rng, mods)
+		--[[ A forced tier, from a test code, spends one charge per drop. Checked
+		     before the honest roll so it can produce tiers the roll never
+		     will -- Secrets are wheelOnly. ]]
+		local forced = profile and (profile.forceDrops or 0) > 0
+			and DropTable.forceRoll(profile.forceTier, rng)
+		if forced then
+			profile.forceDrops -= 1
+			drop = forced
+		else
+			drop = DropTable.roll(round.multiplier, rng, mods)
+		end
 		if drop then
 			drop.income = Economy.incomeOf(drop.charId, drop.variantId)
 			drop.tier = Brainrots.get(drop.charId).tier

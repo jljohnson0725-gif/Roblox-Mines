@@ -368,5 +368,13 @@ for level = 0, 2 do
 	}
 end
 
+--[[ Hear the top of the range without grinding for it. Each forces the next
+     few Mines drops to a tier, so the real drop path fires and the real sting
+     with it -- granting the brainrot outright would hand you the item and none
+     of the sound. ]]
+Config.Codes.HEARMYTHIC = { forceTier = "Mythic", forceDrops = 3, testOnly = true,
+	blurb = "next 3 drops are Mythic" }
+Config.Codes.HEARSECRET = { forceTier = "Secret", forceDrops = 3, testOnly = true,
+	blurb = "next 3 drops are Secret" }
 
 return Config

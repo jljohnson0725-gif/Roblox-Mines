@@ -77,6 +77,14 @@ function CodeService.redeem(player, input)
 	profile.redeemed[code] = true
 	profile.money += reward.money or 0
 
+	--[[ A forced tier arms the next few Mines drops rather than granting
+	     anything. Handing the brainrot over directly would give you the item
+	     and none of the sound, which is the entire point of these two. ]]
+	if reward.forceTier then
+		profile.forceTier = reward.forceTier
+		profile.forceDrops = (profile.forceDrops or 0) + (reward.forceDrops or 1)
+	end
+
 	--[[ Granted brainrots go through the same door as a Mines cash-out: into the
 	     inventory AND into the Index, so a code-granted Secret counts as
 	     discovered exactly like an earned one. ]]

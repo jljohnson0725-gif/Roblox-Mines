@@ -39,9 +39,12 @@ local Audio = {}
 	session. The sky is a single track because you are not up there long enough
 	for repetition to set in.
 ]]
+--[[ `gain` is per TRACK, because two songs mastered separately are never the
+     same loudness and a single volume on the player cannot fix one without
+     moving the other. Tune the quiet one up or the loud one down here. ]]
 local GROUND_PLAYLIST = {
-	"rbxassetid://1841647093",
-	"rbxassetid://1848354536",
+	{ id = "rbxassetid://1841647093", gain = 0.55 },
+	{ id = "rbxassetid://1848354536", gain = 1.00 },
 }
 local SKY_TRACK = "rbxassetid://139997523791273"
 
@@ -140,10 +143,12 @@ function Audio.init(ctx)
 	--[[ Alternate rather than loop: when one finishes, the other starts. Looped
 	     would have to be false for Ended to fire at all, which is why the
 	     rotation lives here rather than in a property. ]]
-	local nextIndex = 0
+	local nextIndex, groundGain = 0, 1
 	local function advance()
 		nextIndex = nextIndex % #GROUND_PLAYLIST + 1
-		ground.SoundId = GROUND_PLAYLIST[nextIndex]
+		local track = GROUND_PLAYLIST[nextIndex]
+		ground.SoundId = track.id
+		groundGain = track.gain or 1
 		ground:Play()
 	end
 	ground.Looped = false
@@ -152,7 +157,7 @@ function Audio.init(ctx)
 
 	RunService.Heartbeat:Connect(function()
 		local t = Sky.blend()
-		ground.Volume = 1 - t
+		ground.Volume = (1 - t) * groundGain
 		sky.Volume = t
 	end)
 

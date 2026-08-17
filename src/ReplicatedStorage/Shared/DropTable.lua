@@ -174,4 +174,19 @@ function DropTable.tierOdds(multiplier, mods)
 	return odds
 end
 
+--[[
+	Force a drop of a named tier. Test-only, and it deliberately bypasses
+	Rarity.Rollable -- Secrets are wheelOnly and cannot reach Mines by any
+	honest route, which is exactly why hearing one otherwise means grinding the
+	wheel until it pays out.
+]]
+function DropTable.forceRoll(tierName, rng)
+	local pool = Brainrots.ByTier[tierName]
+	if not pool or #pool == 0 then
+		return nil
+	end
+	local char = pool[rng:NextInteger(1, #pool)]
+	return { charId = char.id, variantId = "Normal" }
+end
+
 return DropTable
