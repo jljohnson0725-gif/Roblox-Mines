@@ -440,9 +440,36 @@ local function track(model)
 			end
 		end
 
+		--[[
+			MOVED PART BY PART, NOT BY PivotTo, so two things can stay behind.
+
+			The Aura is a shadow, and a shadow that lifts off the floor with the
+			thing casting it reads as broken depth. The LabelAnchor carries the
+			nameplate, which is UI rather than anatomy -- three lines of small
+			type bobbing half a stud is motion the eye keeps catching, and it
+			shimmers against whatever is behind it.
+
+			PivotTo moves every part in the model, so keeping those two still
+			means addressing the rest individually. Offsets are stored relative
+			to the pivot so the model still turns about its own centre.
+		]]
+		local pivot = model:GetPivot()
+		local moving, offset = {}, {}
+		for _, descendant in ipairs(model:GetDescendants()) do
+			if descendant:IsA("BasePart")
+				and descendant.Name ~= "Aura"
+				and descendant.Name ~= "LabelAnchor"
+			then
+				table.insert(moving, descendant)
+				offset[descendant] = pivot:ToObjectSpace(descendant.CFrame)
+			end
+		end
+
 		tracked[model] = {
-			pivot = model:GetPivot(),
+			pivot = pivot,
 			tintable = tintable,
+			moving = moving,
+			offset = offset,
 			phase = math.random() * math.pi * 2,
 		}
 	end)
@@ -523,8 +550,20 @@ RunService.Heartbeat:Connect(function(dt)
 		if not model.Parent then
 			tracked[model] = nil
 		elseif not eye or (data.pivot.Position - eye).Magnitude < ANIMATE_RADIUS then
+			--[[ The spin carries `phase` too. Without it the yaw is raw clock,
+			     so every brainrot on the map points the same way at the same
+			     moment and eight pads read as one mechanism -- the bob was
+			     already offset per model, the turn was not. ]]
 			local bob = math.sin(clock * 1.7 + data.phase) * 0.22
-			model:PivotTo(data.pivot * CFrame.new(0, bob, 0) * CFrame.Angles(0, clock * 0.7, 0))
+			local cf = data.pivot
+				* CFrame.new(0, bob, 0)
+				* CFrame.Angles(0, clock * 0.7 + data.phase, 0)
+			for _, part in ipairs(data.moving) do
+				local rest = data.offset[part]
+				if rest then
+					part.CFrame = cf * rest
+				end
+			end
 
 			if #data.tintable > 0 then
 				local hue = (clock * 0.16 + data.phase * 0.08) % 1
