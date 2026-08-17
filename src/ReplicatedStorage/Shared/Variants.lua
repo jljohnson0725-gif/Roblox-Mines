@@ -3,7 +3,7 @@
 	The second axis. Rolled INDEPENDENTLY of the character tier, so a Common
 	character can show up Galaxy and a Secret can show up Normal.
 
-	final income = tier.income * character.mul * variant.mult
+	final income = tier.income * character.mul * variant.mult * Config.IncomeMultiplier
 
 	Variants scale with run depth too, but more gently than tiers do -- otherwise
 	deep runs would double-dip and the top end would break.

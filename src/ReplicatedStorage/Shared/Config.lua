@@ -87,6 +87,23 @@ Config.ShelfFrontZ = 8 -- centre Z of the front tier
 -- ── Income ──────────────────────────────────────────────────────────────────
 Config.IncomeTickRate = 1 -- seconds between passive income payouts
 
+--[[
+	A flat multiplier on EVERY brainrot's rent, applied once inside
+	Economy.incomeOf so the pad billboard, the HUD, the drop card and the actual
+	payout all move together -- nothing reads a tier's income directly.
+
+	Here rather than doubled into Rarity's per-tier numbers, because those are
+	the shape of the tier curve and this is a decision about the whole economy's
+	pace. Keeping them apart means the curve can be retuned without re-deriving
+	what the global rate was, and this can be moved again without touching seven
+	tiers.
+
+	NOTHING ELSE MOVED WITH IT. Pads, upgrades, the jetpack, Plinko drops and
+	rebirth all still cost what they did, so raising this shortens the time to
+	every one of them in proportion.
+]]
+Config.IncomeMultiplier = 2
+
 -- Income doesn't auto-credit: it piles up on the collect strips and you walk to
 -- a brainrot to bank it.
 --

@@ -21,7 +21,10 @@ function Economy.incomeOf(charId, variantId)
 	end
 	local tier = Rarity.get(char.tier)
 	local variant = Variants.get(variantId)
-	return tier.income * char.mul * variant.mult
+	--[[ The global rate lands here and nowhere else. Every income read in the
+	     game goes through this function, so one multiplication keeps the number
+	     on the billboard and the number the server pays identical. ]]
+	return tier.income * char.mul * variant.mult * Config.IncomeMultiplier
 end
 
 --[[ "Rainbow Tralalero Tralala" ]]
