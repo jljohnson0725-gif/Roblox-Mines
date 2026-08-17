@@ -112,6 +112,57 @@ Sounds.Spectacle = {
 	},
 }
 
+--[[
+	HOW EACH TIER SOUNDS.
+
+	Two rules, and they pull against each other on purpose. Pitch goes DOWN as
+	rarity climbs -- lower reads as heavier, and a Secret announcing itself an
+	octave above a Common would sound like a smaller event, not a bigger one.
+	The ARPEGGIO on top climbs instead, and gets longer, so the big finds take
+	real time to finish speaking. A Common is one note; a Secret is seven and
+	you wait for them.
+
+	Common and Uncommon used to be identical -- both level 0, both the same
+	cue -- so the most frequent outcome in the game and the second most
+	frequent were indistinguishable. Uncommon is the same cue a little brighter
+	now, which is the smallest difference that still registers.
+
+	`cue` is the seam for real audio. Swap the id in Sounds.Library and every
+	tier inherits it, still pitched and stacked by these numbers.
+]]
+local STINGS = {
+	Common = { cue = "tileDrop", speed = 1.00, volume = 0.85 },
+	Uncommon = { cue = "tileDrop", speed = 1.18, volume = 1.00 },
+	Rare = { cue = "stinger", speed = 0.95, volume = 1.00,
+		arp = { count = 3, from = 0, gap = 0.07 } },
+	Epic = { cue = "stinger", speed = 0.78, volume = 1.05,
+		arp = { count = 4, from = 0, gap = 0.075 } },
+	Legendary = { cue = "stinger", speed = 0.62, volume = 1.10,
+		arp = { count = 5, from = -2, gap = 0.08 } },
+	Mythic = { cue = "stinger", speed = 0.50, volume = 1.15,
+		arp = { count = 6, from = -4, gap = 0.085 } },
+	Secret = { cue = "stinger", speed = 0.42, volume = 1.20,
+		arp = { count = 7, from = -5, gap = 0.09 } },
+}
+
+--[[
+	Play the find. One place, so the three call sites that announce a drop
+	cannot drift into announcing it three different ways -- which they already
+	had begun to, with Fx branching on spec.level and picking cues itself.
+]]
+function Sounds.sting(tierName, scale)
+	local sting = STINGS[tierName] or STINGS.Common
+	--[[ `scale` is for someone ELSE'S find. A server-wide announcement of a
+	     Mythic should read as distant good news, not as your own. ]]
+	scale = scale or 1
+	Sounds.play(sting.cue, sting.speed, sting.volume * scale)
+	-- the flourish is skipped when it is not your find; the headline is enough
+	if sting.arp and scale >= 1 then
+		Sounds.arpeggio(sting.cue, sting.arp.count, sting.arp.from, sting.arp.gap)
+	end
+	return sting
+end
+
 function Sounds.spectacleFor(tierName)
 	return Sounds.Spectacle[tierName] or Sounds.Spectacle.Common
 end

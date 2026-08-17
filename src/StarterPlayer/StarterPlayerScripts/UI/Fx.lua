@@ -277,12 +277,15 @@ function Fx.init(ctx)
 		local tier = Rarity.get(tierName)
 		local spec = Sounds.spectacleFor(tierName)
 
+		--[[ The sound is Sounds' business, not Fx's. This used to branch on
+		     spec.level and pick a cue, which is how the same drop ended up
+		     announced differently depending on which of three call sites got
+		     there first. ]]
+		Sounds.sting(tierName)
+
 		if spec.level <= 0 then
-			Sounds.play("tileDrop")
 			return
 		end
-
-		Sounds.play("stinger", spec.stingerSpeed)
 		Sounds.play("tileDrop", 1 + spec.level * 0.08)
 
 		shake = math.max(shake, spec.shake)
@@ -308,7 +311,7 @@ function Fx.init(ctx)
 		local tier = Rarity.get(payload.tier)
 		local spec = Sounds.spectacleFor(payload.tier)
 
-		Sounds.play("stinger", spec.stingerSpeed, 0.55)
+		Sounds.sting(payload.tier, 0.55)
 		doFlash(tier.color, spec.flash * 0.3, 0.5)
 
 		local verb = payload.lost and "LOST" or "FOUND"
