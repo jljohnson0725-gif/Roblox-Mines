@@ -54,7 +54,10 @@ Sounds.Library = {
 	-- plot
 	place = { id = "rbxasset://sounds/switch3.wav", volume = 0.60, speed = 0.80 },
 	store = { id = "rbxasset://sounds/switch3.wav", volume = 0.45, speed = 1.15 },
-	unlock = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.80, speed = 0.60 },
+	--[[ Speed 1.00 with the real file: it is already in its own key, and the
+	     0.60 existed only to make a generic ping sound like an occasion. ]]
+	unlock = { id = "rbxassetid://136993031050456", volume = 0.80, speed = 1.00 },
+	eventStart = { id = "rbxassetid://136993031050456", volume = 0.70, speed = 1.00 },
 }
 
 --[[
@@ -137,12 +140,12 @@ local STINGS = {
 	Common = { id = "rbxassetid://140231021022259", volume = 0.85 },
 	Uncommon = { id = "rbxassetid://117243786893013", volume = 0.95 },
 	Rare = { id = "rbxassetid://138190748214493", volume = 1.00 },
-	Epic = { id = "rbxassetid://117861167307650", volume = 1.05 },
-	Legendary = { id = "rbxassetid://75127344844404", volume = 1.10 },
+	Epic = { id = "rbxassetid://117861167307650", volume = 0.345 },
+	Legendary = { id = "rbxassetid://75127344844404", volume = 0.410 },
 	Mythic = {
 		id = "rbxassetid://130326607016455",
 		after = "rbxassetid://93989620006639",
-		volume = 0.70,
+		volume = 0.335,
 	},
 	Secret = { id = "rbxassetid://139682612041479", volume = 1.20 },
 }

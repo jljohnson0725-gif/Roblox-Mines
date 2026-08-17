@@ -273,7 +273,14 @@ Net.get("EventState").OnClientEvent:Connect(function(snapshot)
 	if type(snapshot) ~= "table" then
 		return
 	end
+	--[[ Only when one BEGINS. EventState also fires as an event ends and on
+	     every reconnect, and a fanfare on either of those is a fanfare for
+	     nothing -- so it turns on the id changing to something real. ]]
+	local previous = state.event and state.event.id
 	state.event = snapshot
+	if snapshot.id and snapshot.id ~= previous then
+		Sounds.play("eventStart")
+	end
 	fireState()
 end)
 
