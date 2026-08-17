@@ -1,186 +1,1473 @@
 {
-  "_comment": [
-    "Generated brainrot meshes, by character id.",
-    "",
-    "These are baked into ReplicatedStorage.BrainrotModels by tools/build_place.py.",
-    "They CANNOT be applied at runtime: MeshPart.MeshId is not writable from a",
-    "script, so a MeshPart has to already exist in the place and be cloned.",
-    "",
-    "native  = the size the generator reported for the raw asset.",
-    "target  = what the model's LARGEST dimension should become on a pad.",
-    "          Raised from 4.4 -> 6.4: at the old scale the brainrots read as",
-    "          trinkets on a 63x72 stud plot rather than the thing you own.",
-    "          Largest-dimension rather than height, because these come back in",
-    "          all shapes and normalising a flat wide one to a standard height",
-    "          leaves it enormous across.",
-    "",
-    "Each entry emits TWO MeshParts. Body keeps the generated texture. BodyPlain",
-    "is the same geometry untextured, and ModelFactory turns it into a tinted,",
-    "slightly enlarged, semi-transparent SHELL over the Body for any coloured",
-    "variant -- so a Gold reads as gold while the face and clothes still show.",
-    "",
-    "Two parts rather than recolouring one, for two separate reasons: TextureID is",
-    "as unwritable at runtime as MeshId, AND MeshPart.Color does nothing at all",
-    "once a texture is set, so a variant cannot be a tint on the textured mesh."
-  ],
-
-  "models": {
-    "trippi_troppi": {
-      "mesh": "rbxassetid://128172791128956",
-      "texture": "rbxassetid://105638633763756",
-      "native": [1.81, 3.35, 4.00]
-    },
-    "boneca_ambalabu": {
-      "mesh": "rbxassetid://80965344648901",
-      "texture": "rbxassetid://117120310072404",
-      "native": [3.82, 3.74, 4.00]
-    },
-    "brr_brr_patapim": {
-      "mesh": "rbxassetid://130940222466585",
-      "texture": "rbxassetid://95165494102617",
-      "native": [2.58, 5.00, 3.64],
-      "target": 7.2
-    },
-    "tim_cheese": {
-      "mesh": "rbxassetid://102199928948739",
-      "texture": "rbxassetid://80188030481856",
-      "native": [2.41, 4.32, 3.00],
-      "_note": "Tim Cheese is a RAT IN A SUIT, not cheese. The name is a red herring and the first pass generated a cheese wedge."
-    },
-    "bananita_dolphinita": {
-      "mesh": "rbxassetid://137572849282669",
-      "texture": "rbxassetid://133049576170267",
-      "native": [2.41, 2.36, 4.00]
-    },
-    "svinina_bombardino": {
-      "mesh": "rbxassetid://79146266714895",
-      "texture": "rbxassetid://110450249409044",
-      "native": [4.00, 1.87, 3.53]
-    },
-    "tralalero_tralala": {
-      "mesh": "rbxassetid://102657264569927",
-      "texture": "rbxassetid://108810313352656",
-      "native": [3.40, 3.29, 4.00]
-    },
-    "tung_tung_sahur": {
-      "mesh": "rbxassetid://100547747843499",
-      "texture": "rbxassetid://95408228159863",
-      "native": [2.50, 3.04, 1.48]
-    },
-    "lirili_larila": {
-      "mesh": "rbxassetid://105624247562512",
-      "texture": "rbxassetid://71702958505775",
-      "native": [3.00, 3.29, 1.65]
-    },
-    "chimpanzini_bananini": {
-      "mesh": "rbxassetid://72434059577489",
-      "texture": "rbxassetid://88105927230022",
-      "native": [3.00, 3.76, 1.44]
-    },
-    "bombombini_gusini": {
-      "mesh": "rbxassetid://74827020831146",
-      "texture": "rbxassetid://126752563985113",
-      "native": [3.95, 2.29, 4.00]
-    },
-    "bombardiro_crocodilo": {
-      "mesh": "rbxassetid://99300193704334",
-      "texture": "rbxassetid://110652042941220",
-      "native": [4.94, 2.32, 5.00]
-    },
-    "cappuccino_assassino": {
-      "mesh": "rbxassetid://73895109088880",
-      "texture": "rbxassetid://93483059558455",
-      "native": [3.00, 2.36, 1.67]
-    },
-    "ballerina_cappuccina": {
-      "mesh": "rbxassetid://90472767305375",
-      "texture": "rbxassetid://96954618133964",
-      "native": [2.89, 5.00, 2.89]
-    },
-    "vacca_saturnita": {
-      "mesh": "rbxassetid://86522354570567",
-      "texture": "rbxassetid://95208906904503",
-      "native": [4.45, 4.00, 4.45]
-    },
-    "frigo_camelo": {
-      "mesh": "rbxassetid://126457603804377",
-      "texture": "rbxassetid://101960961173399",
-      "native": [2.28, 4.89, 3.00]
-    },
-    "trulimero_trulicina": {
-      "mesh": "rbxassetid://114373667944786",
-      "texture": "rbxassetid://71395584863103",
-      "native": [1.79, 2.31, 3.00]
-    },
-    "glorbo_fruttodrillo": {
-      "mesh": "rbxassetid://118161099745764",
-      "texture": "rbxassetid://89807771936047",
-      "native": [1.40, 1.31, 3.00]
-    },
-    "girafa_celestre": {
-      "mesh": "rbxassetid://86834334872262",
-      "texture": "rbxassetid://88186852474664",
-      "native": [1.35, 4.07, 3.00],
-      "target": 7.2
-    },
-    "orangutini_ananassini": {
-      "mesh": "rbxassetid://114663598330938",
-      "texture": "rbxassetid://130997533004540",
-      "native": [3.00, 4.30, 2.16]
-    },
-    "los_tralaleritos": {
-      "mesh": "rbxassetid://103320342934678",
-      "texture": "rbxassetid://97311616175224",
-      "native": [4.37, 4.00, 3.81]
-    },
-    "odin_din_din_dun": {
-      "mesh": "rbxassetid://72010639523862",
-      "texture": "rbxassetid://97629597826034",
-      "native": [1.35, 5.00, 1.41],
-      "target": 7.4
-    },
-    "statutino_libertino": {
-      "mesh": "rbxassetid://112402523481770",
-      "texture": "rbxassetid://75603404094694",
-      "native": [2.21, 5.00, 1.43],
-      "target": 7.4
-    },
-    "tralalita_tralala": {
-      "mesh": "rbxassetid://82103751058019",
-      "texture": "rbxassetid://122881698857559",
-      "native": [3.33, 4.00, 3.82]
-    },
-    "nuclearo_dinossauro": {
-      "mesh": "rbxassetid://130940678699229",
-      "texture": "rbxassetid://109131789314236",
-      "native": [2.28, 3.32, 4.00],
-      "target": 7.6
-    },
-    "graipuss_medussi": {
-      "mesh": "rbxassetid://132313012916794",
-      "texture": "rbxassetid://117942895387186",
-      "native": [4.47, 4.00, 4.39],
-      "target": 7.6
-    },
-    "garama_madundung": {
-      "mesh": "rbxassetid://97584028184460",
-      "texture": "rbxassetid://130326781005238",
-      "native": [4.50, 4.92, 1.92],
-      "target": 7.6
-    },
-    "chimpanzini_spiderini": {
-      "mesh": "rbxassetid://140700562552938",
-      "texture": "rbxassetid://134268020685658",
-      "native": [4.35, 4.00, 3.21],
-      "target": 7.9
-    },
-    "grande_combinasion": {
-      "mesh": "rbxassetid://107376624764481",
-      "texture": "rbxassetid://76365244591500",
-      "native": [5.00, 4.93, 3.96],
-      "target": 7.9
-    }
+ "_comment": [
+  "Brainrot meshes, by character id.",
+  "",
+  "These are baked into ReplicatedStorage.BrainrotModels by tools/build_place.py.",
+  "They CANNOT be applied at runtime: MeshPart.MeshId and TextureID are not",
+  "writable from a script, so every part has to already exist and be cloned.",
+  "",
+  "native  = the size the source reported for the raw asset.",
+  "target  = what the model's LARGEST dimension should become on a pad.",
+  "          Largest-dimension rather than height, because these come in all",
+  "          shapes and normalising a flat wide one to a standard height",
+  "          leaves it enormous across.",
+  "",
+  "`variants` holds a per-variant TEXTURE for the same mesh. Measured across",
+  "the pack: geometry is identical for all 435 variant models and only the",
+  "texture changes, so a variant is a retexture and costs one extra MeshPart",
+  "rather than a second copy of the geometry.",
+  "",
+  "Not every variant is here. Rainbow ships untextured in the pack -- it is a",
+  "plain mesh plus a rainbow ParticleEmitter -- and Frost has no pack art at",
+  "all. Both keep the older SHELL treatment: a tinted, slightly enlarged,",
+  "semi-transparent copy of the mesh over the textured original. That is why",
+  "entries still emit BodyPlain alongside Body.",
+  "",
+  "Characters the pack does not cover keep their generated mesh and have no",
+  "`variants`, so they fall through to the shell for every variant."
+ ],
+ "models": {
+  "trippi_troppi": {
+   "mesh": "rbxassetid://113508223027523",
+   "texture": "rbxassetid://99962267753419",
+   "native": [
+    3.886,
+    5.739,
+    6.639
+   ],
+   "variants": {
+    "Gold": "rbxassetid://100185279760080",
+    "Diamond": "rbxassetid://131084866931370",
+    "Lava": "rbxassetid://135060135626040",
+    "Galaxy": "rbxassetid://111426992939684",
+    "Hacker": "rbxassetid://117690370698700"
+   }
   },
-
-  "defaultTarget": 6.4
+  "boneca_ambalabu": {
+   "mesh": "rbxassetid://140363745432335",
+   "texture": "rbxassetid://109464167327481",
+   "native": [
+    2.508,
+    5.518,
+    3.447
+   ],
+   "variants": {
+    "Gold": "rbxassetid://122064317835681",
+    "Diamond": "rbxassetid://135145612205152",
+    "Lava": "rbxassetid://81769043548113",
+    "Galaxy": "rbxassetid://78879848616416",
+    "Hacker": "rbxassetid://109125285120486"
+   }
+  },
+  "brr_brr_patapim": {
+   "mesh": "rbxassetid://85369542874074",
+   "texture": "rbxassetid://107129431019633",
+   "native": [
+    8.128,
+    7.331,
+    3.993
+   ],
+   "variants": {
+    "Gold": "rbxassetid://105919182339278",
+    "Diamond": "rbxassetid://140736244581183",
+    "Lava": "rbxassetid://138383007810525",
+    "Galaxy": "rbxassetid://79584045756546",
+    "Hacker": "rbxassetid://135794759810265"
+   }
+  },
+  "tim_cheese": {
+   "mesh": "rbxassetid://114062074282564",
+   "texture": "rbxassetid://129351578878679",
+   "native": [
+    2.932,
+    7.117,
+    1.8
+   ],
+   "variants": {
+    "Gold": "rbxassetid://138818708147872",
+    "Diamond": "rbxassetid://92340746352368",
+    "Lava": "rbxassetid://104117578163218",
+    "Galaxy": "rbxassetid://129441810950463",
+    "Hacker": "rbxassetid://136817182533944"
+   }
+  },
+  "bananita_dolphinita": {
+   "mesh": "rbxassetid://84807457001145",
+   "texture": "rbxassetid://128762353349503",
+   "native": [
+    4.322,
+    6.132,
+    6.374
+   ],
+   "variants": {
+    "Gold": "rbxassetid://80559420310185",
+    "Diamond": "rbxassetid://81265817889922",
+    "Lava": "rbxassetid://101685430755487",
+    "Galaxy": "rbxassetid://125139531516465",
+    "Hacker": "rbxassetid://86867125334419"
+   }
+  },
+  "svinina_bombardino": {
+   "mesh": "rbxassetid://124445436629455",
+   "texture": "rbxassetid://136413708051824",
+   "native": [
+    3.547,
+    5.449,
+    6.559
+   ],
+   "variants": {
+    "Gold": "rbxassetid://130899704928391",
+    "Diamond": "rbxassetid://115038555226232",
+    "Lava": "rbxassetid://111181939993421",
+    "Galaxy": "rbxassetid://76177780336044",
+    "Hacker": "rbxassetid://120531159520189"
+   }
+  },
+  "tralalero_tralala": {
+   "mesh": "rbxassetid://113266009243876",
+   "texture": "rbxassetid://85114169318270",
+   "native": [
+    5.498,
+    6.06,
+    10.36
+   ],
+   "variants": {
+    "Gold": "rbxassetid://122656815602405",
+    "Diamond": "rbxassetid://130815357772289",
+    "Lava": "rbxassetid://109821059660206",
+    "Galaxy": "rbxassetid://117472388800022",
+    "Hacker": "rbxassetid://124352903594420"
+   }
+  },
+  "tung_tung_sahur": {
+   "mesh": "rbxassetid://137108822293648",
+   "texture": "rbxassetid://135379403285598",
+   "native": [
+    3.839,
+    5.593,
+    2.727
+   ],
+   "variants": {
+    "Gold": "rbxassetid://123882404236132",
+    "Diamond": "rbxassetid://136059750640958",
+    "Lava": "rbxassetid://93198734585867",
+    "Galaxy": "rbxassetid://78903895977196",
+    "Hacker": "rbxassetid://93754705804407"
+   }
+  },
+  "lirili_larila": {
+   "mesh": "rbxassetid://140614663869243",
+   "texture": "rbxassetid://80145679593246",
+   "native": [
+    4.386,
+    4.826,
+    6.553
+   ],
+   "variants": {
+    "Gold": "rbxassetid://123558731130231",
+    "Diamond": "rbxassetid://134001152303318",
+    "Lava": "rbxassetid://137206231304805",
+    "Galaxy": "rbxassetid://91989809241508",
+    "Hacker": "rbxassetid://119904205805191"
+   }
+  },
+  "chimpanzini_bananini": {
+   "mesh": "rbxassetid://121510353195924",
+   "texture": "rbxassetid://117956531039517",
+   "native": [
+    5.554,
+    6.599,
+    4.431
+   ],
+   "variants": {
+    "Gold": "rbxassetid://108999828196388",
+    "Diamond": "rbxassetid://135805251517380",
+    "Lava": "rbxassetid://127736715931705",
+    "Galaxy": "rbxassetid://110630608186415",
+    "Hacker": "rbxassetid://117771796483370"
+   }
+  },
+  "bombombini_gusini": {
+   "mesh": "rbxassetid://131400238700725",
+   "texture": "rbxassetid://130262762788096",
+   "native": [
+    8.822,
+    3.636,
+    9.545
+   ],
+   "variants": {
+    "Gold": "rbxassetid://114842585537482",
+    "Diamond": "rbxassetid://91253809280803",
+    "Lava": "rbxassetid://80830995604767",
+    "Galaxy": "rbxassetid://117581855284386",
+    "Hacker": "rbxassetid://116434438558218"
+   }
+  },
+  "bombardiro_crocodilo": {
+   "mesh": "rbxassetid://100507425145825",
+   "texture": "rbxassetid://123603023572192",
+   "native": [
+    10.054,
+    3.549,
+    10.107
+   ],
+   "variants": {
+    "Gold": "rbxassetid://106453484538169",
+    "Diamond": "rbxassetid://105065794524412",
+    "Lava": "rbxassetid://110918433248291",
+    "Galaxy": "rbxassetid://121283120418442",
+    "Hacker": "rbxassetid://134968677965760"
+   }
+  },
+  "cappuccino_assassino": {
+   "mesh": "rbxassetid://105157073639482",
+   "texture": "rbxassetid://75226482083039",
+   "native": [
+    6.353,
+    6.982,
+    6.443
+   ],
+   "variants": {
+    "Gold": "rbxassetid://109241080967461",
+    "Diamond": "rbxassetid://130160849000128",
+    "Lava": "rbxassetid://72685559353743",
+    "Galaxy": "rbxassetid://129005104903494",
+    "Hacker": "rbxassetid://122999431445274"
+   }
+  },
+  "ballerina_cappuccina": {
+   "mesh": "rbxassetid://109064107200773",
+   "texture": "rbxassetid://114029733376487",
+   "native": [
+    3.589,
+    6.161,
+    2.797
+   ],
+   "variants": {
+    "Gold": "rbxassetid://106614399741859",
+    "Diamond": "rbxassetid://98708159895990",
+    "Lava": "rbxassetid://71493310445858",
+    "Galaxy": "rbxassetid://73733950022257",
+    "Hacker": "rbxassetid://76660066926660"
+   }
+  },
+  "vacca_saturnita": {
+   "mesh": "rbxassetid://81891240709428",
+   "texture": "rbxassetid://92009012259544",
+   "native": [
+    9.44,
+    7.31,
+    9.748
+   ],
+   "variants": {
+    "Gold": "rbxassetid://107712142839523",
+    "Diamond": "rbxassetid://101380201226553",
+    "Lava": "rbxassetid://105393609158722",
+    "Galaxy": "rbxassetid://117178070626882",
+    "Hacker": "rbxassetid://112059876522209"
+   }
+  },
+  "frigo_camelo": {
+   "mesh": "rbxassetid://108317159141036",
+   "texture": "rbxassetid://140400946473707",
+   "native": [
+    2.972,
+    7.351,
+    6.19
+   ],
+   "variants": {
+    "Gold": "rbxassetid://86856396354615",
+    "Diamond": "rbxassetid://101533193721491",
+    "Lava": "rbxassetid://92867959210179",
+    "Galaxy": "rbxassetid://78100773772699",
+    "Hacker": "rbxassetid://130919813468877"
+   }
+  },
+  "trulimero_trulicina": {
+   "mesh": "rbxassetid://98759289805112",
+   "texture": "rbxassetid://139305244013273",
+   "native": [
+    4.287,
+    4.733,
+    8.566
+   ],
+   "variants": {
+    "Gold": "rbxassetid://119809573904577",
+    "Diamond": "rbxassetid://128544023548863",
+    "Lava": "rbxassetid://121255192343409",
+    "Galaxy": "rbxassetid://99350061076230",
+    "Hacker": "rbxassetid://75298886729202"
+   }
+  },
+  "glorbo_fruttodrillo": {
+   "mesh": "rbxassetid://124944805641593",
+   "texture": "rbxassetid://100779349865802",
+   "native": [
+    4.084,
+    5.156,
+    8.416
+   ],
+   "variants": {
+    "Gold": "rbxassetid://107525228370201",
+    "Diamond": "rbxassetid://134077520939749",
+    "Lava": "rbxassetid://86107906677677",
+    "Galaxy": "rbxassetid://127914048027519",
+    "Hacker": "rbxassetid://87064012114342"
+   }
+  },
+  "orangutini_ananassini": {
+   "mesh": "rbxassetid://74515945127658",
+   "texture": "rbxassetid://74245857193599",
+   "native": [
+    8.518,
+    8.343,
+    2.692
+   ],
+   "variants": {
+    "Gold": "rbxassetid://135539591253331",
+    "Diamond": "rbxassetid://73762678768563",
+    "Lava": "rbxassetid://118559595761552",
+    "Galaxy": "rbxassetid://105755293043303",
+    "Hacker": "rbxassetid://91659262397840"
+   }
+  },
+  "los_tralaleritos": {
+   "mesh": "rbxassetid://102737053431647",
+   "texture": "rbxassetid://74718759640507",
+   "native": [
+    2.633,
+    3.275,
+    2.314
+   ],
+   "variants": {
+    "Gold": "rbxassetid://93055880942078",
+    "Diamond": "rbxassetid://119205644560378",
+    "Lava": "rbxassetid://80176136128595",
+    "Galaxy": "rbxassetid://117776631296475",
+    "Hacker": "rbxassetid://120333210441188"
+   }
+  },
+  "odin_din_din_dun": {
+   "mesh": "rbxassetid://88552868232210",
+   "texture": "rbxassetid://86841683622981",
+   "native": [
+    8.542,
+    8.115,
+    4.553
+   ],
+   "variants": {
+    "Gold": "rbxassetid://129850135150388",
+    "Diamond": "rbxassetid://112460194049301",
+    "Lava": "rbxassetid://101738183402759",
+    "Galaxy": "rbxassetid://128928712730600",
+    "Hacker": "rbxassetid://89403053803771"
+   }
+  },
+  "statutino_libertino": {
+   "mesh": "rbxassetid://112402523481770",
+   "texture": "rbxassetid://75603404094694",
+   "native": [
+    2.21,
+    5.0,
+    1.43
+   ],
+   "target": 7.4
+  },
+  "tralalita_tralala": {
+   "mesh": "rbxassetid://89107335865808",
+   "texture": "rbxassetid://74814117419212",
+   "native": [
+    5.245,
+    5.847,
+    10.104
+   ],
+   "variants": {
+    "Gold": "rbxassetid://71674093712473",
+    "Diamond": "rbxassetid://105626408073874",
+    "Lava": "rbxassetid://76057108104704",
+    "Galaxy": "rbxassetid://120108017318203",
+    "Hacker": "rbxassetid://110178286505648"
+   }
+  },
+  "nuclearo_dinossauro": {
+   "mesh": "rbxassetid://130940678699229",
+   "texture": "rbxassetid://109131789314236",
+   "native": [
+    2.28,
+    3.32,
+    4.0
+   ],
+   "target": 7.6
+  },
+  "graipuss_medussi": {
+   "mesh": "rbxassetid://132313012916794",
+   "texture": "rbxassetid://117942895387186",
+   "native": [
+    4.47,
+    4.0,
+    4.39
+   ],
+   "target": 7.6
+  },
+  "garama_madundung": {
+   "mesh": "rbxassetid://97584028184460",
+   "texture": "rbxassetid://130326781005238",
+   "native": [
+    4.5,
+    4.92,
+    1.92
+   ],
+   "target": 7.6
+  },
+  "chimpanzini_spiderini": {
+   "mesh": "rbxassetid://140700562552938",
+   "texture": "rbxassetid://134268020685658",
+   "native": [
+    4.35,
+    4.0,
+    3.21
+   ],
+   "target": 7.9
+  },
+  "grande_combinasion": {
+   "mesh": "rbxassetid://80351797193483",
+   "texture": "rbxassetid://138545159723963",
+   "native": [
+    6.016,
+    8.484,
+    3.539
+   ],
+   "variants": {
+    "Gold": "rbxassetid://83535854883259",
+    "Diamond": "rbxassetid://90515035880951",
+    "Lava": "rbxassetid://105062155591509",
+    "Galaxy": "rbxassetid://96255891443795",
+    "Hacker": "rbxassetid://91977304487861"
+   }
+  },
+  "1x1x1x1": {
+   "mesh": "rbxassetid://128223351774556",
+   "texture": "rbxassetid://133980033209902",
+   "native": [
+    3.863,
+    6.315,
+    4.329
+   ],
+   "variants": {
+    "Gold": "rbxassetid://137324366830762",
+    "Diamond": "rbxassetid://79999298896570",
+    "Lava": "rbxassetid://113521520000537",
+    "Galaxy": "rbxassetid://89093909758345",
+    "Hacker": "rbxassetid://104650251291310"
+   }
+  },
+  "agarrini_la_pallini": {
+   "mesh": "rbxassetid://110995346051396",
+   "texture": "rbxassetid://87652990044178",
+   "native": [
+    2.62,
+    6.608,
+    0.612
+   ],
+   "variants": {
+    "Gold": "rbxassetid://104332653381909",
+    "Diamond": "rbxassetid://95882246971608",
+    "Lava": "rbxassetid://104781829657679",
+    "Galaxy": "rbxassetid://114036833551974",
+    "Hacker": "rbxassetid://112136710770528"
+   }
+  },
+  "avocadini_guffo": {
+   "mesh": "rbxassetid://86497551321730",
+   "texture": "rbxassetid://125198060767819",
+   "native": [
+    5.47,
+    7.141,
+    4.399
+   ],
+   "variants": {
+    "Gold": "rbxassetid://72711172755505",
+    "Diamond": "rbxassetid://97884876424634",
+    "Lava": "rbxassetid://121060066569481",
+    "Galaxy": "rbxassetid://123172134527533",
+    "Hacker": "rbxassetid://96842554129273"
+   }
+  },
+  "ballerino_lololo": {
+   "mesh": "rbxassetid://102810723637717",
+   "texture": "rbxassetid://76901018322229",
+   "native": [
+    5.827,
+    7.58,
+    3.884
+   ],
+   "variants": {
+    "Gold": "rbxassetid://78780860864077",
+    "Diamond": "rbxassetid://71081330161881",
+    "Lava": "rbxassetid://73734674359941",
+    "Galaxy": "rbxassetid://122902275430470",
+    "Hacker": "rbxassetid://88433883341733"
+   }
+  },
+  "bambini_crostini": {
+   "mesh": "rbxassetid://129627152184064",
+   "texture": "rbxassetid://129468402107807",
+   "native": [
+    3.861,
+    7.461,
+    8.404
+   ],
+   "variants": {
+    "Gold": "rbxassetid://112158845530905",
+    "Diamond": "rbxassetid://91802898044696",
+    "Lava": "rbxassetid://78585721727922",
+    "Galaxy": "rbxassetid://99053715904000",
+    "Hacker": "rbxassetid://107731327553080"
+   }
+  },
+  "banana_dancana": {
+   "mesh": "rbxassetid://74125158322317",
+   "texture": "rbxassetid://108683623929916",
+   "native": [
+    7.461,
+    6.651,
+    3.038
+   ],
+   "variants": {
+    "Gold": "rbxassetid://89088247434548",
+    "Diamond": "rbxassetid://101297075571842",
+    "Lava": "rbxassetid://73739420513283",
+    "Galaxy": "rbxassetid://133854716773231",
+    "Hacker": "rbxassetid://94490480234276"
+   }
+  },
+  "bananini_kittini": {
+   "mesh": "rbxassetid://140416118201107",
+   "texture": "rbxassetid://113387249030155",
+   "native": [
+    3.82,
+    6.383,
+    2.98
+   ],
+   "variants": {
+    "Gold": "rbxassetid://137690575931922",
+    "Diamond": "rbxassetid://84863611830454",
+    "Lava": "rbxassetid://97977166749691",
+    "Galaxy": "rbxassetid://79590537728804",
+    "Hacker": "rbxassetid://133146014021866"
+   }
+  },
+  "blueberrinni_octopusini": {
+   "mesh": "rbxassetid://128298606286960",
+   "texture": "rbxassetid://99263372888561",
+   "native": [
+    9.16,
+    5.829,
+    7.148
+   ],
+   "variants": {
+    "Gold": "rbxassetid://106055608036151",
+    "Diamond": "rbxassetid://82699069490675",
+    "Lava": "rbxassetid://124448711239832",
+    "Galaxy": "rbxassetid://81670402772472",
+    "Hacker": "rbxassetid://81315321206529"
+   }
+  },
+  "bobrito_bandito": {
+   "mesh": "rbxassetid://82555573521128",
+   "texture": "rbxassetid://125421883487714",
+   "native": [
+    7.889,
+    7.737,
+    3.291
+   ],
+   "variants": {
+    "Gold": "rbxassetid://124826886118666",
+    "Diamond": "rbxassetid://136504921042648",
+    "Lava": "rbxassetid://120558138292430",
+    "Galaxy": "rbxassetid://73766553052468",
+    "Hacker": "rbxassetid://94541740725705"
+   }
+  },
+  "brri_brri_bicus_dicus": {
+   "mesh": "rbxassetid://71148919444187",
+   "texture": "rbxassetid://112544587033704",
+   "native": [
+    7.231,
+    6.565,
+    3.055
+   ],
+   "variants": {
+    "Gold": "rbxassetid://100777291685016",
+    "Diamond": "rbxassetid://82268770910014",
+    "Lava": "rbxassetid://123861808924902",
+    "Galaxy": "rbxassetid://79469138951060",
+    "Hacker": "rbxassetid://73939877054935"
+   }
+  },
+  "burbaloni_luliloli": {
+   "mesh": "rbxassetid://83619068738020",
+   "texture": "rbxassetid://83775932911782",
+   "native": [
+    3.929,
+    4.961,
+    7.244
+   ],
+   "variants": {
+    "Gold": "rbxassetid://104276090567061",
+    "Diamond": "rbxassetid://70770205385584",
+    "Lava": "rbxassetid://100467930031944",
+    "Galaxy": "rbxassetid://119800680114874",
+    "Hacker": "rbxassetid://96210803582650"
+   }
+  },
+  "cachorrito_melonito": {
+   "mesh": "rbxassetid://90572334381932",
+   "texture": "rbxassetid://101462662333026",
+   "native": [
+    3.842,
+    5.297,
+    5.57
+   ],
+   "variants": {
+    "Gold": "rbxassetid://75778361796893",
+    "Diamond": "rbxassetid://106484994687768",
+    "Lava": "rbxassetid://91860383880540",
+    "Galaxy": "rbxassetid://120347688633313",
+    "Hacker": "rbxassetid://104161663236574"
+   }
+  },
+  "cacto_hipopotamo": {
+   "mesh": "rbxassetid://137027768657627",
+   "texture": "rbxassetid://79923762706839",
+   "native": [
+    6.004,
+    5.577,
+    5.615
+   ],
+   "variants": {
+    "Gold": "rbxassetid://96985077810658",
+    "Diamond": "rbxassetid://76521340948725",
+    "Lava": "rbxassetid://82893119686676",
+    "Galaxy": "rbxassetid://82050427252148",
+    "Hacker": "rbxassetid://81748526884087"
+   }
+  },
+  "cavallo_virtuoso": {
+   "mesh": "rbxassetid://140612435491365",
+   "texture": "rbxassetid://134747978875627",
+   "native": [
+    5.394,
+    7.429,
+    5.836
+   ],
+   "variants": {
+    "Gold": "rbxassetid://112426068926420",
+    "Diamond": "rbxassetid://97819401448848",
+    "Lava": "rbxassetid://117989289065675",
+    "Galaxy": "rbxassetid://74945616607184",
+    "Hacker": "rbxassetid://83549918511833"
+   }
+  },
+  "chef_crabracadabra": {
+   "mesh": "rbxassetid://135484859552896",
+   "texture": "rbxassetid://99664228718946",
+   "native": [
+    6.066,
+    6.994,
+    3.737
+   ],
+   "variants": {
+    "Gold": "rbxassetid://128728748790715",
+    "Diamond": "rbxassetid://135545052073539",
+    "Lava": "rbxassetid://136755428848954",
+    "Galaxy": "rbxassetid://110884879807270",
+    "Hacker": "rbxassetid://124052781408275"
+   }
+  },
+  "chicleteira_bicicleteira": {
+   "mesh": "rbxassetid://99752143616621",
+   "texture": "rbxassetid://120688571738820",
+   "native": [
+    4.986,
+    7.862,
+    6.934
+   ],
+   "variants": {
+    "Gold": "rbxassetid://105329759242175",
+    "Diamond": "rbxassetid://77399308976584",
+    "Lava": "rbxassetid://121418376781248",
+    "Galaxy": "rbxassetid://100015205225114",
+    "Hacker": "rbxassetid://126503352171520"
+   }
+  },
+  "chicleteirina_bicicleteirina": {
+   "mesh": "rbxassetid://121793882396570",
+   "texture": "rbxassetid://90909841251210",
+   "native": [
+    4.278,
+    7.446,
+    5.949
+   ],
+   "variants": {
+    "Gold": "rbxassetid://95230361835846",
+    "Diamond": "rbxassetid://133402933453220",
+    "Lava": "rbxassetid://72322343245582",
+    "Galaxy": "rbxassetid://81198813676258",
+    "Hacker": "rbxassetid://95595453774960"
+   }
+  },
+  "chillin_chili": {
+   "mesh": "rbxassetid://105464370439375",
+   "texture": "rbxassetid://80817120624034",
+   "native": [
+    6.787,
+    6.132,
+    2.63
+   ],
+   "variants": {
+    "Gold": "rbxassetid://102988806168888",
+    "Diamond": "rbxassetid://79723683744826",
+    "Lava": "rbxassetid://120108402755392",
+    "Galaxy": "rbxassetid://78766573046149",
+    "Hacker": "rbxassetid://102135656005994"
+   }
+  },
+  "cocofanto_elefanto": {
+   "mesh": "rbxassetid://137603612976245",
+   "texture": "rbxassetid://102129346472854",
+   "native": [
+    5.229,
+    5.225,
+    8.815
+   ],
+   "variants": {
+    "Gold": "rbxassetid://88725167000884",
+    "Diamond": "rbxassetid://126379275738659",
+    "Lava": "rbxassetid://96423700158080",
+    "Galaxy": "rbxassetid://132819752231598",
+    "Hacker": "rbxassetid://90158994713794"
+   }
+  },
+  "dragon_cannelloni": {
+   "mesh": "rbxassetid://114343988119693",
+   "texture": "rbxassetid://87013145260875",
+   "native": [
+    12.8,
+    9.32,
+    8.752
+   ],
+   "variants": {
+    "Gold": "rbxassetid://112305944531713",
+    "Diamond": "rbxassetid://117736569124764",
+    "Lava": "rbxassetid://110750574017113",
+    "Galaxy": "rbxassetid://90556610728275",
+    "Hacker": "rbxassetid://123094548870787"
+   }
+  },
+  "esok_sekolah": {
+   "mesh": "rbxassetid://91081776657105",
+   "texture": "rbxassetid://85335481639432",
+   "native": [
+    12.603,
+    9.236,
+    8.877
+   ],
+   "variants": {
+    "Gold": "rbxassetid://90697410437766",
+    "Diamond": "rbxassetid://90606187539973",
+    "Lava": "rbxassetid://84720812084035",
+    "Galaxy": "rbxassetid://106255303991287",
+    "Hacker": "rbxassetid://87303687254495"
+   }
+  },
+  "espresso_signora": {
+   "mesh": "rbxassetid://107164392594000",
+   "texture": "rbxassetid://76039555960801",
+   "native": [
+    3.546,
+    6.088,
+    2.763
+   ],
+   "variants": {
+    "Gold": "rbxassetid://85875974245296",
+    "Diamond": "rbxassetid://82098685516707",
+    "Lava": "rbxassetid://86681217491491",
+    "Galaxy": "rbxassetid://129001812189814",
+    "Hacker": "rbxassetid://77974569163849"
+   }
+  },
+  "fluri_flura": {
+   "mesh": "rbxassetid://99576354344853",
+   "texture": "rbxassetid://75969778242109",
+   "native": [
+    9.023,
+    7.695,
+    3.694
+   ],
+   "variants": {
+    "Gold": "rbxassetid://95295771957330",
+    "Diamond": "rbxassetid://70503636127048",
+    "Lava": "rbxassetid://138801506211395",
+    "Galaxy": "rbxassetid://125825210040706",
+    "Hacker": "rbxassetid://112723161592813"
+   }
+  },
+  "ganganzelli_trulala": {
+   "mesh": "rbxassetid://92738283874794",
+   "texture": "rbxassetid://77904233287091",
+   "native": [
+    5.575,
+    8.902,
+    2.487
+   ],
+   "variants": {
+    "Gold": "rbxassetid://110956924314137",
+    "Diamond": "rbxassetid://105831522480644",
+    "Lava": "rbxassetid://86991969614997",
+    "Galaxy": "rbxassetid://87531735379954",
+    "Hacker": "rbxassetid://107146975000003"
+   }
+  },
+  "gangster_footera": {
+   "mesh": "rbxassetid://118143131675058",
+   "texture": "rbxassetid://120247057213672",
+   "native": [
+    3.25,
+    4.907,
+    6.376
+   ],
+   "variants": {
+    "Gold": "rbxassetid://116921160830648",
+    "Diamond": "rbxassetid://87702081952092",
+    "Lava": "rbxassetid://127078663652787",
+    "Galaxy": "rbxassetid://127696064587075",
+    "Hacker": "rbxassetid://116374857325591"
+   }
+  },
+  "garamararam": {
+   "mesh": "rbxassetid://110833136336842",
+   "texture": "rbxassetid://132339053703045",
+   "native": [
+    2.522,
+    5.202,
+    2.551
+   ],
+   "variants": {
+    "Gold": "rbxassetid://121921203978997",
+    "Diamond": "rbxassetid://122375344440946",
+    "Lava": "rbxassetid://138555613810596",
+    "Galaxy": "rbxassetid://93280591985204",
+    "Hacker": "rbxassetid://73559281153988"
+   }
+  },
+  "girafa_celeste": {
+   "mesh": "rbxassetid://89589369524120",
+   "texture": "rbxassetid://103509871145446",
+   "native": [
+    4.815,
+    8.557,
+    9.395
+   ],
+   "variants": {
+    "Gold": "rbxassetid://136479584145757",
+    "Diamond": "rbxassetid://103040999185196",
+    "Lava": "rbxassetid://109079017969551",
+    "Galaxy": "rbxassetid://86933138295387",
+    "Hacker": "rbxassetid://128101868397205"
+   }
+  },
+  "gorillo_watermelondrillo": {
+   "mesh": "rbxassetid://120090093311396",
+   "texture": "rbxassetid://113627108914878",
+   "native": [
+    6.984,
+    7.635,
+    3.554
+   ],
+   "variants": {
+    "Gold": "rbxassetid://124974115313284",
+    "Diamond": "rbxassetid://84279481373158",
+    "Lava": "rbxassetid://138907134578979",
+    "Galaxy": "rbxassetid://83777158436799",
+    "Hacker": "rbxassetid://71966997166937"
+   }
+  },
+  "illuminato_triangolo": {
+   "mesh": "rbxassetid://105110798581859",
+   "texture": "rbxassetid://129835070994683",
+   "native": [
+    5.168,
+    3.962,
+    5.361
+   ],
+   "variants": {
+    "Gold": "rbxassetid://105593816700190",
+    "Diamond": "rbxassetid://76224061899107",
+    "Lava": "rbxassetid://106630487659838",
+    "Galaxy": "rbxassetid://109481951588576",
+    "Hacker": "rbxassetid://82368491588165"
+   }
+  },
+  "job_job_job_sahur": {
+   "mesh": "rbxassetid://85512844480142",
+   "texture": "rbxassetid://105512040480857",
+   "native": [
+    9.787,
+    6.452,
+    1.36
+   ],
+   "variants": {
+    "Gold": "rbxassetid://122106383683519",
+    "Diamond": "rbxassetid://126052964743298",
+    "Lava": "rbxassetid://120484114577874",
+    "Galaxy": "rbxassetid://86854111957475",
+    "Hacker": "rbxassetid://84696138767606"
+   }
+  },
+  "karkerkar_kurkur": {
+   "mesh": "rbxassetid://117461378906936",
+   "texture": "rbxassetid://71667786405646",
+   "native": [
+    5.973,
+    6.263,
+    4.056
+   ],
+   "variants": {
+    "Gold": "rbxassetid://123769427035726",
+    "Diamond": "rbxassetid://72578697302667",
+    "Lava": "rbxassetid://94038620308870",
+    "Galaxy": "rbxassetid://104388116291987",
+    "Hacker": "rbxassetid://93405804070359"
+   }
+  },
+  "lerulerulerule": {
+   "mesh": "rbxassetid://96296796756611",
+   "texture": "rbxassetid://89928507081484",
+   "native": [
+    6.682,
+    8.902,
+    2.439
+   ],
+   "variants": {
+    "Gold": "rbxassetid://120811589118250",
+    "Diamond": "rbxassetid://108762173027004",
+    "Lava": "rbxassetid://72675103726657",
+    "Galaxy": "rbxassetid://88712935648993",
+    "Hacker": "rbxassetid://138167383150722"
+   }
+  },
+  "lionel_cactuseli": {
+   "mesh": "rbxassetid://117068437110771",
+   "texture": "rbxassetid://117784271549429",
+   "native": [
+    4.16,
+    5.867,
+    9.631
+   ],
+   "variants": {
+    "Gold": "rbxassetid://111382724444361",
+    "Diamond": "rbxassetid://111890193778159",
+    "Galaxy": "rbxassetid://100878478401456",
+    "Hacker": "rbxassetid://112174797008314"
+   }
+  },
+  "madudung": {
+   "mesh": "rbxassetid://86021775317780",
+   "texture": "rbxassetid://135537372245684",
+   "native": [
+    3.817,
+    5.084,
+    3.812
+   ],
+   "variants": {
+    "Gold": "rbxassetid://92943445281187",
+    "Diamond": "rbxassetid://97828655085529",
+    "Lava": "rbxassetid://104661187301830",
+    "Galaxy": "rbxassetid://104568307396486",
+    "Hacker": "rbxassetid://86301458866896"
+   }
+  },
+  "matteo": {
+   "mesh": "rbxassetid://134505053282881",
+   "texture": "rbxassetid://85952779379117",
+   "native": [
+    8.872,
+    8.421,
+    2.527
+   ],
+   "variants": {
+    "Gold": "rbxassetid://122781570484100",
+    "Diamond": "rbxassetid://71262931340318",
+    "Lava": "rbxassetid://136235607815795",
+    "Galaxy": "rbxassetid://98768340484568",
+    "Hacker": "rbxassetid://97919070683092"
+   }
+  },
+  "meowl": {
+   "mesh": "rbxassetid://99159569553342",
+   "texture": "rbxassetid://102323295566062",
+   "native": [
+    3.709,
+    6.972,
+    2.764
+   ],
+   "variants": {
+    "Gold": "rbxassetid://138846519363547",
+    "Diamond": "rbxassetid://77598565720482",
+    "Lava": "rbxassetid://74621332862474",
+    "Galaxy": "rbxassetid://95646736389811",
+    "Hacker": "rbxassetid://117848988039219"
+   }
+  },
+  "noo_my_examen": {
+   "mesh": "rbxassetid://88128499117663",
+   "texture": "rbxassetid://89181302648979",
+   "native": [
+    10.598,
+    6.333,
+    3.969
+   ],
+   "variants": {
+    "Gold": "rbxassetid://115486743985466",
+    "Diamond": "rbxassetid://139882223867363",
+    "Lava": "rbxassetid://101788985890099",
+    "Galaxy": "rbxassetid://114353326111854",
+    "Hacker": "rbxassetid://72138296768239"
+   }
+  },
+  "nyannini_cattalini": {
+   "mesh": "rbxassetid://130308044642310",
+   "texture": "rbxassetid://128328201538514",
+   "native": [
+    3.423,
+    4.4,
+    5.441
+   ],
+   "variants": {
+    "Gold": "rbxassetid://116063828725048",
+    "Diamond": "rbxassetid://93902658571711",
+    "Lava": "rbxassetid://139131795107179",
+    "Galaxy": "rbxassetid://72853536375928",
+    "Hacker": "rbxassetid://97185787575132"
+   }
+  },
+  "orcalero_orcala": {
+   "mesh": "rbxassetid://76880683164393",
+   "texture": "rbxassetid://137670587292779",
+   "native": [
+    5.309,
+    6.304,
+    10.897
+   ],
+   "variants": {
+    "Gold": "rbxassetid://101988069458405",
+    "Diamond": "rbxassetid://112405032322719",
+    "Lava": "rbxassetid://82066076622960",
+    "Galaxy": "rbxassetid://121675231548382",
+    "Hacker": "rbxassetid://103448678406560"
+   }
+  },
+  "pakrahmatmamat": {
+   "mesh": "rbxassetid://83682903872500",
+   "texture": "rbxassetid://121810602604729",
+   "native": [
+    3.937,
+    8.007,
+    2.433
+   ],
+   "variants": {
+    "Gold": "rbxassetid://86982410552037",
+    "Diamond": "rbxassetid://131179257427263",
+    "Lava": "rbxassetid://117081877601627",
+    "Galaxy": "rbxassetid://110255081401388",
+    "Hacker": "rbxassetid://107640007712645"
+   }
+  },
+  "pakrahmatmatina": {
+   "mesh": "rbxassetid://93111139734616",
+   "texture": "rbxassetid://76377987841734",
+   "native": [
+    3.937,
+    8.727,
+    2.565
+   ],
+   "variants": {
+    "Gold": "rbxassetid://82300280971748",
+    "Diamond": "rbxassetid://83063523769711",
+    "Lava": "rbxassetid://107553711177716",
+    "Galaxy": "rbxassetid://116528851416713",
+    "Hacker": "rbxassetid://79028030946850"
+   }
+  },
+  "pandaccini_bananini": {
+   "mesh": "rbxassetid://123242204678955",
+   "texture": "rbxassetid://126028901437188",
+   "native": [
+    4.062,
+    5.268,
+    7.095
+   ],
+   "variants": {
+    "Gold": "rbxassetid://128686874719213",
+    "Diamond": "rbxassetid://86876801511739",
+    "Lava": "rbxassetid://105383338148789",
+    "Galaxy": "rbxassetid://77928632027198",
+    "Hacker": "rbxassetid://133947128632317"
+   }
+  },
+  "pipi_kiwi": {
+   "mesh": "rbxassetid://95854421399144",
+   "texture": "rbxassetid://131281394847389",
+   "native": [
+    4.414,
+    6.976,
+    8.361
+   ],
+   "variants": {
+    "Gold": "rbxassetid://79616157097359",
+    "Diamond": "rbxassetid://134265829926902",
+    "Lava": "rbxassetid://78063291338478",
+    "Galaxy": "rbxassetid://126311938223057",
+    "Hacker": "rbxassetid://74006340772056"
+   }
+  },
+  "pipi_potato": {
+   "mesh": "rbxassetid://104724334327215",
+   "texture": "rbxassetid://123296079831414",
+   "native": [
+    4.163,
+    6.724,
+    2.735
+   ],
+   "variants": {
+    "Gold": "rbxassetid://70550073838518",
+    "Diamond": "rbxassetid://131529483502509",
+    "Lava": "rbxassetid://77369588223625",
+    "Galaxy": "rbxassetid://87482142204790",
+    "Hacker": "rbxassetid://138797272592359"
+   }
+  },
+  "pot_hotspot": {
+   "mesh": "rbxassetid://80438758916887",
+   "texture": "rbxassetid://130488212704249",
+   "native": [
+    3.612,
+    8.599,
+    1.032
+   ],
+   "variants": {
+    "Gold": "rbxassetid://124974467877694",
+    "Diamond": "rbxassetid://127346295571227",
+    "Lava": "rbxassetid://104146467810880",
+    "Galaxy": "rbxassetid://80509468727045",
+    "Hacker": "rbxassetid://102465112857809"
+   }
+  },
+  "quesadilla_crocodila": {
+   "mesh": "rbxassetid://124335823033851",
+   "texture": "rbxassetid://76380676888784",
+   "native": [
+    7.225,
+    5.792,
+    3.756
+   ],
+   "variants": {
+    "Gold": "rbxassetid://105766289809065",
+    "Diamond": "rbxassetid://73267171513312",
+    "Lava": "rbxassetid://125497842039558",
+    "Galaxy": "rbxassetid://132013110352531",
+    "Hacker": "rbxassetid://112978553723093"
+   }
+  },
+  "rhino_toasterino": {
+   "mesh": "rbxassetid://74968383215695",
+   "texture": "rbxassetid://126644905579182",
+   "native": [
+    9.79,
+    7.276,
+    6.917
+   ],
+   "variants": {
+    "Gold": "rbxassetid://124072565594585",
+    "Diamond": "rbxassetid://92696963365110",
+    "Lava": "rbxassetid://120729455776037",
+    "Galaxy": "rbxassetid://139481316006291",
+    "Hacker": "rbxassetid://112799016656760"
+   }
+  },
+  "six_seven": {
+   "mesh": "rbxassetid://84312218819352",
+   "texture": "rbxassetid://87264829620806",
+   "native": [
+    8.943,
+    6.333,
+    3.809
+   ],
+   "variants": {
+    "Gold": "rbxassetid://70829693007359",
+    "Diamond": "rbxassetid://125082617757764",
+    "Lava": "rbxassetid://127849860029533",
+    "Galaxy": "rbxassetid://130189853759826",
+    "Hacker": "rbxassetid://104624388108931"
+   }
+  },
+  "smurfo_gatto": {
+   "mesh": "rbxassetid://112695442773118",
+   "texture": "rbxassetid://107670534675205",
+   "native": [
+    4.2,
+    6.761,
+    2.846
+   ],
+   "variants": {
+    "Gold": "rbxassetid://137597316472110",
+    "Diamond": "rbxassetid://73729856246845",
+    "Lava": "rbxassetid://77731652856053",
+    "Galaxy": "rbxassetid://73189140794077",
+    "Hacker": "rbxassetid://122355715306296"
+   }
+  },
+  "strawberrelli_flamingelli": {
+   "mesh": "rbxassetid://139217665045768",
+   "texture": "rbxassetid://92428851467448",
+   "native": [
+    3.584,
+    5.145,
+    5.154
+   ],
+   "variants": {
+    "Gold": "rbxassetid://75238810590361",
+    "Diamond": "rbxassetid://135878507588971",
+    "Lava": "rbxassetid://90191616762012",
+    "Galaxy": "rbxassetid://111216000838083",
+    "Hacker": "rbxassetid://137039560404412"
+   }
+  },
+  "strawberry_elephant": {
+   "mesh": "rbxassetid://121410519717160",
+   "texture": "rbxassetid://82278067509295",
+   "native": [
+    7.362,
+    7.274,
+    12.411
+   ],
+   "variants": {
+    "Gold": "rbxassetid://122579739268317",
+    "Diamond": "rbxassetid://106551097603263",
+    "Lava": "rbxassetid://71047334608641",
+    "Galaxy": "rbxassetid://102249394616784",
+    "Hacker": "rbxassetid://131072646835896"
+   }
+  },
+  "swag_soda": {
+   "mesh": "rbxassetid://133030906896767",
+   "texture": "rbxassetid://129734238027741",
+   "native": [
+    6.841,
+    5.6,
+    2.477
+   ],
+   "variants": {
+    "Gold": "rbxassetid://85322495486383",
+    "Diamond": "rbxassetid://83192799822737",
+    "Lava": "rbxassetid://80471582908316",
+    "Galaxy": "rbxassetid://135635270999090",
+    "Hacker": "rbxassetid://123372827371820"
+   }
+  },
+  "ta_ta_ta_ta_sahur": {
+   "mesh": "rbxassetid://72370539165368",
+   "texture": "rbxassetid://119035810930777",
+   "native": [
+    6.276,
+    6.263,
+    2.751
+   ],
+   "variants": {
+    "Gold": "rbxassetid://125090304073691",
+    "Diamond": "rbxassetid://89087878923748",
+    "Lava": "rbxassetid://74944522433757",
+    "Galaxy": "rbxassetid://131261839513238",
+    "Hacker": "rbxassetid://128321121483024"
+   }
+  },
+  "talpa_di_fero": {
+   "mesh": "rbxassetid://86765044977073",
+   "texture": "rbxassetid://119023256857186",
+   "native": [
+    4.548,
+    7.456,
+    2.204
+   ],
+   "variants": {
+    "Gold": "rbxassetid://71284025067740",
+    "Diamond": "rbxassetid://124654909962896",
+    "Lava": "rbxassetid://100162405152567",
+    "Galaxy": "rbxassetid://127445960102864",
+    "Hacker": "rbxassetid://112234374107815"
+   }
+  },
+  "tigroligre_frutonni": {
+   "mesh": "rbxassetid://108481201223509",
+   "texture": "rbxassetid://110856264078814",
+   "native": [
+    4.184,
+    6.603,
+    9.781
+   ],
+   "variants": {
+    "Gold": "rbxassetid://130890897256000",
+    "Diamond": "rbxassetid://97910937027389",
+    "Lava": "rbxassetid://117151282228409",
+    "Galaxy": "rbxassetid://138971246978316",
+    "Hacker": "rbxassetid://110648552732470"
+   }
+  },
+  "tirilikalika_tirilikalako": {
+   "mesh": "rbxassetid://74680005476902",
+   "texture": "rbxassetid://123058338917044",
+   "native": [
+    4.979,
+    6.893,
+    5.669
+   ],
+   "variants": {
+    "Gold": "rbxassetid://124551276327031",
+    "Diamond": "rbxassetid://84522664217706",
+    "Lava": "rbxassetid://87660085481591",
+    "Galaxy": "rbxassetid://70802079864479",
+    "Hacker": "rbxassetid://124412969464171"
+   }
+  },
+  "torrtuginni_dragonfrutini": {
+   "mesh": "rbxassetid://90587582936666",
+   "texture": "rbxassetid://103863221331104",
+   "native": [
+    6.255,
+    7.03,
+    9.925
+   ],
+   "variants": {
+    "Gold": "rbxassetid://106744803520880",
+    "Diamond": "rbxassetid://93240087741991",
+    "Lava": "rbxassetid://128414006722089",
+    "Galaxy": "rbxassetid://88813173220853",
+    "Hacker": "rbxassetid://112325560837892"
+   }
+  },
+  "tralaledon": {
+   "mesh": "rbxassetid://90257837878159",
+   "texture": "rbxassetid://98146924095290",
+   "native": [
+    9.163,
+    6.165,
+    10.181
+   ],
+   "variants": {
+    "Gold": "rbxassetid://105980449287399",
+    "Diamond": "rbxassetid://82929916774875",
+    "Lava": "rbxassetid://139989905879088",
+    "Galaxy": "rbxassetid://106351566820298",
+    "Hacker": "rbxassetid://99287255573499"
+   }
+  },
+  "tric_trac_barabum": {
+   "mesh": "rbxassetid://108674525404968",
+   "texture": "rbxassetid://118940370854651",
+   "native": [
+    3.914,
+    5.055,
+    6.2
+   ],
+   "variants": {
+    "Gold": "rbxassetid://119175050253541",
+    "Diamond": "rbxassetid://85665289792287",
+    "Lava": "rbxassetid://81577701675261",
+    "Galaxy": "rbxassetid://82293455612541",
+    "Hacker": "rbxassetid://126450039164978"
+   }
+  },
+  "triplito_tralaleritos": {
+   "mesh": "rbxassetid://128830348135704",
+   "texture": "rbxassetid://77380318952313",
+   "native": [
+    3.639,
+    6.796,
+    2.239
+   ],
+   "variants": {
+    "Gold": "rbxassetid://120962467140264",
+    "Diamond": "rbxassetid://87533608392505",
+    "Lava": "rbxassetid://88891141203384",
+    "Galaxy": "rbxassetid://81199941785104",
+    "Hacker": "rbxassetid://121153249974730"
+   }
+  },
+  "trippi_troppi_troppa_trippa": {
+   "mesh": "rbxassetid://101794263016747",
+   "texture": "rbxassetid://113514511916680",
+   "native": [
+    4.751,
+    7.181,
+    5.313
+   ],
+   "variants": {
+    "Gold": "rbxassetid://77369194663121",
+    "Diamond": "rbxassetid://137803596576759",
+    "Lava": "rbxassetid://107404246609854",
+    "Galaxy": "rbxassetid://91679384348774",
+    "Hacker": "rbxassetid://90578526685481"
+   }
+  },
+  "w_or_l": {
+   "mesh": "rbxassetid://100660069110173",
+   "texture": "rbxassetid://140110212056847",
+   "native": [
+    8.018,
+    4.452,
+    1.749
+   ],
+   "variants": {
+    "Gold": "rbxassetid://131703449991227",
+    "Diamond": "rbxassetid://123155622711342",
+    "Lava": "rbxassetid://136950967524861",
+    "Galaxy": "rbxassetid://120607218118015",
+    "Hacker": "rbxassetid://124989551908059"
+   }
+  },
+  "yess_my_examen": {
+   "mesh": "rbxassetid://103077085144837",
+   "texture": "rbxassetid://134537069365691",
+   "native": [
+    10.342,
+    6.18,
+    3.873
+   ],
+   "variants": {
+    "Gold": "rbxassetid://96282078361461",
+    "Diamond": "rbxassetid://108177470876049",
+    "Lava": "rbxassetid://87594463235303",
+    "Galaxy": "rbxassetid://130313818193167",
+    "Hacker": "rbxassetid://120429454520718"
+   }
+  },
+  "zibra_zubra_zibralini": {
+   "mesh": "rbxassetid://78836208609185",
+   "texture": "rbxassetid://90489567819020",
+   "native": [
+    4.175,
+    7.162,
+    8.145
+   ],
+   "variants": {
+    "Gold": "rbxassetid://89352313451351",
+    "Diamond": "rbxassetid://117389858934619",
+    "Lava": "rbxassetid://72644944541689",
+    "Galaxy": "rbxassetid://116605881694625",
+    "Hacker": "rbxassetid://137781309500908"
+   }
+  }
+ },
+ "defaultTarget": 6.4
 }

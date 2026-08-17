@@ -37,7 +37,6 @@ Brainrots.List = {
 
 	-- ── Epic ────────────────────────────────────────────────────────────────
 	{ id = "vacca_saturnita",      name = "La Vacca Saturno Saturnita", tier = "Epic",  mul = 1.15, color = Color3.fromRGB(238, 240, 246) },
-	{ id = "girafa_celestre",      name = "Girafa Celestre",        tier = "Epic",      mul = 1.00, color = Color3.fromRGB(240, 196, 96) },
 	{ id = "orangutini_ananassini",name = "Orangutini Ananassini",  tier = "Epic",      mul = 0.88, color = Color3.fromRGB(224, 140, 60) },
 	{ id = "trulimero_trulicina",  name = "Trulimero Trulicina",    tier = "Epic",      mul = 1.05, color = Color3.fromRGB(92, 168, 196) },
 
@@ -121,7 +120,6 @@ Brainrots.List = {
 	{ id = "tric_trac_barabum",            name = "Tric Trac Barabum",            tier = "Mythic",    mul = 0.97, color = Color3.fromRGB(205, 110, 117) },
 	{ id = "triplito_tralaleritos",        name = "Triplito Tralaleritos",        tier = "Mythic",    mul = 1.04, color = Color3.fromRGB(103, 202, 176) },
 	{ id = "trippi_troppi_troppa_trippa",  name = "Trippi Troppi Troppa Trippa",  tier = "Secret",    mul = 1.04, color = Color3.fromRGB(106, 103, 129) },
-	{ id = "tung_sahur",                   name = "Tung Sahur",                   tier = "Secret",    mul = 1.13, color = Color3.fromRGB(173, 118, 158) },
 	{ id = "w_or_l",                       name = "W Or L",                       tier = "Secret",    mul = 1.12, color = Color3.fromRGB(104, 102, 87) },
 	{ id = "yess_my_examen",               name = "Yess My Examen",               tier = "Secret",    mul = 1.02, color = Color3.fromRGB(181, 131, 124) },
 	{ id = "zibra_zubra_zibralini",        name = "Zibra Zubra Zibralini",        tier = "Secret",    mul = 1.15, color = Color3.fromRGB(182, 101, 108) },

@@ -37,6 +37,13 @@ OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
 
+#[[ Variants that get a REAL model rather than a tinted shell. Only the ones
+#   whose art actually exists in meshes.json: Rainbow ships untextured in the
+#   pack and Frost was never in it, so both stay on the shell. Hacker has art
+#   but no variant in Variants.lua, so emitting it would be dead weight in the
+#   place -- add the name here the day that variant exists. ]]
+VARIANT_MODELS = ["Gold", "Diamond", "Lava", "Galaxy"]
+
 # classes that hold children and should be merged into rather than replaced
 CONTAINERS = {"Folder", "StarterPlayerScripts", "StarterCharacterScripts"}
 
@@ -156,6 +163,9 @@ def build_mesh_library():
     default_target = data.get("defaultTarget", 4.4)
 
     folder = make_item("Folder", "BrainrotModels")
+    variant_folders = {}
+    variant_count = 0
+
     for char_id in sorted(models):
         entry = models[char_id]
         native = entry["native"]
@@ -163,13 +173,31 @@ def build_mesh_library():
         scale = target / max(native)
 
         model = make_item("Model", char_id)
-        # Body carries the generated paint job; BodyPlain is the same geometry
-        # with no texture, so a coloured variant has something to tint.
+        # Body carries the paint job; BodyPlain is the same geometry with no
+        # texture, so a variant WITHOUT real art has something to tint.
         model.append(make_meshpart("Body", entry["mesh"], entry["texture"], native, scale))
         model.append(make_meshpart("BodyPlain", entry["mesh"], "", native, scale))
         folder.append(model)
 
-    return folder, len(models)
+        #[[ A variant with real art becomes its own Model under a folder named
+        #   after the variant, and needs no BodyPlain -- the shell exists only to
+        #   fake a colour we don't have a texture for. Same mesh id as Normal,
+        #   because the pack's variants are pure retextures. ]]
+        for variant in VARIANT_MODELS:
+            texture = entry.get("variants", {}).get(variant)
+            if not texture:
+                continue
+            sub = variant_folders.get(variant)
+            if sub is None:
+                sub = make_item("Folder", variant)
+                variant_folders[variant] = sub
+                folder.append(sub)
+            skin = make_item("Model", char_id)
+            skin.append(make_meshpart("Body", entry["mesh"], texture, native, scale))
+            sub.append(skin)
+            variant_count += 1
+
+    return folder, len(models), variant_count
 
 
 def merge_into(dest, new_child):
@@ -259,7 +287,7 @@ def main():
 
         # Baked mesh library rides along in ReplicatedStorage. Built after the
         # referent namespace is claimed so its ids can't collide with the map's.
-        mesh_folder, mesh_count = build_mesh_library()
+        mesh_folder, mesh_count, skin_count = build_mesh_library()
         if mesh_folder is not None:
             for service, items in service_items:
                 if service == "ReplicatedStorage":
@@ -285,6 +313,8 @@ def main():
                 injected += 1
 
         tree.write(OUT, encoding="utf-8", xml_declaration=False)
+        if mesh_folder is not None:
+            print("  mesh library: %d characters, %d variant skins" % (mesh_count, skin_count))
         print("  injected %d top-level items across %d services"
               % (injected, len(service_items)))
     else:

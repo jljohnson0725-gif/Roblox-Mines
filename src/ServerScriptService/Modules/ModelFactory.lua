@@ -223,7 +223,27 @@ function ModelFactory.build(charId, variantId)
 	]]
 	local model
 	local library = ReplicatedStorage:FindFirstChild("BrainrotModels")
-	local source = library and library:FindFirstChild(charId)
+
+	--[[
+		A VARIANT WITH REAL ART BEATS A TINTED SHELL. The pack ships an authored
+		texture per variant, so BrainrotModels/Gold/<id> is a genuine gold paint
+		job -- highlights, shading, the face still readable -- where the shell is
+		a coloured film stretched over the normal skin.
+
+		Only some variants have that art. Rainbow is untextured in the pack (it
+		is a plain mesh plus a particle effect) and Frost was never in it, so
+		both still take the shell path below. Anything missing falls back the
+		same way, which is also what covers the one gap in the set,
+		Lava Lionel Cactuseli.
+	]]
+	local skinned = false
+	local source
+	if library then
+		local variantFolder = variantId and library:FindFirstChild(variantId)
+		source = variantFolder and variantFolder:FindFirstChild(charId)
+		skinned = source ~= nil
+		source = source or library:FindFirstChild(charId)
+	end
 
 	if source then
 		model = source:Clone()
@@ -245,9 +265,11 @@ function ModelFactory.build(charId, variantId)
 		]]
 		local body = model:FindFirstChild("Body")
 		local plain = model:FindFirstChild("BodyPlain")
-		if body and plain then
+		if body then
 			body:SetAttribute("NoTint", true) -- the texture is the point; leave it alone
-			if variant.color then
+		end
+		if body and plain then
+			if variant.color and not skinned then
 				plain.Name = "Shell"
 				plain.Transparency = variant.shell or 0.45
 				plain.Size = body.Size * SHELL_SCALE
