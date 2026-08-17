@@ -2,6 +2,17 @@
  "_comment": [
   "Brainrot meshes, by character id.",
   "",
+  "native = the mesh's TRUE intrinsic size, read from",
+  "AssetService:CreateMeshPartAsync(meshId).Size -- NOT the Size of any MeshPart",
+  "that happens to use it. That distinction is the whole reason this line exists:",
+  "the pack's models scale their meshes down via Size, and recording that scaled",
+  "value made every brainrot render hundreds of times too large. A MeshPart shows",
+  "its mesh at Size/InitialSize, so declaring InitialSize smaller than the mesh",
+  "really is inflates it by exactly that ratio -- 475x for tralalero_tralala.",
+  "",
+  "The pack mixes scales: most meshes are 400-2048 studs, a few (meowl, w_or_l,",
+  "1x1x1x1) are single digits. So every entry is measured, never inferred.",
+  "",
   "These are baked into ReplicatedStorage.BrainrotModels by tools/build_place.py.",
   "They CANNOT be applied at runtime: MeshPart.MeshId and TextureID are not",
   "writable from a script, so every part has to already exist and be cloned.",
@@ -31,9 +42,9 @@
    "mesh": "rbxassetid://113508223027523",
    "texture": "rbxassetid://99962267753419",
    "native": [
-    3.886,
-    5.739,
-    6.639
+    869.542,
+    1284.147,
+    1485.474
    ],
    "variants": {
     "Gold": "rbxassetid://100185279760080",
@@ -47,9 +58,9 @@
    "mesh": "rbxassetid://140363745432335",
    "texture": "rbxassetid://109464167327481",
    "native": [
-    2.508,
-    5.518,
-    3.447
+    594.498,
+    1308.02,
+    817.213
    ],
    "variants": {
     "Gold": "rbxassetid://122064317835681",
@@ -63,9 +74,9 @@
    "mesh": "rbxassetid://85369542874074",
    "texture": "rbxassetid://107129431019633",
    "native": [
-    8.128,
-    7.331,
-    3.993
+    1765.224,
+    1592.167,
+    867.073
    ],
    "variants": {
     "Gold": "rbxassetid://105919182339278",
@@ -79,9 +90,9 @@
    "mesh": "rbxassetid://114062074282564",
    "texture": "rbxassetid://129351578878679",
    "native": [
-    2.932,
-    7.117,
-    1.8
+    430.077,
+    1043.793,
+    264.03
    ],
    "variants": {
     "Gold": "rbxassetid://138818708147872",
@@ -95,9 +106,9 @@
    "mesh": "rbxassetid://84807457001145",
    "texture": "rbxassetid://128762353349503",
    "native": [
-    4.322,
-    6.132,
-    6.374
+    1096.018,
+    1555.061,
+    1616.42
    ],
    "variants": {
     "Gold": "rbxassetid://80559420310185",
@@ -111,9 +122,9 @@
    "mesh": "rbxassetid://124445436629455",
    "texture": "rbxassetid://136413708051824",
    "native": [
-    3.547,
-    5.449,
-    6.559
+    961.23,
+    1476.656,
+    1777.382
    ],
    "variants": {
     "Gold": "rbxassetid://130899704928391",
@@ -127,9 +138,9 @@
    "mesh": "rbxassetid://113266009243876",
    "texture": "rbxassetid://85114169318270",
    "native": [
-    5.498,
-    6.06,
-    10.36
+    1086.809,
+    1197.976,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://122656815602405",
@@ -143,9 +154,9 @@
    "mesh": "rbxassetid://137108822293648",
    "texture": "rbxassetid://135379403285598",
    "native": [
-    3.839,
-    5.593,
-    2.727
+    817.089,
+    1190.337,
+    580.36
    ],
    "variants": {
     "Gold": "rbxassetid://123882404236132",
@@ -159,9 +170,9 @@
    "mesh": "rbxassetid://140614663869243",
    "texture": "rbxassetid://80145679593246",
    "native": [
-    4.386,
-    4.826,
-    6.553
+    753.601,
+    829.074,
+    1125.868
    ],
    "variants": {
     "Gold": "rbxassetid://123558731130231",
@@ -175,9 +186,9 @@
    "mesh": "rbxassetid://121510353195924",
    "texture": "rbxassetid://117956531039517",
    "native": [
-    5.554,
-    6.599,
-    4.431
+    1348.916,
+    1602.709,
+    1076.148
    ],
    "variants": {
     "Gold": "rbxassetid://108999828196388",
@@ -191,9 +202,9 @@
    "mesh": "rbxassetid://131400238700725",
    "texture": "rbxassetid://130262762788096",
    "native": [
-    8.822,
-    3.636,
-    9.545
+    1892.752,
+    780.183,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://114842585537482",
@@ -207,9 +218,9 @@
    "mesh": "rbxassetid://100507425145825",
    "texture": "rbxassetid://123603023572192",
    "native": [
-    10.054,
-    3.549,
-    10.107
+    2037.132,
+    719.094,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://106453484538169",
@@ -223,9 +234,9 @@
    "mesh": "rbxassetid://105157073639482",
    "texture": "rbxassetid://75226482083039",
    "native": [
-    6.353,
-    6.982,
-    6.443
+    1802.06,
+    1980.279,
+    1827.553
    ],
    "variants": {
     "Gold": "rbxassetid://109241080967461",
@@ -239,9 +250,9 @@
    "mesh": "rbxassetid://109064107200773",
    "texture": "rbxassetid://114029733376487",
    "native": [
-    3.589,
-    6.161,
-    2.797
+    1005.34,
+    1725.744,
+    783.385
    ],
    "variants": {
     "Gold": "rbxassetid://106614399741859",
@@ -255,9 +266,9 @@
    "mesh": "rbxassetid://81891240709428",
    "texture": "rbxassetid://92009012259544",
    "native": [
-    9.44,
-    7.31,
-    9.748
+    1983.197,
+    1535.783,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://107712142839523",
@@ -271,9 +282,9 @@
    "mesh": "rbxassetid://108317159141036",
    "texture": "rbxassetid://140400946473707",
    "native": [
-    2.972,
-    7.351,
-    6.19
+    828.037,
+    2048.0,
+    1724.445
    ],
    "variants": {
     "Gold": "rbxassetid://86856396354615",
@@ -287,9 +298,9 @@
    "mesh": "rbxassetid://98759289805112",
    "texture": "rbxassetid://139305244013273",
    "native": [
-    4.287,
-    4.733,
-    8.566
+    1025.022,
+    1131.449,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://119809573904577",
@@ -303,9 +314,9 @@
    "mesh": "rbxassetid://124944805641593",
    "texture": "rbxassetid://100779349865802",
    "native": [
-    4.084,
-    5.156,
-    8.416
+    273.642,
+    345.509,
+    563.955
    ],
    "variants": {
     "Gold": "rbxassetid://107525228370201",
@@ -319,9 +330,9 @@
    "mesh": "rbxassetid://74515945127658",
    "texture": "rbxassetid://74245857193599",
    "native": [
-    8.518,
-    8.343,
-    2.692
+    2048.0,
+    2006.022,
+    647.297
    ],
    "variants": {
     "Gold": "rbxassetid://135539591253331",
@@ -335,9 +346,9 @@
    "mesh": "rbxassetid://102737053431647",
    "texture": "rbxassetid://74718759640507",
    "native": [
-    2.633,
-    3.275,
-    2.314
+    748.697,
+    931.231,
+    657.883
    ],
    "variants": {
     "Gold": "rbxassetid://93055880942078",
@@ -351,9 +362,9 @@
    "mesh": "rbxassetid://88552868232210",
    "texture": "rbxassetid://86841683622981",
    "native": [
-    8.542,
-    8.115,
-    4.553
+    1374.073,
+    1305.388,
+    732.449
    ],
    "variants": {
     "Gold": "rbxassetid://129850135150388",
@@ -367,7 +378,7 @@
    "mesh": "rbxassetid://112402523481770",
    "texture": "rbxassetid://75603404094694",
    "native": [
-    2.21,
+    2.209,
     5.0,
     1.43
    ],
@@ -377,9 +388,9 @@
    "mesh": "rbxassetid://89107335865808",
    "texture": "rbxassetid://74814117419212",
    "native": [
-    5.245,
-    5.847,
-    10.104
+    749.354,
+    835.34,
+    1443.434
    ],
    "variants": {
     "Gold": "rbxassetid://71674093712473",
@@ -393,8 +404,8 @@
    "mesh": "rbxassetid://130940678699229",
    "texture": "rbxassetid://109131789314236",
    "native": [
-    2.28,
-    3.32,
+    2.282,
+    3.317,
     4.0
    ],
    "target": 7.6
@@ -403,9 +414,9 @@
    "mesh": "rbxassetid://132313012916794",
    "texture": "rbxassetid://117942895387186",
    "native": [
-    4.47,
+    4.467,
     4.0,
-    4.39
+    4.387
    ],
    "target": 7.6
   },
@@ -414,8 +425,8 @@
    "texture": "rbxassetid://130326781005238",
    "native": [
     4.5,
-    4.92,
-    1.92
+    4.923,
+    1.924
    ],
    "target": 7.6
   },
@@ -423,9 +434,9 @@
    "mesh": "rbxassetid://140700562552938",
    "texture": "rbxassetid://134268020685658",
    "native": [
-    4.35,
+    4.355,
     4.0,
-    3.21
+    3.205
    ],
    "target": 7.9
   },
@@ -433,9 +444,9 @@
    "mesh": "rbxassetid://80351797193483",
    "texture": "rbxassetid://138545159723963",
    "native": [
-    6.016,
-    8.484,
-    3.539
+    1452.177,
+    2048.0,
+    854.216
    ],
    "variants": {
     "Gold": "rbxassetid://83535854883259",
@@ -449,9 +460,9 @@
    "mesh": "rbxassetid://128223351774556",
    "texture": "rbxassetid://133980033209902",
    "native": [
-    3.863,
-    6.315,
-    4.329
+    3.309,
+    5.409,
+    3.708
    ],
    "variants": {
     "Gold": "rbxassetid://137324366830762",
@@ -465,9 +476,9 @@
    "mesh": "rbxassetid://110995346051396",
    "texture": "rbxassetid://87652990044178",
    "native": [
-    2.62,
-    6.608,
-    0.612
+    179.788,
+    453.401,
+    41.978
    ],
    "variants": {
     "Gold": "rbxassetid://104332653381909",
@@ -481,9 +492,9 @@
    "mesh": "rbxassetid://86497551321730",
    "texture": "rbxassetid://125198060767819",
    "native": [
-    5.47,
-    7.141,
-    4.399
+    683.749,
+    892.578,
+    549.891
    ],
    "variants": {
     "Gold": "rbxassetid://72711172755505",
@@ -497,9 +508,9 @@
    "mesh": "rbxassetid://102810723637717",
    "texture": "rbxassetid://76901018322229",
    "native": [
-    5.827,
-    7.58,
-    3.884
+    364.773,
+    474.531,
+    243.176
    ],
    "variants": {
     "Gold": "rbxassetid://78780860864077",
@@ -513,9 +524,9 @@
    "mesh": "rbxassetid://129627152184064",
    "texture": "rbxassetid://129468402107807",
    "native": [
-    3.861,
-    7.461,
-    8.404
+    482.636,
+    932.622,
+    1050.56
    ],
    "variants": {
     "Gold": "rbxassetid://112158845530905",
@@ -529,9 +540,9 @@
    "mesh": "rbxassetid://74125158322317",
    "texture": "rbxassetid://108683623929916",
    "native": [
-    7.461,
-    6.651,
-    3.038
+    2048.0,
+    1825.692,
+    833.821
    ],
    "variants": {
     "Gold": "rbxassetid://89088247434548",
@@ -545,9 +556,9 @@
    "mesh": "rbxassetid://140416118201107",
    "texture": "rbxassetid://113387249030155",
    "native": [
-    3.82,
-    6.383,
-    2.98
+    934.41,
+    1561.604,
+    729.039
    ],
    "variants": {
     "Gold": "rbxassetid://137690575931922",
@@ -561,9 +572,9 @@
    "mesh": "rbxassetid://128298606286960",
    "texture": "rbxassetid://99263372888561",
    "native": [
-    9.16,
-    5.829,
-    7.148
+    1144.947,
+    728.587,
+    893.558
    ],
    "variants": {
     "Gold": "rbxassetid://106055608036151",
@@ -577,9 +588,9 @@
    "mesh": "rbxassetid://82555573521128",
    "texture": "rbxassetid://125421883487714",
    "native": [
-    7.889,
-    7.737,
-    3.291
+    2048.0,
+    2008.529,
+    854.282
    ],
    "variants": {
     "Gold": "rbxassetid://124826886118666",
@@ -593,9 +604,9 @@
    "mesh": "rbxassetid://71148919444187",
    "texture": "rbxassetid://112544587033704",
    "native": [
-    7.231,
-    6.565,
-    3.055
+    520.479,
+    472.567,
+    219.875
    ],
    "variants": {
     "Gold": "rbxassetid://100777291685016",
@@ -609,9 +620,9 @@
    "mesh": "rbxassetid://83619068738020",
    "texture": "rbxassetid://83775932911782",
    "native": [
-    3.929,
-    4.961,
-    7.244
+    1110.79,
+    1402.516,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://104276090567061",
@@ -625,9 +636,9 @@
    "mesh": "rbxassetid://90572334381932",
    "texture": "rbxassetid://101462662333026",
    "native": [
-    3.842,
-    5.297,
-    5.57
+    4.309,
+    5.941,
+    6.247
    ],
    "variants": {
     "Gold": "rbxassetid://75778361796893",
@@ -641,9 +652,9 @@
    "mesh": "rbxassetid://137027768657627",
    "texture": "rbxassetid://79923762706839",
    "native": [
-    6.004,
-    5.577,
-    5.615
+    1212.91,
+    1126.605,
+    1134.321
    ],
    "variants": {
     "Gold": "rbxassetid://96985077810658",
@@ -657,9 +668,9 @@
    "mesh": "rbxassetid://140612435491365",
    "texture": "rbxassetid://134747978875627",
    "native": [
-    5.394,
-    7.429,
-    5.836
+    407.603,
+    561.417,
+    441.041
    ],
    "variants": {
     "Gold": "rbxassetid://112426068926420",
@@ -673,9 +684,9 @@
    "mesh": "rbxassetid://135484859552896",
    "texture": "rbxassetid://99664228718946",
    "native": [
-    6.066,
-    6.994,
-    3.737
+    436.359,
+    503.158,
+    268.858
    ],
    "variants": {
     "Gold": "rbxassetid://128728748790715",
@@ -689,9 +700,9 @@
    "mesh": "rbxassetid://99752143616621",
    "texture": "rbxassetid://120688571738820",
    "native": [
-    4.986,
-    7.862,
-    6.934
+    600.83,
+    947.298,
+    835.485
    ],
    "variants": {
     "Gold": "rbxassetid://105329759242175",
@@ -705,9 +716,9 @@
    "mesh": "rbxassetid://121793882396570",
    "texture": "rbxassetid://90909841251210",
    "native": [
-    4.278,
-    7.446,
-    5.949
+    1176.644,
+    2048.0,
+    1636.183
    ],
    "variants": {
     "Gold": "rbxassetid://95230361835846",
@@ -721,9 +732,9 @@
    "mesh": "rbxassetid://105464370439375",
    "texture": "rbxassetid://80817120624034",
    "native": [
-    6.787,
-    6.132,
-    2.63
+    2048.0,
+    1850.404,
+    793.709
    ],
    "variants": {
     "Gold": "rbxassetid://102988806168888",
@@ -737,9 +748,9 @@
    "mesh": "rbxassetid://137603612976245",
    "texture": "rbxassetid://102129346472854",
    "native": [
-    5.229,
-    5.225,
-    8.815
+    1214.847,
+    1214.013,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://88725167000884",
@@ -753,9 +764,9 @@
    "mesh": "rbxassetid://114343988119693",
    "texture": "rbxassetid://87013145260875",
    "native": [
-    12.8,
-    9.32,
-    8.752
+    30.459,
+    22.176,
+    20.825
    ],
    "variants": {
     "Gold": "rbxassetid://112305944531713",
@@ -769,9 +780,9 @@
    "mesh": "rbxassetid://91081776657105",
    "texture": "rbxassetid://85335481639432",
    "native": [
-    12.603,
-    9.236,
-    8.877
+    712.735,
+    522.312,
+    502.045
    ],
    "variants": {
     "Gold": "rbxassetid://90697410437766",
@@ -785,9 +796,9 @@
    "mesh": "rbxassetid://107164392594000",
    "texture": "rbxassetid://76039555960801",
    "native": [
-    3.546,
-    6.088,
-    2.763
+    506.616,
+    869.647,
+    394.768
    ],
    "variants": {
     "Gold": "rbxassetid://85875974245296",
@@ -801,9 +812,9 @@
    "mesh": "rbxassetid://99576354344853",
    "texture": "rbxassetid://75969778242109",
    "native": [
-    9.023,
-    7.695,
-    3.694
+    2048.0,
+    1746.523,
+    838.474
    ],
    "variants": {
     "Gold": "rbxassetid://95295771957330",
@@ -817,9 +828,9 @@
    "mesh": "rbxassetid://92738283874794",
    "texture": "rbxassetid://77904233287091",
    "native": [
-    5.575,
-    8.902,
-    2.487
+    1282.685,
+    2048.0,
+    572.178
    ],
    "variants": {
     "Gold": "rbxassetid://110956924314137",
@@ -833,9 +844,9 @@
    "mesh": "rbxassetid://118143131675058",
    "texture": "rbxassetid://120247057213672",
    "native": [
-    3.25,
-    4.907,
-    6.376
+    248.342,
+    374.995,
+    487.226
    ],
    "variants": {
     "Gold": "rbxassetid://116921160830648",
@@ -849,9 +860,9 @@
    "mesh": "rbxassetid://110833136336842",
    "texture": "rbxassetid://132339053703045",
    "native": [
-    2.522,
-    5.202,
-    2.551
+    582.87,
+    1202.455,
+    589.593
    ],
    "variants": {
     "Gold": "rbxassetid://121921203978997",
@@ -865,9 +876,9 @@
    "mesh": "rbxassetid://89589369524120",
    "texture": "rbxassetid://103509871145446",
    "native": [
-    4.815,
-    8.557,
-    9.395
+    970.831,
+    1725.19,
+    1894.283
    ],
    "variants": {
     "Gold": "rbxassetid://136479584145757",
@@ -881,9 +892,9 @@
    "mesh": "rbxassetid://120090093311396",
    "texture": "rbxassetid://113627108914878",
    "native": [
-    6.984,
-    7.635,
-    3.554
+    851.673,
+    931.147,
+    433.453
    ],
    "variants": {
     "Gold": "rbxassetid://124974115313284",
@@ -897,9 +908,9 @@
    "mesh": "rbxassetid://105110798581859",
    "texture": "rbxassetid://129835070994683",
    "native": [
-    5.168,
-    3.962,
-    5.361
+    1184.424,
+    907.945,
+    1228.624
    ],
    "variants": {
     "Gold": "rbxassetid://105593816700190",
@@ -913,9 +924,9 @@
    "mesh": "rbxassetid://85512844480142",
    "texture": "rbxassetid://105512040480857",
    "native": [
-    9.787,
-    6.452,
-    1.36
+    723.87,
+    477.228,
+    100.625
    ],
    "variants": {
     "Gold": "rbxassetid://122106383683519",
@@ -929,9 +940,9 @@
    "mesh": "rbxassetid://117461378906936",
    "texture": "rbxassetid://71667786405646",
    "native": [
-    5.973,
-    6.263,
-    4.056
+    424.66,
+    445.316,
+    288.411
    ],
    "variants": {
     "Gold": "rbxassetid://123769427035726",
@@ -945,9 +956,9 @@
    "mesh": "rbxassetid://96296796756611",
    "texture": "rbxassetid://89928507081484",
    "native": [
-    6.682,
-    8.902,
-    2.439
+    848.478,
+    1130.377,
+    309.701
    ],
    "variants": {
     "Gold": "rbxassetid://120811589118250",
@@ -961,9 +972,9 @@
    "mesh": "rbxassetid://117068437110771",
    "texture": "rbxassetid://117784271549429",
    "native": [
-    4.16,
-    5.867,
-    9.631
+    884.603,
+    1247.581,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://111382724444361",
@@ -976,9 +987,9 @@
    "mesh": "rbxassetid://86021775317780",
    "texture": "rbxassetid://135537372245684",
    "native": [
-    3.817,
-    5.084,
-    3.812
+    925.262,
+    1232.306,
+    923.812
    ],
    "variants": {
     "Gold": "rbxassetid://92943445281187",
@@ -992,9 +1003,9 @@
    "mesh": "rbxassetid://134505053282881",
    "texture": "rbxassetid://85952779379117",
    "native": [
-    8.872,
-    8.421,
-    2.527
+    2005.177,
+    1903.268,
+    571.198
    ],
    "variants": {
     "Gold": "rbxassetid://122781570484100",
@@ -1008,9 +1019,9 @@
    "mesh": "rbxassetid://99159569553342",
    "texture": "rbxassetid://102323295566062",
    "native": [
-    3.709,
-    6.972,
-    2.764
+    3.177,
+    5.972,
+    2.368
    ],
    "variants": {
     "Gold": "rbxassetid://138846519363547",
@@ -1024,9 +1035,9 @@
    "mesh": "rbxassetid://88128499117663",
    "texture": "rbxassetid://89181302648979",
    "native": [
-    10.598,
-    6.333,
-    3.969
+    682.307,
+    407.758,
+    255.55
    ],
    "variants": {
     "Gold": "rbxassetid://115486743985466",
@@ -1040,9 +1051,9 @@
    "mesh": "rbxassetid://130308044642310",
    "texture": "rbxassetid://128328201538514",
    "native": [
-    3.423,
-    4.4,
-    5.441
+    731.367,
+    940.129,
+    1162.532
    ],
    "variants": {
     "Gold": "rbxassetid://116063828725048",
@@ -1056,9 +1067,9 @@
    "mesh": "rbxassetid://76880683164393",
    "texture": "rbxassetid://137670587292779",
    "native": [
-    5.309,
-    6.304,
-    10.897
+    997.907,
+    1184.756,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://101988069458405",
@@ -1072,9 +1083,9 @@
    "mesh": "rbxassetid://83682903872500",
    "texture": "rbxassetid://121810602604729",
    "native": [
-    3.937,
-    8.007,
-    2.433
+    448.805,
+    912.739,
+    277.353
    ],
    "variants": {
     "Gold": "rbxassetid://86982410552037",
@@ -1088,9 +1099,9 @@
    "mesh": "rbxassetid://93111139734616",
    "texture": "rbxassetid://76377987841734",
    "native": [
-    3.937,
-    8.727,
-    2.565
+    448.806,
+    994.805,
+    292.423
    ],
    "variants": {
     "Gold": "rbxassetid://82300280971748",
@@ -1104,9 +1115,9 @@
    "mesh": "rbxassetid://123242204678955",
    "texture": "rbxassetid://126028901437188",
    "native": [
-    4.062,
-    5.268,
-    7.095
+    323.259,
+    419.239,
+    564.611
    ],
    "variants": {
     "Gold": "rbxassetid://128686874719213",
@@ -1120,9 +1131,9 @@
    "mesh": "rbxassetid://95854421399144",
    "texture": "rbxassetid://131281394847389",
    "native": [
-    4.414,
-    6.976,
-    8.361
+    1076.248,
+    1700.847,
+    2038.634
    ],
    "variants": {
     "Gold": "rbxassetid://79616157097359",
@@ -1136,9 +1147,9 @@
    "mesh": "rbxassetid://104724334327215",
    "texture": "rbxassetid://123296079831414",
    "native": [
-    4.163,
-    6.724,
-    2.735
+    520.388,
+    840.487,
+    341.935
    ],
    "variants": {
     "Gold": "rbxassetid://70550073838518",
@@ -1152,9 +1163,9 @@
    "mesh": "rbxassetid://80438758916887",
    "texture": "rbxassetid://130488212704249",
    "native": [
-    3.612,
-    8.599,
-    1.032
+    860.352,
+    2048.0,
+    245.728
    ],
    "variants": {
     "Gold": "rbxassetid://124974467877694",
@@ -1168,9 +1179,9 @@
    "mesh": "rbxassetid://124335823033851",
    "texture": "rbxassetid://76380676888784",
    "native": [
-    7.225,
-    5.792,
-    3.756
+    6.606,
+    5.297,
+    3.435
    ],
    "variants": {
     "Gold": "rbxassetid://105766289809065",
@@ -1184,9 +1195,9 @@
    "mesh": "rbxassetid://74968383215695",
    "texture": "rbxassetid://126644905579182",
    "native": [
-    9.79,
-    7.276,
-    6.917
+    2048.0,
+    1522.033,
+    1447.025
    ],
    "variants": {
     "Gold": "rbxassetid://124072565594585",
@@ -1200,9 +1211,9 @@
    "mesh": "rbxassetid://84312218819352",
    "texture": "rbxassetid://87264829620806",
    "native": [
-    8.943,
-    6.333,
-    3.809
+    532.151,
+    376.844,
+    226.677
    ],
    "variants": {
     "Gold": "rbxassetid://70829693007359",
@@ -1216,9 +1227,9 @@
    "mesh": "rbxassetid://112695442773118",
    "texture": "rbxassetid://107670534675205",
    "native": [
-    4.2,
-    6.761,
-    2.846
+    1111.953,
+    1790.151,
+    753.606
    ],
    "variants": {
     "Gold": "rbxassetid://137597316472110",
@@ -1232,9 +1243,9 @@
    "mesh": "rbxassetid://139217665045768",
    "texture": "rbxassetid://92428851467448",
    "native": [
-    3.584,
-    5.145,
-    5.154
+    308.339,
+    442.652,
+    443.403
    ],
    "variants": {
     "Gold": "rbxassetid://75238810590361",
@@ -1248,9 +1259,9 @@
    "mesh": "rbxassetid://121410519717160",
    "texture": "rbxassetid://82278067509295",
    "native": [
-    7.362,
-    7.274,
-    12.411
+    339.42,
+    335.336,
+    572.197
    ],
    "variants": {
     "Gold": "rbxassetid://122579739268317",
@@ -1264,9 +1275,9 @@
    "mesh": "rbxassetid://133030906896767",
    "texture": "rbxassetid://129734238027741",
    "native": [
-    6.841,
-    5.6,
-    2.477
+    2048.0,
+    1676.488,
+    741.495
    ],
    "variants": {
     "Gold": "rbxassetid://85322495486383",
@@ -1280,9 +1291,9 @@
    "mesh": "rbxassetid://72370539165368",
    "texture": "rbxassetid://119035810930777",
    "native": [
-    6.276,
-    6.263,
-    2.751
+    1808.766,
+    1805.108,
+    792.745
    ],
    "variants": {
     "Gold": "rbxassetid://125090304073691",
@@ -1296,9 +1307,9 @@
    "mesh": "rbxassetid://86765044977073",
    "texture": "rbxassetid://119023256857186",
    "native": [
-    4.548,
-    7.456,
-    2.204
+    542.307,
+    889.02,
+    262.81
    ],
    "variants": {
     "Gold": "rbxassetid://71284025067740",
@@ -1312,9 +1323,9 @@
    "mesh": "rbxassetid://108481201223509",
    "texture": "rbxassetid://110856264078814",
    "native": [
-    4.184,
-    6.603,
-    9.781
+    583.61,
+    920.985,
+    1364.131
    ],
    "variants": {
     "Gold": "rbxassetid://130890897256000",
@@ -1328,9 +1339,9 @@
    "mesh": "rbxassetid://74680005476902",
    "texture": "rbxassetid://123058338917044",
    "native": [
-    4.979,
-    6.893,
-    5.669
+    1479.217,
+    2048.0,
+    1684.338
    ],
    "variants": {
     "Gold": "rbxassetid://124551276327031",
@@ -1344,9 +1355,9 @@
    "mesh": "rbxassetid://90587582936666",
    "texture": "rbxassetid://103863221331104",
    "native": [
-    6.255,
-    7.03,
-    9.925
+    735.857,
+    827.012,
+    1167.682
    ],
    "variants": {
     "Gold": "rbxassetid://106744803520880",
@@ -1360,9 +1371,9 @@
    "mesh": "rbxassetid://90257837878159",
    "texture": "rbxassetid://98146924095290",
    "native": [
-    9.163,
-    6.165,
-    10.181
+    1843.322,
+    1240.288,
+    2048.0
    ],
    "variants": {
     "Gold": "rbxassetid://105980449287399",
@@ -1376,9 +1387,9 @@
    "mesh": "rbxassetid://108674525404968",
    "texture": "rbxassetid://118940370854651",
    "native": [
-    3.914,
-    5.055,
-    6.2
+    1180.982,
+    1525.218,
+    1870.962
    ],
    "variants": {
     "Gold": "rbxassetid://119175050253541",
@@ -1392,9 +1403,9 @@
    "mesh": "rbxassetid://128830348135704",
    "texture": "rbxassetid://77380318952313",
    "native": [
-    3.639,
-    6.796,
-    2.239
+    1096.656,
+    2048.0,
+    674.791
    ],
    "variants": {
     "Gold": "rbxassetid://120962467140264",
@@ -1408,9 +1419,9 @@
    "mesh": "rbxassetid://101794263016747",
    "texture": "rbxassetid://113514511916680",
    "native": [
-    4.751,
-    7.181,
-    5.313
+    1338.96,
+    2023.667,
+    1497.293
    ],
    "variants": {
     "Gold": "rbxassetid://77369194663121",
@@ -1424,9 +1435,9 @@
    "mesh": "rbxassetid://100660069110173",
    "texture": "rbxassetid://140110212056847",
    "native": [
-    8.018,
-    4.452,
-    1.749
+    7.913,
+    4.394,
+    1.726
    ],
    "variants": {
     "Gold": "rbxassetid://131703449991227",
@@ -1440,9 +1451,9 @@
    "mesh": "rbxassetid://103077085144837",
    "texture": "rbxassetid://134537069365691",
    "native": [
-    10.342,
-    6.18,
-    3.873
+    682.307,
+    407.758,
+    255.55
    ],
    "variants": {
     "Gold": "rbxassetid://96282078361461",
@@ -1456,9 +1467,9 @@
    "mesh": "rbxassetid://78836208609185",
    "texture": "rbxassetid://90489567819020",
    "native": [
-    4.175,
-    7.162,
-    8.145
+    296.233,
+    508.206,
+    578.01
    ],
    "variants": {
     "Gold": "rbxassetid://89352313451351",
