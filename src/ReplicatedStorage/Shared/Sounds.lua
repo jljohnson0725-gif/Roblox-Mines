@@ -30,7 +30,10 @@ Sounds.SEMITONE = 2 ^ (1 / 12)
 
 Sounds.Library = {
 	-- mines
-	tileReveal = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.40, speed = 1.00 },
+	-- the gray find doubles as the safe-tile reveal, which is deliberate: an
+	-- ordinary uncover and an ordinary find are the same size of event.
+	tileReveal = { id = "rbxassetid://140231021022259", volume = 0.40, speed = 1.00 },
+	tileClick = { id = "rbxassetid://122835655736085", volume = 0.45, speed = 1.00 },
 	tileDrop = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.75, speed = 0.70 },
 	bust = { id = "rbxasset://sounds/bass.wav", volume = 1.00, speed = 0.55 },
 	cashout = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.55, speed = 1.30 },
@@ -40,9 +43,9 @@ Sounds.Library = {
 	stinger = { id = "rbxasset://sounds/bass.wav", volume = 1.00, speed = 1.00 },
 
 	-- ui
-	uiClick = { id = "rbxasset://sounds/switch3.wav", volume = 0.30, speed = 1.00 },
-	uiOpen = { id = "rbxasset://sounds/switch.wav", volume = 0.35, speed = 1.25 },
-	uiClose = { id = "rbxasset://sounds/switch.wav", volume = 0.35, speed = 0.85 },
+	uiClick = { id = "rbxassetid://102702078778790", volume = 0.40, speed = 1.00, bus = "UI" },
+	uiOpen = { id = "rbxassetid://102702078778790", volume = 0.38, speed = 1.10, bus = "UI" },
+	uiClose = { id = "rbxassetid://102702078778790", volume = 0.32, speed = 0.90, bus = "UI" },
 	uiDenied = { id = "rbxasset://sounds/switch.wav", volume = 0.40, speed = 0.50 },
 
 	-- plot
@@ -113,53 +116,82 @@ Sounds.Spectacle = {
 }
 
 --[[
-	HOW EACH TIER SOUNDS.
+	ONE SOUND PER TIER, not one sound pitched seven ways.
 
-	Two rules, and they pull against each other on purpose. Pitch goes DOWN as
-	rarity climbs -- lower reads as heavier, and a Secret announcing itself an
-	octave above a Common would sound like a smaller event, not a bigger one.
-	The ARPEGGIO on top climbs instead, and gets longer, so the big finds take
-	real time to finish speaking. A Common is one note; a Secret is seven and
-	you wait for them.
+	The first version shifted a single stinger down and stacked an arpeggio on
+	it, which was the right shape when the only audio available was a built-in
+	blip. With real assets per rarity that machinery is worse than useless --
+	it would be pitching a finished sound away from the key it was written in.
+	Colour names map to the tiers they are named for: gray Common through to
+	Secret.
 
-	Common and Uncommon used to be identical -- both level 0, both the same
-	cue -- so the most frequent outcome in the game and the second most
-	frequent were indistinguishable. Uncommon is the same cue a little brighter
-	now, which is the smallest difference that still registers.
-
-	`cue` is the seam for real audio. Swap the id in Sounds.Library and every
-	tier inherits it, still pitched and stacked by these numbers.
+	MYTHIC IS TWO PARTS, a wind-up and a finish, so `after` chains a second cue
+	once the first has actually ended rather than after a guessed delay. A fixed
+	wait would drift the moment either file is re-cut, and the seam between a
+	wind-up and its payoff is exactly where drift is audible.
 ]]
 local STINGS = {
-	Common = { cue = "tileDrop", speed = 1.00, volume = 0.85 },
-	Uncommon = { cue = "tileDrop", speed = 1.18, volume = 1.00 },
-	Rare = { cue = "stinger", speed = 0.95, volume = 1.00,
-		arp = { count = 3, from = 0, gap = 0.07 } },
-	Epic = { cue = "stinger", speed = 0.78, volume = 1.05,
-		arp = { count = 4, from = 0, gap = 0.075 } },
-	Legendary = { cue = "stinger", speed = 0.62, volume = 1.10,
-		arp = { count = 5, from = -2, gap = 0.08 } },
-	Mythic = { cue = "stinger", speed = 0.50, volume = 1.15,
-		arp = { count = 6, from = -4, gap = 0.085 } },
-	Secret = { cue = "stinger", speed = 0.42, volume = 1.20,
-		arp = { count = 7, from = -5, gap = 0.09 } },
+	Common = { id = "rbxassetid://140231021022259", volume = 0.85 },
+	Uncommon = { id = "rbxassetid://117243786893013", volume = 0.95 },
+	Rare = { id = "rbxassetid://138190748214493", volume = 1.00 },
+	Epic = { id = "rbxassetid://117861167307650", volume = 1.05 },
+	Legendary = { id = "rbxassetid://75127344844404", volume = 1.10 },
+	Mythic = {
+		id = "rbxassetid://130326607016455",
+		after = "rbxassetid://93989620006639",
+		volume = 1.15,
+	},
+	Secret = { id = "rbxassetid://139682612041479", volume = 1.20 },
 }
+
+local function playRaw(id, volume, bus)
+	if not RunService:IsClient() then
+		return nil
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "sting"
+	sound.SoundId = id
+	sound.Volume = volume
+	sound.Parent = SoundService
+	if Sounds.router then
+		Sounds.router(sound, bus or "SFX")
+	end
+	sound:Play()
+	return sound
+end
 
 --[[
 	Play the find. One place, so the three call sites that announce a drop
-	cannot drift into announcing it three different ways -- which they already
-	had begun to, with Fx branching on spec.level and picking cues itself.
+	cannot drift into announcing it three different ways.
+
+	`scale` is for somebody ELSE'S find: a server-wide Mythic should read as
+	distant good news rather than as your own, so it plays quieter and skips
+	the second half of a two-part cue.
 ]]
 function Sounds.sting(tierName, scale)
 	local sting = STINGS[tierName] or STINGS.Common
-	--[[ `scale` is for someone ELSE'S find. A server-wide announcement of a
-	     Mythic should read as distant good news, not as your own. ]]
 	scale = scale or 1
-	Sounds.play(sting.cue, sting.speed, sting.volume * scale)
-	-- the flourish is skipped when it is not your find; the headline is enough
-	if sting.arp and scale >= 1 then
-		Sounds.arpeggio(sting.cue, sting.arp.count, sting.arp.from, sting.arp.gap)
+	local first = playRaw(sting.id, sting.volume * scale)
+	if not first then
+		return sting
 	end
+
+	if sting.after and scale >= 1 then
+		--[[ Chained on Ended, not on a timer. The wind-up decides when the
+		     finish lands, so re-cutting either file keeps them in step. ]]
+		first.Ended:Once(function()
+			playRaw(sting.after, sting.volume * scale)
+		end)
+	end
+
+	first.Ended:Once(function()
+		first:Destroy()
+	end)
+	task.delay(12, function()
+		if first.Parent then
+			first:Destroy()
+		end
+	end)
 	return sting
 end
 

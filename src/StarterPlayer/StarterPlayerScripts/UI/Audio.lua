@@ -34,17 +34,16 @@ local Sky = require(script.Parent.Sky)
 local Audio = {}
 
 --[[
-	NOT FILLED IN. These are the seams for real audio, left empty on purpose --
-	an invented asset id fails silently at runtime and looks like a bug in the
-	mixer rather than a missing file. Paste ids from Studio's Toolbox > Audio,
-	which is Roblox's own licensed library; anything uploaded from elsewhere is
-	private to its uploader since the 2022 audio privacy change and will simply
-	not play for anyone else.
+	THE GROUND MUSIC ALTERNATES, it does not loop. Two tracks taking turns, so
+	the street does not become one four-minute phrase you learn by heart in a
+	session. The sky is a single track because you are not up there long enough
+	for repetition to set in.
 ]]
-local TRACKS = {
-	ground = "", -- the street: bright, busy
-	sky = "", -- the islands: colder, sparser, fewer instruments
+local GROUND_PLAYLIST = {
+	"rbxassetid://1841647093",
+	"rbxassetid://1848354536",
 }
+local SKY_TRACK = "rbxassetid://139997523791273"
 
 local BUSES = { "Music", "SFX", "UI", "Ambient" }
 
@@ -117,40 +116,44 @@ function Audio.init(ctx)
 	]]
 	Sounds.router = Audio.route
 
-	local tracks = {}
-	for key, id in pairs(TRACKS) do
-		if id ~= "" then
-			local sound = Instance.new("Sound")
-			sound.Name = "music_" .. key
-			sound.SoundId = id
-			sound.Looped = true
-			sound.Volume = 0
-			sound.SoundGroup = Audio.groups.Music
-			sound.Parent = SoundService
-			sound:Play()
-			tracks[key] = sound
-		end
+	--[[
+		Both sides play continuously and only their VOLUMES move. Starting a
+		track at the transition would restart it from bar one on every crossing,
+		and a jetpack makes crossing 70 studs trivially repeatable.
+	]]
+	local function makeTrack(name)
+		local sound = Instance.new("Sound")
+		sound.Name = "music_" .. name
+		sound.Volume = 0
+		sound.SoundGroup = Audio.groups.Music
+		sound.Parent = SoundService
+		return sound
 	end
 
-	--[[
-		Both tracks run the whole time and only their volumes move. Starting a
-		track at the moment of the transition would mean it begins from its
-		first bar every time you cross 70 studs, which turns a crossfade into a
-		restart -- and crossing that line repeatedly, which a jetpack makes
-		trivially easy, would retrigger it endlessly.
-	]]
-	if not (tracks.ground or tracks.sky) then
-		return Audio -- nothing to mix yet; the buses still work
+	local ground = makeTrack("ground")
+	local sky = makeTrack("sky")
+
+	sky.SoundId = SKY_TRACK
+	sky.Looped = true
+	sky:Play()
+
+	--[[ Alternate rather than loop: when one finishes, the other starts. Looped
+	     would have to be false for Ended to fire at all, which is why the
+	     rotation lives here rather than in a property. ]]
+	local nextIndex = 0
+	local function advance()
+		nextIndex = nextIndex % #GROUND_PLAYLIST + 1
+		ground.SoundId = GROUND_PLAYLIST[nextIndex]
+		ground:Play()
 	end
+	ground.Looped = false
+	ground.Ended:Connect(advance)
+	advance()
 
 	RunService.Heartbeat:Connect(function()
 		local t = Sky.blend()
-		if tracks.ground then
-			tracks.ground.Volume = 1 - t
-		end
-		if tracks.sky then
-			tracks.sky.Volume = t
-		end
+		ground.Volume = 1 - t
+		sky.Volume = t
 	end)
 
 	return Audio
