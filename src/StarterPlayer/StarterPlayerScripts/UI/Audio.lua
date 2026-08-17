@@ -26,6 +26,9 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Sounds = require(Shared.Sounds)
+
 local Sky = require(script.Parent.Sky)
 
 local Audio = {}
@@ -105,12 +108,14 @@ end
 function Audio.init(ctx)
 	buildGroups()
 
-	--[[ Sounds.lua parents its cues to SoundService and has no idea buses
-	     exist. Rather than edit forty call sites, hand it a router it can use
-	     if one is present -- absent, it behaves exactly as before. ]]
-	if ctx and ctx.sounds then
-		ctx.sounds.router = Audio.route
-	end
+	--[[
+		Handed straight to the module, not via ctx. The first version wrote
+		`if ctx and ctx.sounds then` -- and ctx has no `sounds` field, so the
+		assignment silently never ran and every cue played unrouted. Nothing
+		errored and the buses existed, which is exactly the shape of bug that
+		survives a look at the Explorer.
+	]]
+	Sounds.router = Audio.route
 
 	local tracks = {}
 	for key, id in pairs(TRACKS) do
