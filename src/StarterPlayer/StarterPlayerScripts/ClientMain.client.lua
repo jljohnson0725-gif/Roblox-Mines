@@ -427,6 +427,11 @@ end)
 -- anything too far away to see.
 
 local ANIMATE_RADIUS = 130
+
+--[[ Past this, a nameplate drops to its rarity line alone. Twenty-five studs
+     is about where two plates on neighbouring pads start to overlap, measured
+     against the 18-stud spacing the apartment lays them out at. ]]
+local PLATE_NEAR = 25
 local tracked = {}
 
 --[[
@@ -443,6 +448,42 @@ local tracked = {}
 	requires naming parts individually, so this is the cost of that, paid with
 	a re-check instead of a race.
 ]]
+--[[
+	Grab the nameplate and sort its lines, so the plate can be thinned out at a
+	distance.
+
+	CALLED AGAIN LATER IF IT COMES BACK EMPTY, for the same reason collectParts
+	is: a tagged model reaches the client before its children do, so the deferred
+	first look finds no LabelAnchor. Captured once and missed, seven of eight
+	plates never entered the distance code at all and stayed at full size
+	forever -- which read as the feature simply not working.
+
+	Lines are identified by POSITION rather than name, because addLabel builds
+	them with a local helper and never names them; the rarity line is the one at
+	the top.
+]]
+local function collectPlate(model, data)
+	local anchor = model:FindFirstChild("LabelAnchor")
+	local plate = anchor and anchor:FindFirstChild("Nameplate")
+	if not plate then
+		return false
+	end
+	data.plate = plate
+	data.plateSize = plate.Size
+	table.clear(data.otherLines)
+	data.rarityLine = nil
+	for _, label in ipairs(plate:GetChildren()) do
+		if label:IsA("TextLabel") then
+			if label.Position.Y.Scale < 0.1 then
+				data.rarityLine = label
+			else
+				table.insert(data.otherLines, label)
+			end
+		end
+	end
+	return true
+end
+
 local function collectParts(model, data)
 	local pivot = data.pivot
 	table.clear(data.moving)
@@ -509,6 +550,7 @@ local function track(model)
 			to the pivot so the model still turns about its own centre.
 		]]
 		local data = {
+			otherLines = {},
 			pivot = model:GetPivot(),
 			tintable = tintable,
 			moving = {},
@@ -516,6 +558,8 @@ local function track(model)
 			phase = math.random() * math.pi * 2,
 		}
 		collectParts(model, data)
+		collectPlate(model, data)
+
 		tracked[model] = data
 	end)
 end
@@ -618,6 +662,40 @@ RunService.Heartbeat:Connect(function(dt)
 			if data.aura and data.auraRel then
 				data.pivot = data.aura.CFrame * data.auraRel:Inverse()
 			end
+			--[[
+				NAMEPLATE LEVEL OF DETAIL.
+
+				Close up you get all three lines; past PLATE_NEAR only the rarity
+				colour survives. Eight pads at eighteen studs' spacing put three
+				full plates on top of each other from across the room -- the name
+				and the rent collided into unreadable soup while the one thing
+				you actually scan for, the tier, was buried in it.
+
+				Written only when the state CHANGES. Setting Visible and Size on
+				every plate every frame is a pile of GUI property writes for a
+				value that changes when you walk across a room.
+			]]
+			if not data.plate then
+				collectPlate(model, data)
+			end
+			if data.plate then
+				local near = not eye
+					or (data.pivot.Position - eye).Magnitude < PLATE_NEAR
+				if near ~= data.plateNear then
+					data.plateNear = near
+					for _, label in ipairs(data.otherLines) do
+						label.Visible = near
+					end
+					if data.rarityLine then
+						-- the rarity line takes the whole plate once it is alone
+						data.rarityLine.Size = near
+							and UDim2.new(1, 0, 1 / 3, 0) or UDim2.new(1, 0, 1, 0)
+					end
+					data.plate.Size = near and data.plateSize
+						or UDim2.fromOffset(data.plateSize.X.Offset, data.plateSize.Y.Offset / 3)
+				end
+			end
+
 			if not eye or (data.pivot.Position - eye).Magnitude < ANIMATE_RADIUS then
 				-- late replication: try again rather than stay frozen forever
 				local ready = #data.moving > 0 or collectParts(model, data)
