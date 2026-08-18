@@ -25,6 +25,7 @@ local Players = game:GetService("Players")
 local Modules = script.Parent
 local DataService = require(Modules.DataService)
 local PlayerState = require(Modules.PlayerState)
+local RaceTrack = require(Modules.RaceTrack)
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
@@ -66,6 +67,9 @@ end
 function RaceService.enter(player, fieldId)
 	if running[player] then
 		return { ok = false, err = "Already racing." }
+	end
+	if RaceTrack.isBusy() then
+		return { ok = false, err = "A race is running. Watch this one." }
 	end
 
 	local profile = DataService.get(player)
@@ -151,6 +155,11 @@ function RaceService.enter(player, fieldId)
 		order = order,
 	}
 
+	--[[ The track draws what was already decided. If it refuses -- a race is
+	     mid-run -- the result still stands and still pays; the money must never
+	     depend on the scenery. ]]
+	RaceTrack.run(order, Config.RaceSeconds)
+
 	--[[ Settled on a timer rather than by the client reporting home. The client
 	     is drawing a result it was given; letting it tell the server when to pay
 	     would hand it a lever it has no business holding. ]]
@@ -187,6 +196,23 @@ function RaceService.enter(player, fieldId)
 end
 
 function RaceService.start()
+	RaceTrack.build()
+
+	if RaceTrack.prompt then
+		RaceTrack.prompt.Triggered:Connect(function(player)
+			local profile = DataService.get(player)
+			if not profile then
+				return
+			end
+			local allowed, missing = Seals.canEnter(profile, Islands.get("racing"))
+			if not allowed then
+				PlayerState.notify(player, ("The %s seal opens this."):format(missing or "?"))
+				return
+			end
+			Net.get("OpenRace"):FireClient(player)
+		end)
+	end
+
 	Net.get("EnterRace").OnServerInvoke = function(player, fieldId)
 		local ok, result = pcall(RaceService.enter, player, fieldId)
 		if not ok then

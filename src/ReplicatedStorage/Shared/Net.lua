@@ -51,6 +51,7 @@ local EVENTS = {
 	"OpenMines", -- the landmark's console was used
 	"OpenUpgrades", -- the shop counter was used
 	"OpenSummon", -- the perch was used; let them pick a ride
+	"OpenRace", -- the podium was used; show the fields
 	"OpenWheel", -- the wheel console was used
 }
 
