@@ -36,6 +36,11 @@ local SHELL_ABOVE = 4
 local SLOT_INSET = 7
 local SLOT_SPREAD = 0.74
 
+--[[ How much floor one standing brainrot needs. Models are scaled toward
+     `defaultTarget` (9.0) in meshes.json, so this is that plus nothing: it is
+     the width the layout must keep between neighbours and off the walls. ]]
+local BRAINROT_WIDTH = 9
+
 --[[ The doorway cut into the front face: how wide, and how tall. Anything of
      the building's own geometry inside that box stops blocking you. ]]
 local DOOR_WIDTH = 14
@@ -455,20 +460,69 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 	local moved = 0
 	if slots then
 		local list = slots:GetChildren()
+
+		--[[
+			STEP 1 -- put each slot back together.
+
+			A map slot is three parts: `Spawn`, an invisible 1x1 marker where the
+			brainrot stands, and `Part`/`Collect`, the visible strip -- sitting
+			TWELVE STUDS AWAY from it. Nothing marks where the brainrot actually
+			stands, so a brainrot appeared to float on bare floor while a grey
+			slab lay a body-length behind it.
+
+			That gap also poisoned the layout. The model's bounding box spanned
+			marker AND strip, so its centre was six studs from either, and every
+			"place the box at X" put the brainrot six studs off X. It is the same
+			pivot-is-not-centre trap as before wearing a different hat: this time
+			the box was honest and the box was not the thing being positioned.
+
+			So the strip moves under the marker and becomes what it was always
+			being read as -- the plinth the brainrot stands on. After this the
+			box IS the plinth, and placing it means what it says.
+		]]
+		for _, slot in ipairs(list) do
+			local marker = slot:FindFirstChild("Spawn")
+			if marker and marker:IsA("BasePart") then
+				for _, piece in ipairs(slot:GetChildren()) do
+					if piece:IsA("BasePart") and piece ~= marker then
+						piece.Position = Vector3.new(
+							marker.Position.X, piece.Position.Y, marker.Position.Z)
+					end
+				end
+			end
+		end
+
+		--[[
+			STEP 2 -- lay them out in two facing rows.
+
+			Sorted the way PlotService sorts (column, then depth) so that the
+			names written below match the pad indices it hands out; pad N is
+			saved in the profile, so any disagreement moves everyone's brainrots.
+
+			The spread is derived from the BRAINROT's width, not the plinth's.
+			The plinth is under nine studs across but the models are scaled to
+			about nine, so four slots packed to the plinth spacing overlapped --
+			three brainrots stood inside each other. What must not collide is the
+			thing you can see.
+		]]
 		table.sort(list, function(a, b)
-			return a:GetPivot().Position.Z < b:GetPivot().Position.Z
+			local pa, pb = a:GetPivot().Position, b:GetPivot().Position
+			if math.abs(pa.X - pb.X) > 0.5 then
+				return pa.X < pb.X
+			end
+			return pa.Z < pb.Z
 		end)
 
-		local _, padSize = list[1]:GetBoundingBox()
 		local innerX = hx - WALL / 2
 		local innerZ = hz - WALL / 2
-		local acrossX = innerX - padSize.X / 2 - 2
-		local spanZ = math.max(0, innerZ - padSize.Z / 2 - 2)
+		local acrossX = math.max(0, innerX - BRAINROT_WIDTH / 2 - 1.5)
+		local spanZ = math.max(0, innerZ - BRAINROT_WIDTH / 2 - 1.5)
 
+		local perRow = math.ceil(#list / 2)
 		for index, slot in ipairs(list) do
-			local side = (index <= 4) and -1 or 1
-			local rank = ((index - 1) % 4) + 1
-			local z = (#list > 4) and (-spanZ + (rank - 1) * (spanZ * 2 / 3)) or 0
+			local side = (index <= perRow) and -1 or 1
+			local rank = ((index - 1) % perRow) + 1
+			local z = (perRow > 1) and (-spanZ + (rank - 1) * (spanZ * 2 / (perRow - 1))) or 0
 			local target = Vector3.new(cx + side * acrossX, deck, cz + z)
 
 			--[[ Aim the BOX at the target, then let the pivot fall where it
@@ -480,7 +534,74 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 			slot:PivotTo(CFrame.new(
 				target + Vector3.new(drift.X, drift.Y + boxSize.Y / 2, drift.Z)
 			))
+
+			--[[ Facing stated outright rather than inferred. PlotService used to
+			     read it from strip-minus-marker, which now points nowhere since
+			     they share a spot -- and which was wrong anyway: it aimed every
+			     brainrot down -Z whichever wall it stood against. The two rows
+			     turn to look at each other across the aisle, so walking in from
+			     the door you see faces, not backs. ]]
+			slot:SetAttribute("Facing", Vector3.new(-side, 0, 0))
+			slot.Name = "Slot" .. index
 			moved += 1
+		end
+	end
+
+	--[[
+		ONE COLLECT PAD, by the door.
+
+		Every slot used to carry its own collect strip, so an empty pad was a
+		bright teal tile lying on the floor and five of them read as five bugs.
+		Banking is not a per-brainrot decision anyway -- you always want all of
+		it -- so eight strips were eight places to stand for one action.
+
+		Placed at the entrance because it is the thing you walk over on the way
+		in and out, which is exactly when you want your money.
+	]]
+	local pad = Instance.new("Part")
+	pad.Name = "CollectPad"
+	pad.Anchored = true
+	pad.CanCollide = false
+	pad.Size = Vector3.new(14, 0.3, DOOR_WIDTH)
+	pad.CFrame = CFrame.new(
+		Vector3.new(cx, deck + 0.45, cz) + facing * (math.abs(facing.X) > 0.5 and hx - 10 or hz - 10))
+	pad.Color = Color3.fromRGB(96, 226, 130)
+	pad.Material = Enum.Material.Neon
+	pad.Transparency = 0.35
+	pad.Parent = shell
+
+	local padGui = Instance.new("BillboardGui")
+	padGui.Name = "CollectLabel"
+	padGui.Size = UDim2.fromOffset(150, 40)
+	padGui.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+	padGui.MaxDistance = 70
+	padGui.Parent = pad
+
+	local padText = Instance.new("TextLabel")
+	padText.Size = UDim2.fromScale(1, 1)
+	padText.BackgroundTransparency = 1
+	padText.Font = Enum.Font.GothamBlack
+	padText.TextScaled = true
+	padText.TextColor3 = Color3.fromRGB(120, 255, 160)
+	padText.TextStrokeTransparency = 0.3
+	padText.Text = "COLLECT"
+	padText.Parent = padGui
+	local padCap = Instance.new("UITextSizeConstraint")
+	padCap.MaxTextSize = 16
+	padCap.Parent = padText
+
+	--[[ The per-slot strips stop pretending to be collect zones. They stay as
+	     the pad surface -- you still need to see where a brainrot goes -- but in
+	     a quiet stone rather than a lit green that says "stand here". ]]
+	local quieted = 0
+	if slots then
+		for _, slot in ipairs(slots:GetChildren()) do
+			local strip = slot:FindFirstChild("Collect")
+			if strip and strip:IsA("BasePart") then
+				strip.Color = Color3.fromRGB(122, 116, 104)
+				strip.Material = Enum.Material.Concrete
+				quieted += 1
+			end
 		end
 	end
 

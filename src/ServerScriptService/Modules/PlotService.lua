@@ -113,9 +113,21 @@ local function readSlot(slot)
 		return strip, Vector3.new(0, 0, 1), strip.Position + Vector3.new(0, strip.Size.Y / 2, 0)
 	end
 
-	-- podium -> strip is inward, toward the walkway the player uses
-	local delta = strip.Position - marker.Position
-	local facing = Vector3.new(delta.X, 0, delta.Z)
+	--[[
+		Facing, in order of trust.
+
+		HomeService states it outright on converted bases, because the geometry
+		it used to be inferred from no longer says anything: the strip now sits
+		UNDER the marker, so strip-minus-marker is a zero vector. The inference
+		was also wrong before that -- the map offsets every strip along -Z, so
+		it aimed all eight brainrots the same way whichever wall they stood
+		against. Unconverted bases keep the old reading, then +Z as the floor.
+	]]
+	local facing = slot:GetAttribute("Facing")
+	if typeof(facing) ~= "Vector3" or facing.Magnitude < 0.1 then
+		local delta = strip.Position - marker.Position
+		facing = Vector3.new(delta.X, 0, delta.Z)
+	end
 	facing = facing.Magnitude > 0.1 and facing.Unit or Vector3.new(0, 0, 1)
 
 	local params = RaycastParams.new()
@@ -892,13 +904,41 @@ function PlotService.tickCollect(player)
 		return
 	end
 
+	--[[
+		ONE PAD BANKS EVERYTHING.
+
+		Collection used to be per strip: stand near a pad, empty that pad. That
+		is eight places to stand for an action nobody ever wants to do partially
+		-- and it left every empty pad wearing a lit collect strip, which read as
+		a bug rather than as furniture.
+
+		HomeService puts a single CollectPad by the door. Standing on it claims
+		the lot. The old per-strip path is kept as the fallback for any base that
+		has not been converted, so this cannot strand a player's money.
+	]]
+	local home = plot.model and plot.model:FindFirstChild("Home")
+	local interior = home and home:FindFirstChild("Interior")
+	local collectPad = interior and interior:FindFirstChild("CollectPad")
+
 	local claimed = 0
-	for index, pad in ipairs(plot.pads) do
-		local amount = profile.pending[index] or 0
-		if amount >= 1 and withinPad(root, pad.part, 4) then
-			-- the WHOLE strip, emptied in one go
-			profile.pending[index] = 0
-			claimed += amount
+	if collectPad then
+		if withinPad(root, collectPad, 8) then
+			for index = 1, #plot.pads do
+				local amount = profile.pending[index] or 0
+				if amount >= 1 then
+					profile.pending[index] = 0
+					claimed += amount
+				end
+			end
+		end
+	else
+		for index, pad in ipairs(plot.pads) do
+			local amount = profile.pending[index] or 0
+			if amount >= 1 and withinPad(root, pad.part, 4) then
+				-- the WHOLE strip, emptied in one go
+				profile.pending[index] = 0
+				claimed += amount
+			end
 		end
 	end
 

@@ -53,6 +53,12 @@ EventService.start()
 -- the one the wheel replaces has to be gone first.
 WheelService.clearSite()
 
+--[[ BEFORE PlotService, and that order is load-bearing. attachPlot reads every
+     slot's position once and caches it, so converting the bases afterwards moved
+     the slots out from under those cached coordinates -- brainrots were placed
+     on the old grid, one of them standing outside the room through a wall. ]]
+HomeService.start()
+
 PlotService.start()
 MinesService.start()
 
@@ -71,10 +77,6 @@ CodeService.start()
 -- so everything that reshapes the terrain has to be finished first.
 JetpackService.start()
 
---[[ All of them. Base1 was converted alone first and stood in, which is what
-     turned up the see-through facade, the sealed door and the colliding
-     nameplates -- all of which would have been seven times the work to undo. ]]
-HomeService.start()
 
 -- The sky. Islands are free-standing geometry with nothing under them, so
 -- they neither need the map nor care what it did.
