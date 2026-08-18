@@ -294,6 +294,18 @@ Config.Codes = {
 		the wheel of its only reason to exist.
 	]]
 	SECRETS = { secrets = true, testOnly = true, blurb = "every Secret, one each" },
+
+	--[[ Everything needed to stand on the racing island: the seal that opens
+	     it, something worth summoning, and money to stake once you are up
+	     there. Earning this legitimately is about 69 Plinko drops, which is the
+	     wrong price for looking at the island once. ]]
+	SKYPASS = {
+		seals = { "plinko" },
+		secrets = true,
+		money = 5000000,
+		testOnly = true,
+		blurb = "the Plinko seal, a Secret to ride, and stake money",
+	},
 }
 
 --[[

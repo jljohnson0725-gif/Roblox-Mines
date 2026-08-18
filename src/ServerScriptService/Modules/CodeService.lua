@@ -77,6 +77,17 @@ function CodeService.redeem(player, input)
 	profile.redeemed[code] = true
 	profile.money += reward.money or 0
 
+	--[[ Seals granted outright, not as fragments. A fragment grant would make
+	     the code a shortcut through the grind; a seal grant is a KEY, which is
+	     what a tester actually needs -- reaching island two otherwise costs
+	     about 69 Plinko drops before you can look at it once. ]]
+	if reward.seals then
+		profile.seals = profile.seals or {}
+		for _, sealId in ipairs(reward.seals) do
+			profile.seals[sealId] = true
+		end
+	end
+
 	--[[ A forced tier arms the next few Mines drops rather than granting
 	     anything. Handing the brainrot over directly would give you the item
 	     and none of the sound, which is the entire point of these two. ]]

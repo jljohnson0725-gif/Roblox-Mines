@@ -27,6 +27,7 @@ local CodeService = require(Modules.CodeService)
 local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
+local MountService = require(Modules.MountService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
@@ -74,6 +75,10 @@ IslandService.start()
 
 -- The machine stands on ground the islands just made, so it goes after them.
 PlinkoService.start()
+
+-- The perch reads the racing island's accent and landing spot, so it needs the
+-- island declared -- though not built, since it only ever flies you TO it.
+MountService.start()
 RebirthService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
