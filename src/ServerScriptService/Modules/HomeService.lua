@@ -350,6 +350,10 @@ function HomeService.convert(base)
      off. ]]
 local PLASTER = Color3.fromRGB(150, 141, 128)
 
+--[[ Skirting, window sills and the door casing. Build colour only -- applyTier
+     repaints all of it, so this is just what an unclaimed room wears. ]]
+local TRIM = Color3.fromRGB(88, 84, 78)
+
 	--[[ Eighteen studs, not thirteen. The third-person camera sits about twelve
 	     studs back and up, so a low ceiling jams it into the floor and points it
 	     at your feet -- which is what made the first look inside unreadable. ]]
@@ -380,33 +384,124 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 		Vector3.new(0, 0, 1), Vector3.new(0, 0, -1),
 	}
 	local doored = 0
+	local windows = 0
 	for _, dir in ipairs(SIDES) do
 		local onX = math.abs(dir.X) > 0.5
 		local out = onX and hx or hz -- how far to the wall
 		local run = onX and hz or hx -- how long the wall is
 		local origin = Vector3.new(cx, midY, cz) + dir * out
-		local function wall(name, length, shift)
-			local size = onX and Vector3.new(WALL, HEIGHT, length)
-				or Vector3.new(length, HEIGHT, WALL)
-			local along = onX and Vector3.new(0, 0, 1) or Vector3.new(1, 0, 0)
-			slab(name, size, origin + along * shift, PLASTER)
+		local along = onX and Vector3.new(0, 0, 1) or Vector3.new(1, 0, 0)
+
+		--[[ `span` is the length of a piece measured ALONG the wall; thickness
+		     and height are the same whichever wall it is. Everything below is
+		     built through this so a piece can never be laid out sideways. ]]
+		local function piece(name, span, height, shift, y, thick, color, material)
+			local t = thick or WALL
+			local size = onX and Vector3.new(t, height, span)
+				or Vector3.new(span, height, t)
+			local at = origin + along * shift
+			return slab(name, size,
+				Vector3.new(at.X, y or midY, at.Z), color or PLASTER, material)
+		end
+
+		--[[ A skirting board, which is the cheapest thing on this list and does
+		     the most work. A box of flat planes reads as a box; the same box
+		     with a dark line where wall meets floor reads as a room. ]]
+		local function skirting(span, shift)
+			local p = piece("Skirting", span, 2.2, shift, deck + 1.1,
+				WALL * 0.45, TRIM, Enum.Material.Wood)
+			p.CFrame = p.CFrame - dir * (WALL * 0.4)
+			p.CanCollide = false
+		end
+
+		--[[
+			A WINDOWED RUN OF WALL: a sill band, a header band, and piers between
+			the openings, with glass filling each gap.
+
+			Openings are SIZED FROM THE RUN, not picked -- the count drops until
+			the piers are at least three studs, so one function gives the 47-stud
+			side walls three windows, the 66-stud back wall four, and the two
+			26-stud segments beside the front door one each. It can never produce
+			a run that is more hole than wall, and a run too short for a window
+			just comes back solid.
+
+			The glass is COLLIDABLE. The gap in the front wall is a doorway
+			precisely because nothing fills it; these must not become eight more.
+		]]
+		local function windowed(name, length, shift)
+			local openW = 10
+			local count = math.floor(length / 16)
+			local pier = count > 0 and (length - count * openW) / (count + 1) or 0
+			while count > 1 and pier < 3 do
+				count -= 1
+				pier = (length - count * openW) / (count + 1)
+			end
+
+			if count < 1 then
+				piece(name, length, HEIGHT, shift)
+				skirting(length, shift)
+				return
+			end
+
+			local sillTop = deck + 5
+			local headBot = deck + 12
+			local headH = deck + HEIGHT - headBot
+
+			piece(name, length, 5, shift, deck + 2.5)
+			piece(name, length, headH, shift, headBot + headH / 2)
+			skirting(length, shift)
+
+			local left = shift - length / 2
+			for i = 0, count do
+				piece(name, pier, headBot - sillTop,
+					left + pier / 2 + i * (pier + openW), (sillTop + headBot) / 2)
+			end
+
+			for j = 0, count - 1 do
+				local at = left + pier + openW / 2 + j * (pier + openW)
+				local pane = piece("WindowPane", openW, headBot - sillTop, at,
+					(sillTop + headBot) / 2, WALL * 0.35,
+					Color3.fromRGB(226, 240, 248), Enum.Material.Glass)
+				pane.Transparency = 0.62
+				pane.Reflectance = 0.08
+
+				--[[ A ledge, proud of the wall on the inside. It catches the
+				     light coming through and gives the opening a bottom edge,
+				     which is what stops a window reading as a painted rectangle. ]]
+				local ledge = piece("WindowSill", openW + 2, 0.5, at,
+					sillTop + 0.25, WALL * 2.2, TRIM, Enum.Material.Wood)
+				ledge.CFrame = ledge.CFrame - dir * (WALL * 0.5)
+				ledge.CanCollide = false
+				windows += 1
+			end
 		end
 
 		if dir:Dot(facing) > 0.5 then
 			local segment = (run * 2 - DOOR_WIDTH) / 2
 			for _, sign in ipairs({ -1, 1 }) do
-				wall("WallFront", segment, sign * (DOOR_WIDTH + segment) / 2)
+				windowed("WallFront", segment, sign * (DOOR_WIDTH + segment) / 2)
 				doored += 1
 			end
 			-- a lintel over the gap, so it reads as a door and not a missing wall
-			local lintelSize = onX
-				and Vector3.new(WALL, HEIGHT - DOOR_HEIGHT, DOOR_WIDTH)
-				or Vector3.new(DOOR_WIDTH, HEIGHT - DOOR_HEIGHT, WALL)
-			slab("Lintel", lintelSize,
-				Vector3.new(origin.X, deck + DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2, origin.Z),
-				PLASTER)
+			piece("Lintel", DOOR_WIDTH, HEIGHT - DOOR_HEIGHT, 0,
+				deck + DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2)
+
+			--[[ A CASED OPENING, not just a hole. Two jambs and a head in the
+			     trim colour, standing slightly proud of the wall. Without them
+			     the entrance was a rectangle of missing wall -- which is what it
+			     is, but a doorway is the one place a room should not look like
+			     it was built by subtraction. ]]
+			for _, sign in ipairs({ -1, 1 }) do
+				local jamb = piece("DoorJamb", 1.4, DOOR_HEIGHT + 1.4,
+					sign * (DOOR_WIDTH + 1.4) / 2, deck + (DOOR_HEIGHT + 1.4) / 2,
+					WALL * 1.5, TRIM, Enum.Material.Wood)
+				jamb.CanCollide = false
+			end
+			local head = piece("DoorHead", DOOR_WIDTH + 2.8, 1.4, 0,
+				deck + DOOR_HEIGHT + 0.7, WALL * 1.5, TRIM, Enum.Material.Wood)
+			head.CanCollide = false
 		else
-			wall("Wall", run * 2, 0)
+			windowed("Wall", run * 2, 0)
 		end
 	end
 
@@ -550,6 +645,32 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 	end
 
 	--[[
+		A RUNNER DOWN THE AISLE.
+
+		Laid between the two slot rows and stopped SHORT OF THE COLLECT PAD rather
+		than run the length of the room: both sit just above the floor, so
+		overlapping them would put the rug over the one tile the player is meant to
+		stand on.
+
+		Aimed off `facing` rather than off X or Z, because three of the seven bases
+		are entered from the opposite end and a rug hardcoded to one axis lies
+		sideways in those.
+	]]
+	local rug = Instance.new("Part")
+	rug.Name = "Carpet"
+	rug.Anchored = true
+	rug.CanCollide = false
+	rug.Size = (math.abs(facing.X) > 0.5)
+		and Vector3.new(26, 0.12, math.min(24, hz * 0.9))
+		or Vector3.new(math.min(24, hx * 0.6), 0.12, 26)
+	rug.CFrame = CFrame.new(Vector3.new(cx, deck + 0.66, cz) - facing * 6)
+	rug.Color = TRIM
+	rug.Material = Enum.Material.Fabric
+	rug.TopSurface = Enum.SurfaceType.Smooth
+	rug.BottomSurface = Enum.SurfaceType.Smooth
+	rug.Parent = shell
+
+	--[[
 		ONE COLLECT PAD, by the door.
 
 		Every slot used to carry its own collect strip, so an empty pad was a
@@ -613,9 +734,9 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 	HomeService.applyTier(base, 0)
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d slots, facing %s")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
-			hidden, hollowed, doored, lit, moved,
+			hidden, hollowed, doored, lit, windows, moved,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end
@@ -638,6 +759,7 @@ end
 	including Lintel, which is a wall that does not have Wall in its name.
 ]]
 local WALL_PARTS = { Wall = true, WallFront = true, Lintel = true, Ceiling = true }
+local TRIM_PARTS = { Skirting = true, WindowSill = true, DoorJamb = true, DoorHead = true }
 
 function HomeService.applyTier(base, rebirths)
 	local home = base and base:FindFirstChild("Home")
@@ -670,6 +792,10 @@ function HomeService.applyTier(base, rebirths)
 					light.Range = tier.range
 					light.Color = tier.light
 				end
+			elseif TRIM_PARTS[part.Name] then
+				part.Color = tier.trim
+			elseif part.Name == "Carpet" then
+				part.Color = tier.carpet
 			elseif part.Name == "CollectPad" then
 				part.Color = tier.accent
 				local label = part:FindFirstChild("CollectLabel")

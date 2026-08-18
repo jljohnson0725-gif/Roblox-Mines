@@ -105,6 +105,12 @@ end
 	    light at brightness 2.15 turned every surface flat purple. The light is
 	    near-neutral now and the magenta accent carries the identity, which is
 	    the general rule: colour the ACCENT, not the air.
+	  - ANY BIG SURFACE CAN BLOW OUT, not just the floor. The washout check was
+	    written for the floor alone, so Penthouse shipped a gold rug and gold
+	    trim under a warm light at 1.74 and the room came out screaming yellow.
+	    On the two dark tiers the LIGHT already carries the colour, so the rug
+	    and trim go deep and let it do the work -- same rule as above, applied
+	    to the surfaces instead of the air.
 ]]
 Rebirth.tiers = {
 	{
@@ -117,6 +123,8 @@ Rebirth.tiers = {
 		brightness = 0.72,
 		range = 26,
 		accent = Color3.fromRGB(120, 190, 140),
+		trim = Color3.fromRGB(88, 84, 78),
+		carpet = Color3.fromRGB(62, 76, 70),
 	},
 	{
 		at = 1,
@@ -128,6 +136,8 @@ Rebirth.tiers = {
 		brightness = 0.79,
 		range = 30,
 		accent = Color3.fromRGB(96, 226, 130),
+		trim = Color3.fromRGB(74, 52, 34),
+		carpet = Color3.fromRGB(150, 74, 58),
 	},
 	{
 		at = 2,
@@ -139,6 +149,8 @@ Rebirth.tiers = {
 		brightness = 0.79,
 		range = 34,
 		accent = Color3.fromRGB(104, 232, 176),
+		trim = Color3.fromRGB(92, 64, 40),
+		carpet = Color3.fromRGB(84, 126, 172),
 	},
 	{
 		at = 3,
@@ -150,6 +162,8 @@ Rebirth.tiers = {
 		brightness = 0.79,
 		range = 38,
 		accent = Color3.fromRGB(96, 214, 214),
+		trim = Color3.fromRGB(108, 98, 84),
+		carpet = Color3.fromRGB(58, 116, 124),
 	},
 	{
 		at = 5,
@@ -161,6 +175,8 @@ Rebirth.tiers = {
 		brightness = 1.74,
 		range = 42,
 		accent = Color3.fromRGB(240, 196, 92),
+		trim = Color3.fromRGB(72, 56, 30),
+		carpet = Color3.fromRGB(74, 62, 58),
 	},
 	{
 		at = 8,
@@ -172,6 +188,8 @@ Rebirth.tiers = {
 		brightness = 2.15,
 		range = 46,
 		accent = Color3.fromRGB(226, 120, 255),
+		trim = Color3.fromRGB(64, 38, 80),
+		carpet = Color3.fromRGB(110, 52, 140),
 	},
 }
 

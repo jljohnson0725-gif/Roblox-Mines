@@ -12,14 +12,14 @@ across the arc. A tier gets its identity from material, hue and accent -- not
 from being brighter than the last one.
 """
 
-# name, wall rgb, floor rgb, floor material, accent rgb, light rgb
+# name, wall rgb, floor rgb, floor material, accent rgb, light rgb, trim rgb, carpet rgb
 TIERS = [
-    ("Studio",    (140,135,127), ( 96, 93, 90), "Concrete",   (120,190,140), (226,232,240)),
-    ("Furnished", (150,141,128), ( 96, 68, 44), "WoodPlanks", ( 96,226,130), (255,240,210)),
-    ("Renovated", (166,154,138), (122, 84, 52), "Wood",       (104,232,176), (255,244,220)),
-    ("Designer",  (176,166,152), (150,146,140), "Marble",     ( 96,214,214), (255,238,206)),
-    ("Penthouse", ( 86, 80, 88), ( 48, 46, 54), "Marble",     (240,196, 92), (255,214,150)),
-    ("Empire",    ( 74, 68, 96), ( 34, 32, 46), "Marble",     (226,120,255), (236,226,255)),
+    ("Studio",    (140,135,127), ( 96, 93, 90), "Concrete",   (120,190,140), (226,232,240), ( 88, 84, 78), ( 62, 76, 70)),
+    ("Furnished", (150,141,128), ( 96, 68, 44), "WoodPlanks", ( 96,226,130), (255,240,210), ( 74, 52, 34), (150, 74, 58)),
+    ("Renovated", (166,154,138), (122, 84, 52), "Wood",       (104,232,176), (255,244,220), ( 92, 64, 40), ( 84,126,172)),
+    ("Designer",  (176,166,152), (150,146,140), "Marble",     ( 96,214,214), (255,238,206), (108, 98, 84), ( 58,116,124)),
+    ("Penthouse", ( 86, 80, 88), ( 48, 46, 54), "Marble",     (240,196, 92), (255,214,150), ( 72, 56, 30), ( 74, 62, 58)),
+    ("Empire",    ( 74, 68, 96), ( 34, 32, 46), "Marble",     (226,120,255), (236,226,255), ( 64, 38, 80), (110, 52,140)),
 ]
 
 # where the eye should land, climbing gently: a nicer flat is a touch brighter,
@@ -48,13 +48,13 @@ WONT_HOLD_COLOUR = {"Glass", "ForceField", "Neon"}
 # ones as a coloured gel, so the bound sits just above Penthouse on purpose.
 WASH_MAX = 0.75
 
-print(f"{'tier':<11}{'wallAlb':>8}{'floorAlb':>9}{'target':>8}{'bright':>8}{'wash':>6}{'range':>7}   verdict")
+print(f"{'tier':<11}{'wallAlb':>8}{'floorAlb':>9}{'rug':>6}{'trim':>6}{'bright':>8}{'wash':>6}   verdict")
 prev = None
 bad = 0
-for (name, wall, floor, mat, accent, light), t in zip(TIERS, TARGET):
+for (name, wall, floor, mat, accent, light, trim, carpet), t in zip(TIERS, TARGET):
     wa, fa = albedo(wall), albedo(floor)
     b = round(t / wa, 2)
-    rng = 26 + 4 * TIERS.index((name, wall, floor, mat, accent, light))
+    rng = 26 + 4 * [x[0] for x in TIERS].index(name)
 
     notes = []
     if mat in WONT_HOLD_COLOUR:
@@ -72,17 +72,32 @@ for (name, wall, floor, mat, accent, light), t in zip(TIERS, TARGET):
     if abs(wa - fa) < 0.06:
         notes.append(f"FLAT: wall/floor differ by only {abs(wa-fa):.3f}")
         bad += 1
-    # perceived floor brightness -- a floor washing past ~0.62 loses its grain
-    pf = b * fa
-    if pf > 0.62:
-        notes.append(f"FLOOR WASHED: {pf:.2f}")
+    # Perceived brightness of every BIG surface. Past ~0.62 a surface loses its
+    # grain and goes to flat colour. This was applied to the floor only at
+    # first, and Penthouse promptly shipped a gold carpet and gold trim under a
+    # warm light at 1.74 -- the whole room came out screaming yellow. Any large
+    # surface can blow out, not just the one being walked on.
+    for label, alb in (("FLOOR", fa), ("RUG", albedo(carpet)), ("TRIM", albedo(trim))):
+        if b * alb > 0.62:
+            notes.append(f"{label} WASHED: {b * alb:.2f}")
+            bad += 1
+    # A rug the same value as the floor it lies on is invisible, and trim that
+    # matches the wall stops reading as trim -- both are the whole point of
+    # adding them, so both are checked rather than trusted.
+    ca, ta = albedo(carpet), albedo(trim)
+    if abs(ca - fa) < 0.05:
+        notes.append(f"RUG INVISIBLE: {abs(ca-fa):.3f} from floor")
         bad += 1
+    if abs(ta - wa) < 0.08:
+        notes.append(f"TRIM INVISIBLE: {abs(ta-wa):.3f} from wall")
+        bad += 1
+
     if prev is not None and t <= prev:
         notes.append("not climbing")
         bad += 1
     prev = t
 
-    print(f"{name:<11}{wa:>8.3f}{fa:>9.3f}{t:>8.2f}{b:>8.2f}{wash:>6.2f}{rng:>7}   "
+    print(f"{name:<11}{wa:>8.3f}{fa:>9.3f}{ca:>6.2f}{ta:>6.2f}{b:>8.2f}{wash:>6.2f}   "
           + ("ok" if not notes else "; ".join(notes)))
 
 print()
