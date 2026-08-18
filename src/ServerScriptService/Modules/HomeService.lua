@@ -433,10 +433,24 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 		end
 	end
 
-	--[[ Slots re-laid against the two long walls, off the MEASURED room rather
-	     than the base's centre. Their ORDER is kept -- PlotService pairs slot N
-	     with pad N and with the pending array, so shuffling them would silently
-	     move everyone's brainrots between pads. ]]
+	--[[
+		Slots re-laid against the two long walls.
+
+		PLACED BY THEIR GEOMETRY, NOT THEIR PIVOT. A slot's bounding box sits up
+		to twelve studs off its own origin, so setting the pivot to a tidy
+		position puts the visible pad somewhere else entirely -- which is how
+		brainrots ended up standing through the walls while every check of the
+		pivots came back clean. That is the third thing on this project to be
+		bitten by pivot-is-not-centre, after the race runners and the building.
+
+		The spread is DERIVED from the pad's own size and the room's inner faces
+		rather than being a fraction picked by eye, so a pad can never be laid
+		half inside a wall no matter what the room measures.
+
+		Their ORDER is kept: PlotService pairs slot N with pad N and with the
+		pending array, so shuffling them would silently move everyone's
+		brainrots between pads.
+	]]
 	local slots = base:FindFirstChild("Slots")
 	local moved = 0
 	if slots then
@@ -444,20 +458,28 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 		table.sort(list, function(a, b)
 			return a:GetPivot().Position.Z < b:GetPivot().Position.Z
 		end)
-		local span = room.halfZ * SLOT_SPREAD
+
+		local _, padSize = list[1]:GetBoundingBox()
+		local innerX = hx - WALL / 2
+		local innerZ = hz - WALL / 2
+		local acrossX = innerX - padSize.X / 2 - 2
+		local spanZ = math.max(0, innerZ - padSize.Z / 2 - 2)
+
 		for index, slot in ipairs(list) do
 			local side = (index <= 4) and -1 or 1
 			local rank = ((index - 1) % 4) + 1
-			local z = -span + (rank - 1) * (span * 2 / 3)
-			local target = Vector3.new(
-				room.centre.X + side * (room.halfX - 1 - SLOT_INSET),
-				deck,
-				room.centre.Z + z
-			)
-			local scf, ssize = slot:GetBoundingBox()
-			local lift = deck - (scf.Position.Y - ssize.Y / 2)
-			slot:PivotTo(CFrame.new(target + Vector3.new(0, lift, 0))
-				* CFrame.Angles(0, side > 0 and math.rad(180) or 0, 0))
+			local z = (#list > 4) and (-spanZ + (rank - 1) * (spanZ * 2 / 3)) or 0
+			local target = Vector3.new(cx + side * acrossX, deck, cz + z)
+
+			--[[ Aim the BOX at the target, then let the pivot fall where it
+			     must. Two steps because the offset can only be measured after
+			     the model has been put somewhere. ]]
+			slot:PivotTo(CFrame.new(target))
+			local box, boxSize = slot:GetBoundingBox()
+			local drift = slot:GetPivot().Position - box.Position
+			slot:PivotTo(CFrame.new(
+				target + Vector3.new(drift.X, drift.Y + boxSize.Y / 2, drift.Z)
+			))
 			moved += 1
 		end
 	end
