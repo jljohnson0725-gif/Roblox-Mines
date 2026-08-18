@@ -71,10 +71,10 @@ CodeService.start()
 -- so everything that reshapes the terrain has to be finished first.
 JetpackService.start()
 
---[[ ONE BASE FOR NOW. The apartment replaces the map's own shell, and doing all
-     seven before anyone has stood in one would mean redoing seven if the
-     interior is wrong. ]]
-HomeService.start("Base1")
+--[[ All of them. Base1 was converted alone first and stood in, which is what
+     turned up the see-through facade, the sealed door and the colliding
+     nameplates -- all of which would have been seven times the work to undo. ]]
+HomeService.start()
 
 -- The sky. Islands are free-standing geometry with nothing under them, so
 -- they neither need the map nor care what it did.

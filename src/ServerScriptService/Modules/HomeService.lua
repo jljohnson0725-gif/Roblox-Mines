@@ -137,6 +137,41 @@ local function interiorOf(home, centre, y)
 	}
 end
 
+--[[
+	Which way this home faces: across the street, toward the other row of bases.
+
+	TWO EARLIER RULES WERE WRONG, both instructively.
+
+	Hardcoding +X -- the template's native frontage -- worked for Base1 by
+	accident and would put three of the seven front doors against a side wall.
+
+	Aiming at the base's own Spawn looked principled and was not. The spawn sits
+	about six studs off centre on a base seventy-two deep, so it barely indicates
+	a direction; and because it was measured AFTER the building was parented in,
+	the bounding box had already grown by 106 studs of apartment, so neighbours
+	in the same row came out facing different ways.
+
+	The bases sit in two rows straddling a road -- a 588x178 slab at z=-67 -- so
+	the street is what a front door should face. Taken from the rows themselves
+	rather than the road's coordinates, so it survives the map being moved.
+]]
+local function facingOf(base, centre)
+	local mean, n = 0, 0
+	for _, other in ipairs(base.Parent:GetChildren()) do
+		mean += other:GetBoundingBox().Position.Z
+		n += 1
+	end
+	mean = n > 0 and mean / n or centre.Z
+
+	--[[ CFrame.Angles(0, y, 0) sends +X to (cos y, 0, -sin y), so -Z is a
+	     quarter turn and +Z is three quarters. Written down rather than
+	     rediscovered by trying all four. ]]
+	if mean >= centre.Z then
+		return Vector3.new(0, 0, 1), -math.pi / 2
+	end
+	return Vector3.new(0, 0, -1), math.pi / 2
+end
+
 function HomeService.convert(base)
 	if not base or converted[base] then
 		return false
@@ -203,6 +238,13 @@ function HomeService.convert(base)
 		lock.CanTouch = false
 	end
 
+	--[[ Worked out BEFORE the building goes in, and off the centre captured at
+	     the top. Measured afterwards, the base's bounding box already includes
+	     106 studs of apartment and the answer changes -- which is exactly how
+	     neighbours in one row ended up facing different directions. ]]
+	local facing, yaw = facingOf(base, cf.Position)
+	local turn = CFrame.Angles(0, yaw, 0)
+
 	local home = template:Clone()
 	home.Name = "Home"
 	home.Parent = base
@@ -210,13 +252,14 @@ function HomeService.convert(base)
 	--[[ Placed by its BOTTOM, measured. The template's pivot is its bounding box
 	     centre, so pivoting straight to the deck would bury half the building --
 	     the same mistake that sank the race runners. ]]
-	home:PivotTo(CFrame.new(cf.Position.X, deck, cf.Position.Z))
+
+	home:PivotTo(CFrame.new(cf.Position.X, deck, cf.Position.Z) * turn)
 	local hcf, hsize = home:GetBoundingBox()
 	home:PivotTo(CFrame.new(
 		cf.Position.X,
-		deck + (hcf.Position.Y - (hcf.Position.Y - hsize.Y / 2)),
+		deck + hsize.Y / 2,
 		cf.Position.Z
-	))
+	) * turn)
 
 	--[[
 		THE SHELL MESHES ARE SCENERY, NOT WALLS.
@@ -313,27 +356,52 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 	slab("Ceiling", Vector3.new(hx * 2, 0.8, hz * 2),
 		Vector3.new(cx, deck + HEIGHT, cz), PLASTER)
 
-	-- back and the two sides, whole
-	slab("WallBack", Vector3.new(WALL, HEIGHT, hz * 2),
-		Vector3.new(cx - hx, midY, cz), PLASTER)
-	slab("WallLeft", Vector3.new(hx * 2, HEIGHT, WALL),
-		Vector3.new(cx, midY, cz - hz), PLASTER)
-	slab("WallRight", Vector3.new(hx * 2, HEIGHT, WALL),
-		Vector3.new(cx, midY, cz + hz), PLASTER)
+	--[[
+		FOUR WALLS, AND THE FRONT ONE IS SPLIT.
 
-	--[[ The front, in two pieces with a gap between them. A gap cannot be
-	     accidentally re-sealed by a part we failed to notice, which is what
-	     happened twice while this was a hole cut through the facade. ]]
-	local sideZ = (hz * 2 - DOOR_WIDTH) / 2
+		Built by side rather than by name so the door can be on any of them --
+		three of the seven bases are entered from the opposite end to Base1, and
+		a hardcoded front wall put their entrance round the back.
+
+		The gap is left, never cut. Two earlier attempts cut a hole through the
+		facade and both re-sealed themselves: first because the test compared
+		part positions instead of volumes, then because a 44-stud kerb ran across
+		the opening from ten studs away. A gap has nothing to re-seal it with.
+	]]
+	local SIDES = {
+		Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0),
+		Vector3.new(0, 0, 1), Vector3.new(0, 0, -1),
+	}
 	local doored = 0
-	for _, sign in ipairs({ -1, 1 }) do
-		slab("WallFront", Vector3.new(WALL, HEIGHT, sideZ),
-			Vector3.new(cx + hx, midY, cz + sign * (DOOR_WIDTH + sideZ) / 2), PLASTER)
-		doored += 1
+	for _, dir in ipairs(SIDES) do
+		local onX = math.abs(dir.X) > 0.5
+		local out = onX and hx or hz -- how far to the wall
+		local run = onX and hz or hx -- how long the wall is
+		local origin = Vector3.new(cx, midY, cz) + dir * out
+		local function wall(name, length, shift)
+			local size = onX and Vector3.new(WALL, HEIGHT, length)
+				or Vector3.new(length, HEIGHT, WALL)
+			local along = onX and Vector3.new(0, 0, 1) or Vector3.new(1, 0, 0)
+			slab(name, size, origin + along * shift, PLASTER)
+		end
+
+		if dir:Dot(facing) > 0.5 then
+			local segment = (run * 2 - DOOR_WIDTH) / 2
+			for _, sign in ipairs({ -1, 1 }) do
+				wall("WallFront", segment, sign * (DOOR_WIDTH + segment) / 2)
+				doored += 1
+			end
+			-- a lintel over the gap, so it reads as a door and not a missing wall
+			local lintelSize = onX
+				and Vector3.new(WALL, HEIGHT - DOOR_HEIGHT, DOOR_WIDTH)
+				or Vector3.new(DOOR_WIDTH, HEIGHT - DOOR_HEIGHT, WALL)
+			slab("Lintel", lintelSize,
+				Vector3.new(origin.X, deck + DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2, origin.Z),
+				PLASTER)
+		else
+			wall("Wall", run * 2, 0)
+		end
 	end
-	-- a lintel over the opening, so the gap reads as a door and not a missing wall
-	slab("Lintel", Vector3.new(WALL, HEIGHT - DOOR_HEIGHT, DOOR_WIDTH),
-		Vector3.new(cx + hx, deck + DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2, cz), PLASTER)
 
 	--[[ Lights, because an enclosed room under a solid ceiling is pitch black.
 	     Four on a grid rather than one bright one: a single source pools in the
@@ -395,9 +463,10 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 	end
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d slots")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
-			hidden, hollowed, doored, lit, moved))
+			hidden, hollowed, doored, lit, moved,
+			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end
 
