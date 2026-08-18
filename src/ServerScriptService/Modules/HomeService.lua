@@ -30,11 +30,16 @@ local HomeService = {}
      hidden. The floor slab itself tops out at +0, the fence starts around +8. ]]
 local SHELL_ABOVE = 4
 
---[[ Ground-floor interior of the apartment, measured off the shell mesh: it is
-     50 x 70 outside with walls about a stud and a half thick. Slots go along
-     the two long sides. ]]
-local SLOT_X = 19
-local SLOT_Z = { -25, -9, 9, 25 }
+--[[ How far a pad is inset from the wall it stands against, and how much of
+     the room's depth the four of them span. Fractions, not studs, because the
+     interior is MEASURED rather than assumed -- see interiorOf. ]]
+local SLOT_INSET = 7
+local SLOT_SPREAD = 0.74
+
+--[[ The doorway cut into the front face: how wide, and how tall. Anything of
+     the building's own geometry inside that box stops blocking you. ]]
+local DOOR_WIDTH = 14
+local DOOR_HEIGHT = 13
 
 local converted = {}
 
@@ -62,6 +67,74 @@ local function floorTop(base)
 	params.FilterDescendantsInstances = { slots, base:FindFirstChild("PlacedBrainrots") }
 	local hit = Workspace:Raycast(from, Vector3.new(0, -40, 0), params)
 	return hit and hit.Position.Y or nil
+end
+
+--[[
+	The room's real inside, found by casting from its middle until something
+	COLLIDABLE stops the ray.
+
+	Not taken from the bounding box, which was the bug behind pads standing
+	outside: the building's mass is not centred on its own box -- the back wall
+	sits 28 studs one way while the glass frontage is 21 the other -- so a band
+	of pads centred on the box pokes straight through the shopfront.
+
+	Collidable only, because the shell meshes are decoration with their
+	collision switched off, and a ray that stops on one reports a wall where a
+	player would walk through.
+]]
+local function interiorOf(home, centre, y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { home }
+
+	--[[
+		A FAN OF RAYS, NOT ONE.
+
+		A single ray down the middle of the glass frontage slipped between two
+		window panes and reported no wall at all -- which inflated the room by
+		twelve studs on that side and put the doorway search outside the
+		building. Sampling across the face and keeping the NEAREST collidable
+		hit finds the wall even when the middle of it happens to be a gap.
+
+		Non-collidable hits are walked through rather than counted: the shell
+		meshes are scenery with their collision off, and stopping on one reports
+		a wall where a player walks straight past.
+	]]
+	local function reach(dir)
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		local nearest = nil
+		for _, offset in ipairs({ -18, -9, 0, 9, 18 }) do
+			local start = Vector3.new(centre.X, y, centre.Z) + side * offset
+			local from = start
+			for _ = 1, 12 do
+				local hit = Workspace:Raycast(from, dir * 150, params)
+				if not hit then
+					break
+				end
+				if hit.Instance.CanCollide then
+					local d = (hit.Position - start).Magnitude
+					if not nearest or d < nearest then
+						nearest = d
+					end
+					break
+				end
+				from = hit.Position + dir * 0.4
+			end
+		end
+		return nearest or 30
+	end
+
+	local xPlus = reach(Vector3.new(1, 0, 0))
+	local xMinus = reach(Vector3.new(-1, 0, 0))
+	local zPlus = reach(Vector3.new(0, 0, 1))
+	local zMinus = reach(Vector3.new(0, 0, -1))
+
+	return {
+		centre = Vector3.new(centre.X + (xPlus - xMinus) / 2, y, centre.Z + (zPlus - zMinus) / 2),
+		halfX = (xPlus + xMinus) / 2,
+		halfZ = (zPlus + zMinus) / 2,
+		frontX = centre.X + xPlus,
+	}
 end
 
 function HomeService.convert(base)
@@ -170,9 +243,98 @@ function HomeService.convert(base)
 		end
 	end
 
-	--[[ Slots re-laid inside, along the two long walls. Their ORDER is kept --
-	     PlotService pairs slot N with pad N and with the pending array, so
-	     shuffling them would silently move everyone's brainrots between pads. ]]
+	local room = interiorOf(home, cf.Position, deck + 6)
+
+	--[[
+		A DOORWAY THROUGH THE FRONT FACE.
+
+		The frontage is glass and its panes are collidable Parts, so the ground
+		floor was sealed -- you could get in by teleport and never walk out.
+		Rather than name a part, anything of the building's own geometry standing
+		in a door-sized box in the middle of the front wall stops blocking and
+		stops being drawn. Naming parts would tie this to one model; a volume
+		works for whatever building goes here next.
+	]]
+	--[[
+		OVERLAP, NOT CENTRES.
+
+		The first cut compared each part's POSITION against the door box, which
+		misses anything long: the shopfront kerb is 44 studs of rail whose centre
+		sits ten studs to one side of the door while its body runs straight
+		across it. It survived the cut and sealed the building on its own.
+		GetPartBoundsInBox asks the question that actually matters -- does this
+		thing occupy the doorway -- and it handles rotation, which several of
+		these parts have.
+	]]
+	local doorCF = CFrame.new(room.frontX, deck + DOOR_HEIGHT / 2, room.centre.Z)
+	local doorSize = Vector3.new(12, DOOR_HEIGHT, DOOR_WIDTH)
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Include
+	overlap.FilterDescendantsInstances = { home }
+	overlap.MaxParts = 60
+
+	local doored = 0
+	for _, d in ipairs(Workspace:GetPartBoundsInBox(doorCF, doorSize, overlap)) do
+		if d.CanCollide then
+			d.CanCollide = false
+			--[[ Low things stay VISIBLE. A kerb you can step over still reads as
+			     a threshold; deleting it leaves the entrance looking unfinished.
+			     Only full-height glass has to disappear to make an opening. ]]
+			if (d.Position.Y + d.Size.Y / 2) > deck + 5 then
+				d.Transparency = 1
+			end
+			doored += 1
+		end
+	end
+
+	--[[ A floor over the map's plot tiling, which is bright green and red check
+	     and reads as a lawn indoors. Sits a hair above it so nothing z-fights,
+	     and covers the measured room rather than the base, so it never spills
+	     out past the walls. ]]
+	local floor = Instance.new("Part")
+	floor.Name = "Flooring"
+	floor.Anchored = true
+	floor.Size = Vector3.new(room.halfX * 2 - 2, 0.4, room.halfZ * 2 - 2)
+	floor.CFrame = CFrame.new(room.centre.X, deck + 0.2, room.centre.Z)
+	floor.Color = Color3.fromRGB(74, 62, 54)
+	floor.Material = Enum.Material.WoodPlanks
+	floor.TopSurface = Enum.SurfaceType.Smooth
+	floor.Parent = home
+
+	--[[ Lights, because an enclosed ground floor under a solid ceiling is pitch
+	     black and the room read as a cave. Four of them on a grid rather than
+	     one bright one: a single source puts a hard pool in the middle and
+	     leaves the pads, which are against the walls, in the dark. ]]
+	local lit = 0
+	for _, sx in ipairs({ -0.45, 0.45 }) do
+		for _, sz in ipairs({ -0.45, 0.45 }) do
+			local bulb = Instance.new("Part")
+			bulb.Name = "Bulb"
+			bulb.Anchored = true
+			bulb.CanCollide = false
+			bulb.Size = Vector3.new(3, 0.3, 3)
+			bulb.CFrame = CFrame.new(
+				room.centre.X + room.halfX * sx,
+				deck + DOOR_HEIGHT - 1.4,
+				room.centre.Z + room.halfZ * sz)
+			bulb.Color = Color3.fromRGB(255, 244, 214)
+			bulb.Material = Enum.Material.Neon
+			bulb.Parent = home
+
+			local light = Instance.new("PointLight")
+			light.Brightness = 2.6
+			light.Range = 46
+			light.Color = Color3.fromRGB(255, 238, 206)
+			light.Shadows = false -- four shadow-casters indoors is a frame-rate bill
+			light.Parent = bulb
+			lit += 1
+		end
+	end
+
+	--[[ Slots re-laid against the two long walls, off the MEASURED room rather
+	     than the base's centre. Their ORDER is kept -- PlotService pairs slot N
+	     with pad N and with the pending array, so shuffling them would silently
+	     move everyone's brainrots between pads. ]]
 	local slots = base:FindFirstChild("Slots")
 	local moved = 0
 	if slots then
@@ -180,13 +342,15 @@ function HomeService.convert(base)
 		table.sort(list, function(a, b)
 			return a:GetPivot().Position.Z < b:GetPivot().Position.Z
 		end)
+		local span = room.halfZ * SLOT_SPREAD
 		for index, slot in ipairs(list) do
 			local side = (index <= 4) and -1 or 1
-			local z = SLOT_Z[((index - 1) % 4) + 1]
+			local rank = ((index - 1) % 4) + 1
+			local z = -span + (rank - 1) * (span * 2 / 3)
 			local target = Vector3.new(
-				cf.Position.X + side * SLOT_X,
+				room.centre.X + side * (room.halfX - SLOT_INSET),
 				deck,
-				cf.Position.Z + z
+				room.centre.Z + z
 			)
 			local scf, ssize = slot:GetBoundingBox()
 			local lift = deck - (scf.Position.Y - ssize.Y / 2)
@@ -197,8 +361,9 @@ function HomeService.convert(base)
 	end
 
 	converted[base] = true
-	print(("[HomeService] %s: %d hidden, %d slots re-laid, %d meshes hollowed, deck y=%.1f")
-		:format(base.Name, hidden, moved, hollowed, deck))
+	print(("[HomeService] %s: room %.0f x %.0f at (%.0f, %.0f) | %d hidden, %d hollowed, %d door parts, %d lights, %d slots")
+		:format(base.Name, room.halfX * 2, room.halfZ * 2, room.centre.X, room.centre.Z,
+			hidden, hollowed, doored, lit, moved))
 	return true
 end
 
