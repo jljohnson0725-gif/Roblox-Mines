@@ -265,6 +265,18 @@ Config.TakeoffRise = 62 -- and how fast that opening climb goes
 Config.PlinkoDropCost = 450000
 Config.PlinkoRange = 26 -- how close you must stand to the machine
 
+-- ── Racing ──────────────────────────────────────────────────────────────────
+
+--[[ Fixed per race, like a Plinko drop, so the FIELD is the dial rather than
+     the stake. Expected value is scale-invariant anyway -- letting players pick
+     a number would add a second knob that changes nothing about the odds. ]]
+Config.RaceStake = 250000
+
+--[[ Long enough that a lead can change hands and be worth watching, short
+     enough to run many times. The payout lands on the same beat as the finish;
+     see RaceService. ]]
+Config.RaceSeconds = 14
+
 -- ── Codes ───────────────────────────────────────────────────────────────────
 --[[
 	Redeemable codes. Each one is once per player, recorded in the profile.

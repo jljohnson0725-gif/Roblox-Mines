@@ -28,6 +28,7 @@ local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
 local MountService = require(Modules.MountService)
+local RaceService = require(Modules.RaceService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
@@ -79,6 +80,9 @@ PlinkoService.start()
 -- The perch reads the racing island's accent and landing spot, so it needs the
 -- island declared -- though not built, since it only ever flies you TO it.
 MountService.start()
+
+-- Rules only; the track and panel come next. Decides outcomes and pays them.
+RaceService.start()
 RebirthService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)

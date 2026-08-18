@@ -64,6 +64,12 @@ local function newProfile()
 		redeemed = {}, -- [CODE] = true; codes are one use each
 		jetpack = false, -- bought once at the launch pad, then owned forever
 		rebirths = 0, -- permanent luck; see Shared/Rebirth
+		--[[ Racing is a PLAYER stat, not a per-brainrot one -- the summoned
+		     brainrot is fashion, so speed lives here and applies whichever one
+		     you ride. `racer` is the uid you picked to summon; nil means your
+		     best earner turns up. ]]
+		raceLevel = 0,
+		racer = nil,
 		--[[ [sealId] = fragments held. Fragments rather than whole seals so a
 		     losing streak still advances you; see Shared/Islands. ]]
 		fragments = {},
