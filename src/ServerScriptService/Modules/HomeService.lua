@@ -246,65 +246,98 @@ function HomeService.convert(base)
 	local room = interiorOf(home, cf.Position, deck + 6)
 
 	--[[
-		A DOORWAY THROUGH THE FRONT FACE.
+		THE BUILDING IS A FACADE. THE ROOM IS OURS.
 
-		The frontage is glass and its panes are collidable Parts, so the ground
-		floor was sealed -- you could get in by teleport and never walk out.
-		Rather than name a part, anything of the building's own geometry standing
-		in a door-sized box in the middle of the front wall stops blocking and
-		stops being drawn. Naming parts would tie this to one model; a volume
-		works for whatever building goes here next.
+		This was the wrong way round for a while and it showed: the shell's walls
+		are SINGLE-SIDED geometry, built to be looked at from outside, so from
+		within a player sees straight through them to the sky and the sun glares
+		in. Cutting a doorway through someone else's facade was solving the wrong
+		problem -- that model's ground floor was never meant to be entered.
+
+		So the shell keeps its looks and loses all its collision, and every
+		surface a player actually touches -- four walls, a ceiling, a floor, and a
+		gap to walk through -- is built here, opaque and double-sided because a
+		Part always is. It also means the doorway is a gap we LEAVE rather than a
+		hole we cut, which is why it cannot silently seal itself again.
 	]]
-	--[[
-		OVERLAP, NOT CENTRES.
-
-		The first cut compared each part's POSITION against the door box, which
-		misses anything long: the shopfront kerb is 44 studs of rail whose centre
-		sits ten studs to one side of the door while its body runs straight
-		across it. It survived the cut and sealed the building on its own.
-		GetPartBoundsInBox asks the question that actually matters -- does this
-		thing occupy the doorway -- and it handles rotation, which several of
-		these parts have.
-	]]
-	local doorCF = CFrame.new(room.frontX, deck + DOOR_HEIGHT / 2, room.centre.Z)
-	local doorSize = Vector3.new(12, DOOR_HEIGHT, DOOR_WIDTH)
-	local overlap = OverlapParams.new()
-	overlap.FilterType = Enum.RaycastFilterType.Include
-	overlap.FilterDescendantsInstances = { home }
-	overlap.MaxParts = 60
-
-	local doored = 0
-	for _, d in ipairs(Workspace:GetPartBoundsInBox(doorCF, doorSize, overlap)) do
-		if d.CanCollide then
+	local hollowed = 0
+	for _, d in ipairs(home:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored = true
 			d.CanCollide = false
-			--[[ Low things stay VISIBLE. A kerb you can step over still reads as
-			     a threshold; deleting it leaves the entrance looking unfinished.
-			     Only full-height glass has to disappear to make an opening. ]]
-			if (d.Position.Y + d.Size.Y / 2) > deck + 5 then
-				d.Transparency = 1
-			end
-			doored += 1
+			hollowed += 1
 		end
 	end
 
-	--[[ A floor over the map's plot tiling, which is bright green and red check
-	     and reads as a lawn indoors. Sits a hair above it so nothing z-fights,
-	     and covers the measured room rather than the base, so it never spills
-	     out past the walls. ]]
-	local floor = Instance.new("Part")
-	floor.Name = "Flooring"
-	floor.Anchored = true
-	floor.Size = Vector3.new(room.halfX * 2 - 2, 0.4, room.halfZ * 2 - 2)
-	floor.CFrame = CFrame.new(room.centre.X, deck + 0.2, room.centre.Z)
-	floor.Color = Color3.fromRGB(74, 62, 54)
-	floor.Material = Enum.Material.WoodPlanks
-	floor.TopSurface = Enum.SurfaceType.Smooth
-	floor.Parent = home
+	local shell = Instance.new("Model")
+	shell.Name = "Interior"
+	shell.Parent = home
 
-	--[[ Lights, because an enclosed ground floor under a solid ceiling is pitch
-	     black and the room read as a cave. Four of them on a grid rather than
-	     one bright one: a single source puts a hard pool in the middle and
-	     leaves the pads, which are against the walls, in the dark. ]]
+	local function slab(name, size, position, color, material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = true
+		p.Size = size
+		p.CFrame = CFrame.new(position)
+		p.Color = color
+		p.Material = material or Enum.Material.Plaster
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = shell
+		return p
+	end
+
+	--[[ Pulled a stud inside the measured walls so our surfaces sit just behind
+	     the facade rather than fighting it for the same plane. ]]
+	local hx = room.halfX - 1
+	local hz = room.halfZ - 1
+	local cx, cz = room.centre.X, room.centre.Z
+	local WALL = 1.5
+	--[[ Warm grey, not white. The first pass used near-white plaster with four
+     bright lights and the room came out blown out -- every surface at once,
+     no shading, no corners. A darker wall gives the light something to fall
+     off. ]]
+local PLASTER = Color3.fromRGB(150, 141, 128)
+
+	--[[ Eighteen studs, not thirteen. The third-person camera sits about twelve
+	     studs back and up, so a low ceiling jams it into the floor and points it
+	     at your feet -- which is what made the first look inside unreadable. ]]
+	local HEIGHT = 18
+	local midY = deck + HEIGHT / 2
+
+	slab("Floor", Vector3.new(hx * 2, 0.6, hz * 2),
+		Vector3.new(cx, deck + 0.3, cz),
+		Color3.fromRGB(96, 68, 44), Enum.Material.WoodPlanks)
+
+	slab("Ceiling", Vector3.new(hx * 2, 0.8, hz * 2),
+		Vector3.new(cx, deck + HEIGHT, cz), PLASTER)
+
+	-- back and the two sides, whole
+	slab("WallBack", Vector3.new(WALL, HEIGHT, hz * 2),
+		Vector3.new(cx - hx, midY, cz), PLASTER)
+	slab("WallLeft", Vector3.new(hx * 2, HEIGHT, WALL),
+		Vector3.new(cx, midY, cz - hz), PLASTER)
+	slab("WallRight", Vector3.new(hx * 2, HEIGHT, WALL),
+		Vector3.new(cx, midY, cz + hz), PLASTER)
+
+	--[[ The front, in two pieces with a gap between them. A gap cannot be
+	     accidentally re-sealed by a part we failed to notice, which is what
+	     happened twice while this was a hole cut through the facade. ]]
+	local sideZ = (hz * 2 - DOOR_WIDTH) / 2
+	local doored = 0
+	for _, sign in ipairs({ -1, 1 }) do
+		slab("WallFront", Vector3.new(WALL, HEIGHT, sideZ),
+			Vector3.new(cx + hx, midY, cz + sign * (DOOR_WIDTH + sideZ) / 2), PLASTER)
+		doored += 1
+	end
+	-- a lintel over the opening, so the gap reads as a door and not a missing wall
+	slab("Lintel", Vector3.new(WALL, HEIGHT - DOOR_HEIGHT, DOOR_WIDTH),
+		Vector3.new(cx + hx, deck + DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2, cz), PLASTER)
+
+	--[[ Lights, because an enclosed room under a solid ceiling is pitch black.
+	     Four on a grid rather than one bright one: a single source pools in the
+	     middle and leaves the pads, which stand against the walls, in the dark. ]]
 	local lit = 0
 	for _, sx in ipairs({ -0.45, 0.45 }) do
 		for _, sz in ipairs({ -0.45, 0.45 }) do
@@ -312,20 +345,21 @@ function HomeService.convert(base)
 			bulb.Name = "Bulb"
 			bulb.Anchored = true
 			bulb.CanCollide = false
-			bulb.Size = Vector3.new(3, 0.3, 3)
-			bulb.CFrame = CFrame.new(
-				room.centre.X + room.halfX * sx,
-				deck + DOOR_HEIGHT - 1.4,
-				room.centre.Z + room.halfZ * sz)
-			bulb.Color = Color3.fromRGB(255, 244, 214)
+			bulb.Size = Vector3.new(4, 0.3, 4)
+			bulb.CFrame = CFrame.new(cx + hx * sx, deck + HEIGHT - 1.2, cz + hz * sz)
+			bulb.Color = Color3.fromRGB(255, 238, 205)
 			bulb.Material = Enum.Material.Neon
-			bulb.Parent = home
+			bulb.Parent = shell
 
 			local light = Instance.new("PointLight")
-			light.Brightness = 2.6
-			light.Range = 46
-			light.Color = Color3.fromRGB(255, 238, 206)
-			light.Shadows = false -- four shadow-casters indoors is a frame-rate bill
+			--[[ Tuned down hard from 3 / 52. Four sources at that strength in a
+			     49x68 room overlapped into a single flat wash that washed the
+			     walls white and lost every corner. These four together should
+			     LIGHT the room, not erase it. ]]
+			light.Brightness = 1.1
+			light.Range = 32
+			light.Color = Color3.fromRGB(255, 240, 210)
+			light.Shadows = false -- four shadow casters indoors is a frame-rate bill
 			light.Parent = bulb
 			lit += 1
 		end
@@ -348,7 +382,7 @@ function HomeService.convert(base)
 			local rank = ((index - 1) % 4) + 1
 			local z = -span + (rank - 1) * (span * 2 / 3)
 			local target = Vector3.new(
-				room.centre.X + side * (room.halfX - SLOT_INSET),
+				room.centre.X + side * (room.halfX - 1 - SLOT_INSET),
 				deck,
 				room.centre.Z + z
 			)
@@ -361,8 +395,8 @@ function HomeService.convert(base)
 	end
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f at (%.0f, %.0f) | %d hidden, %d hollowed, %d door parts, %d lights, %d slots")
-		:format(base.Name, room.halfX * 2, room.halfZ * 2, room.centre.X, room.centre.Z,
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d slots")
+		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
 			hidden, hollowed, doored, lit, moved))
 	return true
 end
