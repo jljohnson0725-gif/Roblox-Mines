@@ -275,6 +275,17 @@ def build_apartment():
             _content(props, "TextureID", "rbxassetid://" + tex if tex else "")
             # the mesh's TRUE size, or the part draws it at the wrong scale
             _vector3(props, "InitialSize", *[float(v) for v in native.split(",")])
+            #[[ PreciseConvexDecomposition (3), not the Box default.
+            #
+            #   A building shell is a HOLLOW mesh, and Box collides it as a
+            #   filled rectangle -- so the ground floor of this apartment was a
+            #   solid brick you could not stand inside. Hull is not enough
+            #   either: a convex hull of a hollow box is still a solid box. Only
+            #   the decomposition keeps the inside empty.
+            #
+            #   Costs more to compute at load, which is the right trade for a
+            #   building people walk around in. ]]
+            _token(props, "CollisionFidelity", 3)
         folder.append(item)
         count += 1
 

@@ -94,7 +94,26 @@ function HomeService.convert(base)
 			for _, d in ipairs(c:IsA("BasePart") and { c } or c:GetDescendants()) do
 				if d:IsA("BasePart") then
 					d.Transparency = 1
-					d.CanCollide = false
+					--[[
+						COLLISION COMES OFF TALL THINGS ONLY.
+
+						A wall blocks you and has to go; a slab never does, so
+						it can keep its collision and stay a floor. Two earlier
+						rules both got this wrong -- the first decollided
+						everything it hid, the second used height above the
+						deck, and both punched holes in the floor because the
+						base's ground is made of several flat pieces at
+						different heights.
+
+						This was invisible to every check I ran, because
+						RAYCASTS HIT NON-COLLIDABLE PARTS: "floor below:
+						Bases.Base1.Part" kept coming back true while the player
+						fell through it. Any future check here has to read
+						CanCollide, not just whether a ray landed.
+					]]
+					if d.Size.Y > 6 then
+						d.CanCollide = false
+					end
 					hidden += 1
 				end
 			end
@@ -126,9 +145,28 @@ function HomeService.convert(base)
 		cf.Position.Z
 	))
 
+	--[[
+		THE SHELL MESHES ARE SCENERY, NOT WALLS.
+
+		They ship with CollisionFidelity = Box, which collides a hollow building
+		as a filled brick -- the ground floor was solid and there was no way to
+		stand in it. That property cannot be changed: assigning it at runtime is
+		accepted and silently ignored, and emitting it into the place file did
+		not apply either.
+
+		So collision comes off the meshes and stays on the thin Parts, which are
+		the actual walls and are boxes anyway. The room ends up bounded by the
+		same surfaces you can see, and nothing depends on a property Roblox will
+		not let us set.
+	]]
+	local hollowed = 0
 	for _, d in ipairs(home:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true
+			if d:IsA("MeshPart") then
+				d.CanCollide = false
+				hollowed += 1
+			end
 		end
 	end
 
@@ -159,8 +197,8 @@ function HomeService.convert(base)
 	end
 
 	converted[base] = true
-	print(("[HomeService] %s: %d shell parts hidden, %d slots re-laid, deck y=%.1f")
-		:format(base.Name, hidden, moved, deck))
+	print(("[HomeService] %s: %d hidden, %d slots re-laid, %d meshes hollowed, deck y=%.1f")
+		:format(base.Name, hidden, moved, hollowed, deck))
 	return true
 end
 
