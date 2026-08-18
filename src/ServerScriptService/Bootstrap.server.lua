@@ -29,6 +29,7 @@ local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
 local MountService = require(Modules.MountService)
 local RaceService = require(Modules.RaceService)
+local HomeService = require(Modules.HomeService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
@@ -69,6 +70,11 @@ CodeService.start()
 -- The launch pad sells the sky. Built last because it raycasts for its ground,
 -- so everything that reshapes the terrain has to be finished first.
 JetpackService.start()
+
+--[[ ONE BASE FOR NOW. The apartment replaces the map's own shell, and doing all
+     seven before anyone has stood in one would mean redoing seven if the
+     interior is wrong. ]]
+HomeService.start("Base1")
 
 -- The sky. Islands are free-standing geometry with nothing under them, so
 -- they neither need the map nor care what it did.
