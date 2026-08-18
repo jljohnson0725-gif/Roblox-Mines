@@ -92,6 +92,12 @@ Islands.List = {
 		     56 studs is a courtyard. 110 gives roughly 200 studs of track
 		     inside the walkable ring. ]]
 		radius = 110,
+
+		--[[ A far bigger flat apron than the 0.52 default, because the thing
+		     standing here is a track rather than a machine: 0.82 of the radius
+		     gives about 180 studs of level ground to lay a straight on, inside
+		     a 220-stud island. ]]
+		clearing = 0.82,
 		game = "racing",
 
 		--[[ The seal Plinko issues is the key to this door -- the first time

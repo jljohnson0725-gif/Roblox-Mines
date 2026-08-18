@@ -144,8 +144,30 @@ local UNDERSIDE = {
 	{ r = 0.21, h = 16, y = -45 },
 }
 
+--[[
+	How far out anything scattered has to start.
+
+	The apron radius plus a margin. Module-level rather than a local inside the
+	ground builder, because the trees and mushrooms are scattered by their OWN
+	functions -- the first version computed it in buildGround and every other
+	builder saw nil, which took both islands down at boot rather than just
+	misplacing a tree.
+]]
+local function apronRadius(island)
+	local frac = island.clearing or 0.52
+	return island.radius * frac * 1.12
+end
+
 local function buildGround(island, rng, root)
 	local c, r = island.center, island.radius
+
+	--[[ Everything scattered on this island has to keep off the apron, so the
+	     apron's size is computed once here rather than where it is drawn. The
+	     scatter used to start at a hardcoded 28-36 studs, which cleared a
+	     58-stud clearing comfortably and put conifers in the middle of a
+	     180-stud one the moment an island asked for a bigger pad. ]]
+	local clearSize = r * 2 * (island.clearing or 0.52)
+	local keepOut = apronRadius(island)
 
 	-- the slab you stand on
 	cylinder({
@@ -169,7 +191,7 @@ local function buildGround(island, rng, root)
 	]]
 	for i = 1, 14 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(0, r * 0.82)
+		local dist = rng:NextNumber(keepOut, math.max(keepOut + 1, r * 0.82))
 		local size = rng:NextNumber(14, 30)
 		part({
 			name = "Facet",
@@ -183,17 +205,30 @@ local function buildGround(island, rng, root)
 		}, root)
 	end
 
-	-- the clearing the game sits in
+	--[[
+		The flat apron the island's game sits on.
+
+		SCALED OFF THE RADIUS, not fixed. It was hardcoded at 58 studs, which
+		happened to be right for Plinko and stayed 58 when the racing island
+		arrived at twice the radius -- leaving a machine-sized pad on an island
+		built to hold a racetrack.
+
+		0.52 reproduces Plinko's 58 exactly at its radius of 56, so the island
+		that was tuned by eye is untouched. An island whose game needs more room
+		asks for it with `clearing`, rather than every island paying for the
+		greediest one.
+	]]
 	cylinder({
 		name = "Clearing",
-		size = Vector3.new(1.4, 58, 58),
+		size = Vector3.new(1.4, clearSize, clearSize),
 		cframe = CFrame.new(c + Vector3.new(0, 3.34, 0)),
 		color = P.dirt,
 		collide = true,
 	}, root)
 	cylinder({
 		name = "ClearingRim",
-		size = Vector3.new(1.2, 64, 64),
+		-- the same 1.10 proportion the hand-tuned pair had
+		size = Vector3.new(1.2, clearSize * 1.103, clearSize * 1.103),
 		cframe = CFrame.new(c + Vector3.new(0, 2.9, 0)),
 		color = P.dirtDark,
 		collide = true,
@@ -242,7 +277,7 @@ local function buildOutcrops(island, rng, root)
 	local c, r = island.center, island.radius
 	for i = 1, 11 do
 		local angle = (i / 11) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
-		local dist = r * rng:NextNumber(0.80, 0.98)
+		local dist = math.max(r * rng:NextNumber(0.80, 0.98), apronRadius(island) + 6)
 		stack({
 			name = "Outcrop",
 			rng = rng,
@@ -264,13 +299,14 @@ end
      pass was nearly square and read as a stack of crates from standing height,
      which is the only height that matters here. ]]
 local function buildTrees(island, rng, root)
+	local keep = apronRadius(island)
 	local c, r = island.center, island.radius
 	--[[ Thirteen, not thirty. Thirty closed the island into a thicket you
 	     could not see the machine or the sky through, which is the opposite of
 	     what a clearing on a floating island is for. ]]
 	for i = 1, 13 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(36, r * 0.88)
+		local dist = rng:NextNumber(math.max(36, keep), math.max(keep + 1, r * 0.88))
 		local at = c + Vector3.new(math.cos(angle) * dist, 2, math.sin(angle) * dist)
 		local scale = rng:NextNumber(0.8, 1.35)
 
@@ -298,10 +334,11 @@ local function buildTrees(island, rng, root)
 end
 
 local function buildMushrooms(island, rng, root)
+	local keep = apronRadius(island)
 	local c, r = island.center, island.radius
 	for i = 1, 24 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local dist = rng:NextNumber(28, r * 0.86)
+		local dist = rng:NextNumber(math.max(28, keep), math.max(keep + 1, r * 0.86))
 		local base = c + Vector3.new(math.cos(angle) * dist, 3, math.sin(angle) * dist)
 
 		for j = 1, rng:NextInteger(1, 3) do -- clusters, not lone pins
@@ -340,7 +377,12 @@ end
 
 local function buildCottage(island, rng, root)
 	local c, r = island.center, island.radius
-	local at = c + Vector3.new(-r * 0.52, 3, r * 0.34)
+	--[[ Sited by ANGLE at a distance that clears the apron, rather than at a
+	     fixed fraction of the radius. At -0.52r/+0.34r it stood 65 studs out,
+	     which is a corner of the island on Plinko and the middle of the
+	     racetrack on an island with a wide pad. ]]
+	local out = math.max(r * 0.62, apronRadius(island) + 14)
+	local at = c + Vector3.new(-out * 0.84, 3, out * 0.55)
 	local face = CFrame.new(at) * CFrame.Angles(0, math.rad(38), 0)
 
 	part({ name = "Walls", size = Vector3.new(16, 11, 13),
@@ -497,8 +539,15 @@ function IslandService.build(island)
 end
 
 function IslandService.start()
+	--[[ Each island built independently. A scoping mistake in the scatter code
+	     once threw partway through and took EVERY island down with it, leaving
+	     a sky with nothing in it and a stack trace that pointed at a tree. One
+	     broken island should cost you that island. ]]
 	for _, island in ipairs(Islands.List) do
-		IslandService.build(island)
+		local ok, err = pcall(IslandService.build, island)
+		if not ok then
+			warn(("[IslandService] %s failed to build: %s"):format(island.id, tostring(err)))
+		end
 	end
 end
 
