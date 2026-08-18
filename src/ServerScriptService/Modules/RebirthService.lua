@@ -51,7 +51,6 @@ local KEEP = {
 	nextUid = true, -- ids must stay unique across runs
 	stats = true, -- lifetime, not per-run
 	onboarding = true, -- never make someone sit the tutorial twice
-	lasersOn = true, -- a base setting, not a possession
 }
 
 function RebirthService.perform(player)

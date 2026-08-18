@@ -43,7 +43,6 @@ local function newProfile()
 		money = Config.StartingMoney,
 		slots = Config.StartingSlots,
 		nextUid = 1,
-		lasersOn = true, -- base door armed; toggled by the red button inside
 		-- Per-slot, not one total: "collect this brainrot" can't be expressed
 		-- without it. Stored as a dense 1..MaxSlots array on purpose -- a sparse
 		-- table would JSON-encode to an object and come back with STRING keys,

@@ -179,7 +179,6 @@ local FLOOR_COLOR = Color3.fromRGB(142, 196, 120)
 	Bases -- it restyles the world, not the plots -- so none of it was ever
 	toned down, and the result was a floor that read as a lightbox.
 
-	Lasers keep their glow. They are a hazard and they are meant to shout.
 ]]
 local function calmBase(base)
 	local calmed = 0
@@ -202,7 +201,6 @@ local function calmBase(base)
 		if not exempt
 			and p:IsA("BasePart")
 			and p.Material == Enum.Material.Neon
-			and not p.Name:match("^Laser")
 		then
 			p.Material = Enum.Material.SmoothPlastic
 			-- pull the value down too: a colour picked to glow is usually far
@@ -473,36 +471,25 @@ local function attachPlot(base, index)
 		spawnCFrame = spawnPart.CFrame + Vector3.new(0, 4, 0)
 	end
 
-	-- ── laser door ──────────────────────────────────────────────────────────
-	-- The bars live at Floors/Floor1/Doors/Door1/Lasers, so search recursively
-	-- rather than assuming the path -- other bases could nest it differently.
-	local lasers = {}
+	--[[
+		NO LASER DOOR.
+
+		The bars and the button that armed them are gone, not merely disarmed.
+		They come from a game about stealing -- they exist to kill anyone who
+		walks into your base -- and nothing here is stealable. The apartment has
+		a door you walk through instead.
+
+		Destroyed rather than hidden because an invisible collidable bar across
+		your own doorway is a bug waiting to be reported, and a disarmed one
+		still leaves a button on the wall promising a feature that is gone.
+	]]
 	local laserFolder = base:FindFirstChild("Lasers", true)
 	if laserFolder then
-		for _, part in ipairs(laserFolder:GetDescendants()) do
-			if part:IsA("BasePart") then
-				table.insert(lasers, {
-					part = part,
-					color = part.Color,
-					material = part.Material,
-					transparency = part.Transparency,
-				})
-			end
-		end
+		laserFolder:Destroy()
 	end
-
 	local lockPart = base:FindFirstChild("Lock")
-	local lockPrompt
-	if lockPart and lockPart:IsA("BasePart") and #lasers > 0 then
-		lockPrompt = Instance.new("ProximityPrompt")
-		lockPrompt.Name = "LaserPrompt"
-		lockPrompt.ActionText = "Toggle Lasers"
-		lockPrompt.ObjectText = "Door Control"
-		lockPrompt.HoldDuration = 0
-		lockPrompt.MaxActivationDistance = 10
-		lockPrompt.RequiresLineOfSight = false
-		lockPrompt.Enabled = false
-		lockPrompt.Parent = lockPart
+	if lockPart then
+		lockPart:Destroy()
 	end
 
 	return {
@@ -513,10 +500,6 @@ local function attachPlot(base, index)
 		ownerLabel = ownerLabel,
 		rateLabel = rateLabel,
 		spawnCFrame = spawnCFrame,
-		lasers = lasers,
-		lockPart = lockPart,
-		lockPrompt = lockPrompt,
-		lockColor = lockPart and lockPart:IsA("BasePart") and lockPart.Color or nil,
 		userId = nil,
 	}
 end
@@ -978,96 +961,6 @@ function PlotService.tickCollect(player)
 	PlayerState.notify(player, "Collected " .. Format.money(math.floor(claimed)), "good")
 end
 
--- ════════════════════════════════════════════════════════════════════════════
--- LASER DOOR
--- ════════════════════════════════════════════════════════════════════════════
-
---[[
-	Arm or disarm the base door.
-
-	Armed bars collide, which is the whole point of a door -- and it's safe
-	because the control button sits INSIDE the base, so you can always reach it
-	to let yourself out. You also respawn inside, so being locked out is
-	recoverable by resetting.
-
-	Disarmed bars stay faintly visible rather than vanishing: a door you can't
-	see is a door you forget you left open.
-]]
-local function applyLasers(plot, on)
-	-- Read by the Touched handlers. Kept on the plot rather than looked up from
-	-- the profile each hit, because Touched fires constantly and this has to
-	-- stay cheap.
-	plot.lasersArmed = on
-
-	for _, laser in ipairs(plot.lasers or {}) do
-		local part = laser.part
-		part.CanCollide = on
-		part.Transparency = on and laser.transparency or 0.88
-		part.Material = on and laser.material or Enum.Material.Neon
-		part.Color = on and laser.color or laser.color:Lerp(Color3.new(0, 0, 0), 0.55)
-	end
-
-	if plot.lockPart and plot.lockColor then
-		-- the button reads the state at a glance: bright when armed, dead when not
-		plot.lockPart.Color = on and plot.lockColor or Color3.fromRGB(40, 90, 48)
-		plot.lockPart.Material = on and Enum.Material.Neon or Enum.Material.SmoothPlastic
-	end
-
-	if plot.lockPrompt then
-		plot.lockPrompt.ActionText = on and "Open Door" or "Close Door"
-		plot.lockPrompt.ObjectText = on and "Lasers ARMED" or "Lasers OFF"
-	end
-end
-
---[[
-	Make one laser bar lethal. Connected ONCE at startup, not on every toggle --
-	re-connecting per toggle would stack duplicate handlers and fire N times per
-	contact.
-
-	Armed lasers kill the owner too. That's deliberate rather than an oversight:
-	the bars are solid, so the only way through is the button, and making them
-	harmless to you would turn a security door into scenery. Dying is cheap --
-	you respawn inside your own base.
-
-	An unowned base is inert. Nobody's property is being protected, so frying a
-	passer-by at an empty base would just be a trap with no author.
-]]
-local function wireLaser(plot, part)
-	part.Touched:Connect(function(hit)
-		if not plot.lasersArmed or not plot.userId then
-			return
-		end
-
-		local character = hit.Parent
-		if not character then
-			return
-		end
-		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-		if not humanoid or humanoid.Health <= 0 then
-			return -- also debounces: the second bar can't re-kill a corpse
-		end
-
-		humanoid.Health = 0
-
-		local victim = Players:GetPlayerFromCharacter(character)
-		if victim then
-			PlayerState.notify(victim, "Fried by the lasers.", "bad")
-		end
-	end)
-end
-
-function PlotService.toggleLasers(player)
-	local plot = byUserId[player.UserId]
-	local profile = DataService.get(player)
-	if not plot or not profile or #(plot.lasers or {}) == 0 then
-		return
-	end
-
-	profile.lasersOn = not profile.lasersOn
-	applyLasers(plot, profile.lasersOn)
-	PlayerState.notify(player, profile.lasersOn and "Door closed." or "Door opened.", "info")
-end
-
 function PlotService.refresh(player)
 	local plot = byUserId[player.UserId]
 	local profile = DataService.get(player)
@@ -1085,14 +978,6 @@ function PlotService.refresh(player)
 	if plot.rateLabel then
 		plot.rateLabel.Text = Format.rate(Economy.totalIncome(profile.inventory))
 	end
-
-	if plot.lockPrompt then
-		plot.lockPrompt.Enabled = true
-	end
-	if profile.lasersOn == nil then
-		profile.lasersOn = true
-	end
-	applyLasers(plot, profile.lasersOn)
 
 	--[[ The room is redecorated to match the owner's rebirths. Here rather than
 	     in RebirthService because refresh already runs on claim AND on rebirth,
@@ -1280,10 +1165,6 @@ local function releasePlot(player)
 
 	-- Re-arm the door so the next occupant inherits a closed base rather than
 	-- whatever the previous player happened to leave it as.
-	if plot.lockPrompt then
-		plot.lockPrompt.Enabled = false
-	end
-	applyLasers(plot, true)
 end
 
 function PlotService.spawnAt(player, character)
@@ -1337,20 +1218,6 @@ function PlotService.start()
 	end
 
 	for _, plot in ipairs(plots) do
-		for _, laser in ipairs(plot.lasers or {}) do
-			wireLaser(plot, laser.part)
-		end
-
-		if plot.lockPrompt then
-			plot.lockPrompt.Triggered:Connect(function(player)
-				if plot.userId ~= player.UserId then
-					PlayerState.notify(player, "That's not your base.", "bad")
-					return
-				end
-				PlotService.toggleLasers(player)
-			end)
-		end
-
 		for padIndex, pad in ipairs(plot.pads) do
 			pad.prompt.Enabled = false
 			pad.prompt.Triggered:Connect(function(player)

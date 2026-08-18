@@ -235,15 +235,6 @@ function HomeService.convert(base)
 		end
 	end
 
-	--[[ The laser door goes entirely. It exists to kill people who try to walk
-	     in, which is a rule from a game about stealing -- and nobody steals
-	     here. The apartment has a door instead. ]]
-	local lock = base:FindFirstChild("Lock")
-	if lock then
-		lock.Transparency = 1
-		lock.CanCollide = false
-		lock.CanTouch = false
-	end
 
 	--[[ Worked out BEFORE the building goes in, and off the centre captured at
 	     the top. Measured afterwards, the base's bounding box already includes
@@ -505,6 +496,48 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 		end
 	end
 
+	--[[
+		CLEAR THE DOORWAY.
+
+		Leaving a gap in OUR wall does not make a hole in the building: the
+		template has its own front door standing in that spot -- two panels, a
+		column, and a couple of trim bands -- and since every facade part was
+		made non-collidable you walk straight through them. The result reads as
+		walking through a solid wall, which is worse than a wall you cannot pass.
+
+		So anything of the template standing in the opening is hidden outright.
+		The filter is by SIZE, because the same box also contains the building's
+		floor slab and its ground-floor mass, and hiding those would take a
+		chunk out of the building. A part goes only if it is door-sized (no
+		horizontal dimension much wider than the doorway) or a thin panel --
+		which is what a door leaf, a column and a trim band are, and what a
+		50x15x70 structural block is not.
+	]]
+	local doorOut = (math.abs(facing.X) > 0.5) and hx or hz
+	local doorAt = Vector3.new(cx, deck + DOOR_HEIGHT / 2, cz) + facing * doorOut
+	local doorBox = (math.abs(facing.X) > 0.5)
+		and Vector3.new(WALL * 4, DOOR_HEIGHT, DOOR_WIDTH)
+		or Vector3.new(DOOR_WIDTH, DOOR_HEIGHT, WALL * 4)
+
+	local doorParams = OverlapParams.new()
+	doorParams.FilterType = Enum.RaycastFilterType.Include
+	doorParams.FilterDescendantsInstances = { home }
+	doorParams.MaxParts = 120
+
+	local cleared = 0
+	for _, part in ipairs(Workspace:GetPartBoundsInBox(CFrame.new(doorAt), doorBox, doorParams)) do
+		if not part:IsDescendantOf(shell) then
+			local widest = math.max(part.Size.X, part.Size.Z)
+			local thinnest = math.min(part.Size.X, part.Size.Y, part.Size.Z)
+			if widest <= DOOR_WIDTH * 1.2 or thinnest <= 0.5 then
+				part.Transparency = 1
+				part.CanCollide = false
+				part.CanTouch = false
+				cleared += 1
+			end
+		end
+	end
+
 	--[[ Lights, because an enclosed room under a solid ceiling is pitch black.
 	     Four on a grid rather than one bright one: a single source pools in the
 	     middle and leaves the pads, which stand against the walls, in the dark. ]]
@@ -734,9 +767,9 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	HomeService.applyTier(base, 0)
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d slots, facing %s")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
-			hidden, hollowed, doored, lit, windows, moved,
+			hidden, hollowed, doored, lit, windows, cleared, moved,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end
