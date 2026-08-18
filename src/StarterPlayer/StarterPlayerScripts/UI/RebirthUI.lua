@@ -45,7 +45,9 @@ function RebirthUI.init(ctx)
 		parent = ctx.gui,
 		name = "RebirthPanel",
 		color = Theme.color.panel,
-		size = UDim2.fromOffset(520, 400),
+		-- 412, not 400: the apartment line below NEXT added twelve studs of
+		-- content and the Close button fell off the bottom edge.
+		size = UDim2.fromOffset(520, 412),
 		position = UDim2.fromScale(0.5, 0.5),
 		anchor = Vector2.new(0.5, 0.5),
 		radius = 18,
@@ -102,23 +104,33 @@ function RebirthUI.init(ctx)
 		size = UDim2.new(1, 0, 0, 22), position = UDim2.fromOffset(0, 218),
 	})
 
+	--[[ What the apartment becomes. The other two rewards are numbers a player
+	     has to take on trust; this one they can walk into, so it is worth a line
+	     of its own -- and stating it BEFORE the purchase is the difference
+	     between a reward and a surprise. ]]
+	local tierLine = Theme.label({
+		parent = root, name = "Tier", text = "",
+		font = Theme.font.medium, textSize = 13, color = Theme.color.dim,
+		size = UDim2.new(1, 0, 0, 20), position = UDim2.fromOffset(0, 240),
+	})
+
 	local confirm = Theme.button({
 		parent = root, name = "Confirm", text = "",
 		color = Theme.color.accent,
-		size = UDim2.new(1, 0, 0, 52), position = UDim2.fromOffset(0, 252),
+		size = UDim2.new(1, 0, 0, 52), position = UDim2.fromOffset(0, 264),
 		radius = 12,
 	})
 
 	local status = Theme.label({
 		parent = root, name = "Status", text = "",
 		font = Theme.font.medium, textSize = 13, color = Theme.color.dim,
-		size = UDim2.new(1, 0, 0, 20), position = UDim2.fromOffset(0, 312),
+		size = UDim2.new(1, 0, 0, 20), position = UDim2.fromOffset(0, 324),
 	})
 
 	local close = Theme.button({
 		parent = root, name = "Close", text = "Close",
 		color = Theme.color.raised,
-		size = UDim2.new(1, 0, 0, 34), position = UDim2.fromOffset(0, 336),
+		size = UDim2.new(1, 0, 0, 34), position = UDim2.fromOffset(0, 348),
 		radius = 10,
 	})
 
@@ -137,6 +149,17 @@ function RebirthUI.init(ctx)
 			:format(level, Rebirth.luck(level), Rebirth.startPads(level))
 		gain.Text = ("NEXT:  luck +%.2f  ·  %d starting pads")
 			:format(Rebirth.luck(level + 1), Rebirth.startPads(level + 1))
+
+		local here = Rebirth.tier(level)
+		local nextTier, away = Rebirth.nextTier(level)
+		if not nextTier then
+			tierLine.Text = ("Apartment: %s — the top floor."):format(here.name)
+		elseif away <= 1 then
+			tierLine.Text = ("Apartment: %s  →  %s"):format(here.name, nextTier.name)
+		else
+			tierLine.Text = ("Apartment: %s  →  %s in %d more")
+				:format(here.name, nextTier.name, away)
+		end
 
 		if not hasPads then
 			confirm.Text = "Own all " .. Config.MaxSlots .. " pads first"

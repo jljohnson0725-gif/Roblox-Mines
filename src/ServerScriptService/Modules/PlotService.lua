@@ -36,6 +36,7 @@ local Brainrots = require(Shared.Brainrots)
 local Upgrades = require(Shared.Upgrades)
 
 local DataService = require(script.Parent.DataService)
+local HomeService = require(script.Parent.HomeService)
 local PlayerState = require(script.Parent.PlayerState)
 local ModelFactory = require(script.Parent.ModelFactory)
 
@@ -182,8 +183,24 @@ local FLOOR_COLOR = Color3.fromRGB(142, 196, 120)
 ]]
 local function calmBase(base)
 	local calmed = 0
+
+	--[[ THE APARTMENT IS EXEMPT.
+
+	     Everything below was written for the map's own base geometry -- its
+	     neon plot tiling and its six surgical ceiling spotlights. HomeService's
+	     interior is ours, is already tuned against the daylight pass, and now
+	     gets built BEFORE this runs, so without the exemption this walks in
+	     afterwards and undoes it: the collect pad loses its neon and every
+	     rebirth tier's lighting collapses to the same clamped 0.65 warm white.
+	     That is also what made the tier attribute lie -- the room said Studio
+	     while wearing something else entirely. ]]
+	local home = base:FindFirstChild("Home")
+
 	for _, p in ipairs(base:GetDescendants()) do
-		if p:IsA("BasePart")
+		local exempt = home ~= nil and p:IsDescendantOf(home)
+
+		if not exempt
+			and p:IsA("BasePart")
 			and p.Material == Enum.Material.Neon
 			and not p.Name:match("^Laser")
 		then
@@ -199,7 +216,7 @@ local function calmBase(base)
 		     were sized for the map's original darker interior; under the
 		     daylight pass they wash the floor out to pastel and undo the point
 		     of calming the colours. Dimmer, and warm rather than surgical. ]]
-		if p:IsA("SpotLight") or p:IsA("PointLight") then
+		if not exempt and (p:IsA("SpotLight") or p:IsA("PointLight")) then
 			p.Brightness = math.min(p.Brightness, 0.65)
 			p.Color = Color3.fromRGB(255, 248, 232)
 		end
@@ -1076,6 +1093,14 @@ function PlotService.refresh(player)
 		profile.lasersOn = true
 	end
 	applyLasers(plot, profile.lasersOn)
+
+	--[[ The room is redecorated to match the owner's rebirths. Here rather than
+	     in RebirthService because refresh already runs on claim AND on rebirth,
+	     so hanging it here makes "the room matches the profile" true wherever
+	     the profile changed, instead of only where somebody remembered. ]]
+	if plot.model then
+		HomeService.applyTier(plot.model, profile.rebirths)
+	end
 end
 
 --[[ How many pads this world actually offers. Attach mode is capped by the
@@ -1227,6 +1252,13 @@ local function releasePlot(player)
 	end
 	byUserId[player.UserId] = nil
 	plot.userId = nil
+
+	--[[ Back to the bare studio. A base keeps whatever it was last painted, so
+	     without this the next player to claim it walks into the penthouse the
+	     last one earned. ]]
+	if plot.model then
+		HomeService.applyTier(plot.model, 0)
+	end
 
 	for _, pad in ipairs(plot.pads) do
 		if pad.model then

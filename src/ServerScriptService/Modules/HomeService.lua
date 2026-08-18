@@ -24,6 +24,8 @@
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Rebirth = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rebirth"))
+
 local HomeService = {}
 
 --[[ Anything reaching higher than this above the floor is shell and gets
@@ -605,12 +607,81 @@ local PLASTER = Color3.fromRGB(150, 141, 128)
 		end
 	end
 
+	--[[ Dressed as tier 0 before anyone owns it. The build colours above are
+	     tier 1's, so without this an unclaimed base would advertise a
+	     renovation its occupant has not paid for yet. ]]
+	HomeService.applyTier(base, 0)
+
 	converted[base] = true
 	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
 			hidden, hollowed, doored, lit, moved,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
+end
+
+--[[
+	RENOVATE A ROOM TO MATCH ITS OWNER'S REBIRTHS.
+
+	Everything a tier touches was already being built with a hardcoded colour,
+	so this repaints rather than rebuilds -- no part is created or destroyed and
+	nothing under Slots is touched, which means it is safe to call on a room a
+	player is standing in and safe to call repeatedly.
+
+	Driven from PlotService.refresh, which already runs on claim and on rebirth.
+	Hanging it off those rather than adding a third trigger keeps "the room
+	matches the profile" true by construction instead of by remembering.
+
+	Parts are matched BY NAME, and the names are the ones `convert` gives them.
+	A slab this misses keeps its build colour and the room ends up half
+	renovated, so the wall list covers all four names the wall builder emits --
+	including Lintel, which is a wall that does not have Wall in its name.
+]]
+local WALL_PARTS = { Wall = true, WallFront = true, Lintel = true, Ceiling = true }
+
+function HomeService.applyTier(base, rebirths)
+	local home = base and base:FindFirstChild("Home")
+	local shell = home and home:FindFirstChild("Interior")
+	if not shell then
+		return false, nil
+	end
+
+	--[[ Returns (changed, tier). The tier comes back on BOTH paths -- a caller
+	     asking "what is this room wearing" should not have to know whether it
+	     happened to be the call that changed it. ]]
+	local tier = Rebirth.tier(rebirths)
+	if shell:GetAttribute("Tier") == tier.name then
+		return false, tier -- already wearing it; repainting would be pointless
+	end
+	shell:SetAttribute("Tier", tier.name)
+
+	for _, part in ipairs(shell:GetChildren()) do
+		if part:IsA("BasePart") then
+			if part.Name == "Floor" then
+				part.Color = tier.floor
+				part.Material = tier.floorMaterial
+			elseif WALL_PARTS[part.Name] then
+				part.Color = tier.wall
+			elseif part.Name == "Bulb" then
+				part.Color = tier.light
+				local light = part:FindFirstChildWhichIsA("PointLight")
+				if light then
+					light.Brightness = tier.brightness
+					light.Range = tier.range
+					light.Color = tier.light
+				end
+			elseif part.Name == "CollectPad" then
+				part.Color = tier.accent
+				local label = part:FindFirstChild("CollectLabel")
+				local text = label and label:FindFirstChildWhichIsA("TextLabel")
+				if text then
+					text.TextColor3 = tier.accent
+				end
+			end
+		end
+	end
+
+	return true, tier
 end
 
 function HomeService.start(only)
