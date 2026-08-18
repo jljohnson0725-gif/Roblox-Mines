@@ -67,6 +67,48 @@ Islands.List = {
 		     rather than a pile of rocks. ]]
 		accent = Color3.fromRGB(255, 206, 64),
 	},
+
+	{
+		id = "racing",
+		name = "Brainrot Racing",
+		blurb = "Summon one. Back it. Watch it run.",
+
+		--[[
+			ABOVE Config.FlightCeiling, and it is the first island that is.
+
+			The note at the top of this file says altitude is not the gate, and
+			for Plinko it isn't -- the seal is. This one breaks that on purpose,
+			because its arrival IS the feature: you get here by summoning a
+			brainrot and riding it, and a second route that quietly worked would
+			make the mount a decoration. At 1150 the jetpack stops 250 studs
+			short, so the ride is the only way and nothing has to police it.
+
+			Placed across the map from Plinko rather than above it, so the two
+			read as separate destinations from the ground rather than a stack.
+		]]
+		center = Vector3.new(210, 1150, 120),
+
+		--[[ Twice Plinko's radius: a race needs a straight worth watching, and
+		     56 studs is a courtyard. 110 gives roughly 200 studs of track
+		     inside the walkable ring. ]]
+		radius = 110,
+		game = "racing",
+
+		--[[ The seal Plinko issues is the key to this door -- the first time
+		     the fragment loop actually gates anything. ]]
+		requires = "plinko",
+
+		--[[ Six rather than Plinko's five: a later chapter should cost more,
+		     and the model puts a seal at about 58 races on the fastest field
+		     against Plinko's 69 drops, so the two land in the same order. ]]
+		seal = "racing",
+		sealFragments = 6,
+
+		--[[ Racing crimson against Plinko's amber -- the two islands have to be
+		     tellable apart from the street at a glance, and they are the only
+		     two things in the sky. ]]
+		accent = Color3.fromRGB(255, 88, 104),
+	},
 }
 
 Islands.ById = {}
