@@ -50,6 +50,8 @@ function PlayerState.snapshot(player)
 		inventory = profile.inventory,
 		-- multiplied, so the HUD matches what the strips actually fill at
 		income = Economy.totalIncome(profile.inventory) * Upgrades.incomeMultiplier(profile),
+		-- so the summon panel opens on the ride you took last time
+		racer = profile.racer,
 		upgrades = profile.upgrades or {},
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		onboarding = profile.onboarding, -- drives the first-session coach

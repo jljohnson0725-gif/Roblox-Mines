@@ -27,6 +27,7 @@ local FUNCTIONS = {
 	"BuyJetpack", -- the one-time purchase at the launch pad
 	"DropBall", -- one Plinko ball; resolves when it lands in a bin
 	"DoRebirth", -- spend the run for permanent luck
+	"SummonMount", -- ride the brainrot you picked
 	"EnterRace", -- stake a race on one of the fields
 	"RaceOdds", -- the field list with this player's odds
 	"RequestState", -- client pulls on startup, so it can't miss the first push
@@ -49,6 +50,7 @@ local EVENTS = {
 	"EventState", -- broadcast: an event started or ended
 	"OpenMines", -- the landmark's console was used
 	"OpenUpgrades", -- the shop counter was used
+	"OpenSummon", -- the perch was used; let them pick a ride
 	"OpenWheel", -- the wheel console was used
 }
 

@@ -39,6 +39,7 @@ local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
 local Audio = require(UI.Audio)
 local SealTracker = require(UI.SealTracker)
+local SummonUI = require(UI.SummonUI)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ local ctx = {
 		BuyJetpack = Net.get("BuyJetpack"),
 		DoRebirth = Net.get("DoRebirth"),
 		SetFlying = Net.get("SetFlying"),
+		SummonMount = Net.get("SummonMount"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -123,6 +125,7 @@ local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
 local rebirthUI = RebirthUI.init(ctx)
+local summonUI = SummonUI.init(ctx)
 Coach.init(ctx)
 -- Gates the first two steps; Coach carries the rest as a suggestion.
 Tutorial.init(ctx)
@@ -153,7 +156,7 @@ SealTracker.init(ctx)
 local function chromeHidden()
 	return minesUI.isVisible() or inventoryUI.isVisible() or upgradeUI.isVisible()
 		or indexUI.isVisible() or wheelUI.isVisible()
-		or codesUI.isVisible() or rebirthUI.isVisible()
+		or codesUI.isVisible() or rebirthUI.isVisible() or summonUI.isVisible()
 end
 
 task.spawn(function()
@@ -285,6 +288,17 @@ Net.get("OpenUpgrades").OnClientEvent:Connect(function()
 	indexUI.setVisible(false)
 	Sounds.play("uiOpen")
 	upgradeUI.setVisible(true)
+	syncChrome()
+end)
+
+Net.get("OpenSummon").OnClientEvent:Connect(function()
+	minesUI.setVisible(false)
+	inventoryUI.setVisible(false)
+	upgradeUI.setVisible(false)
+	indexUI.setVisible(false)
+	wheelUI.setVisible(false)
+	Sounds.play("uiOpen")
+	summonUI.setVisible(true)
 	syncChrome()
 end)
 

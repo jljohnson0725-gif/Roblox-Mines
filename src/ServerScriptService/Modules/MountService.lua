@@ -47,6 +47,7 @@ local Config = require(Shared.Config)
 local Islands = require(Shared.Islands)
 local Seals = require(Shared.Seals)
 local Economy = require(Shared.Economy)
+local Net = require(Shared.Net)
 
 local MountService = {}
 
@@ -265,8 +266,24 @@ function MountService.start()
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = post
 
+	--[[ The prompt no longer summons -- it ASKS. Choosing is the point: the
+	     brainrot is fashion, so having one picked for you removes the only
+	     decision the ride contains. ]]
 	prompt.Triggered:Connect(function(player)
-		MountService.summon(player)
+		local profile = DataService.get(player)
+		if not profile then
+			return
+		end
+		local ok, missing = Seals.canEnter(profile, Islands.get("racing"))
+		if not ok then
+			PlayerState.notify(player, ("The %s seal opens this. Keep playing Plinko.")
+				:format(missing or "?"))
+			return
+		end
+		if riding[player] then
+			return
+		end
+		Net.get("OpenSummon"):FireClient(player)
 	end)
 
 	MountService.prompt = prompt
@@ -308,7 +325,7 @@ local function finish(player, mount, landing, reason)
 	end
 end
 
-function MountService.summon(player)
+function MountService.summon(player, uid)
 	if riding[player] then
 		return
 	end
@@ -326,7 +343,22 @@ function MountService.summon(player)
 		return
 	end
 
-	local item = MountService.racerFor(profile)
+	--[[ A chosen uid must be one you actually own -- the client passes it, so it
+	     is an input, not a fact. Falling back rather than refusing, because the
+	     panel and the profile can disagree for a moment after a rebirth. ]]
+	local item
+	if uid then
+		for _, owned in ipairs(profile.inventory) do
+			if owned.uid == uid then
+				item = owned
+				break
+			end
+		end
+		if item then
+			profile.racer = uid -- the choice sticks until they change it
+		end
+	end
+	item = item or MountService.racerFor(profile)
 	if not item then
 		PlayerState.notify(player, "You need a brainrot to summon.")
 		return
@@ -468,6 +500,11 @@ function MountService.summon(player)
 		end
 		finish(player, mount, landing, "died")
 	end)
+end
+
+Net.get("SummonMount").OnServerInvoke = function(player, uid)
+	MountService.summon(player, uid)
+	return { ok = true }
 end
 
 Players.PlayerRemoving:Connect(function(player)
