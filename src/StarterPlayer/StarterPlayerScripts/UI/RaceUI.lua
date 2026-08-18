@@ -72,10 +72,20 @@ function RaceUI.init(ctx)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 
+	--[[ The upgrade sits UNDER the fields, not above them. Racing is the point
+	     of the island and buying speed is the thing you do between races, so the
+	     fields get the top of the panel and this waits below. ]]
+	local upgrade = Theme.button({
+		parent = root, name = "Upgrade", text = "",
+		color = Theme.color.raised,
+		size = UDim2.new(1, 0, 0, 40), position = UDim2.new(0, 0, 1, -92),
+		radius = 10,
+	})
+
 	local status = Theme.label({
 		parent = root, name = "Status", text = "",
 		font = Theme.font.medium, textSize = 13, color = Theme.color.dim,
-		size = UDim2.new(1, 0, 0, 20), position = UDim2.new(0, 0, 1, -46),
+		size = UDim2.new(1, 0, 0, 18), position = UDim2.new(0, 0, 1, -48),
 	})
 
 	local close = Theme.button({
@@ -87,13 +97,32 @@ function RaceUI.init(ctx)
 
 	local rows = {}
 	local locked = false
+	local latest = nil
+
+	local function paintUpgrade(data)
+		if not data.upgradeCost then
+			upgrade.Text = ("SPEED %d/%d — maxed"):format(data.level, data.maxLevel)
+			upgrade.BackgroundColor3 = Theme.color.raised
+			return
+		end
+		--[[ Says what it buys, because "speed" in a game whose payout is fixed
+		     is easy to read as "win more money". It is not: you win more often
+		     and each win pays less. What actually improves is how often a
+		     fragment lands, and that is worth being explicit about. ]]
+		upgrade.Text = ("Speed %d → %d   ·   %s   ·   wins more often, seals sooner")
+			:format(data.level, data.level + 1, Format.money(data.upgradeCost))
+		upgrade.BackgroundColor3 = (data.money >= data.upgradeCost)
+			and ACCENT or Theme.color.raised
+	end
 
 	local function render(data)
+		latest = data
 		for _, row in ipairs(rows) do
 			row:Destroy()
 		end
 		rows = {}
 
+		paintUpgrade(data)
 		blurb.Text = ("%s a race  ·  speed %d/%d  ·  every field pays the same over time — harder just swings further.")
 			:format(Format.money(data.stake), data.level, data.maxLevel)
 
@@ -151,6 +180,29 @@ function RaceUI.init(ctx)
 			table.insert(rows, row)
 		end
 	end
+
+	upgrade.Activated:Connect(function()
+		if locked or not latest or not latest.upgradeCost then
+			return
+		end
+		locked = true
+		local result = ctx.remotes.BuyRaceSpeed:InvokeServer()
+		if result and result.ok then
+			--[[ Re-pulled rather than patched locally: buying a level changes
+			     every field's win chance AND payout, so the whole panel is stale
+			     the moment this returns. ]]
+			local ok, fresh = pcall(function()
+				return ctx.remotes.RaceOdds:InvokeServer()
+			end)
+			if ok and fresh then
+				render(fresh)
+			end
+			status.Text = ""
+		else
+			status.Text = (result and result.err) or "Could not upgrade."
+		end
+		locked = false
+	end)
 
 	close.Activated:Connect(function()
 		ui.setVisible(false)

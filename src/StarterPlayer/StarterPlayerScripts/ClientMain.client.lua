@@ -101,6 +101,7 @@ local ctx = {
 		SummonMount = Net.get("SummonMount"),
 		EnterRace = Net.get("EnterRace"),
 		RaceOdds = Net.get("RaceOdds"),
+		BuyRaceSpeed = Net.get("BuyRaceSpeed"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)

@@ -232,7 +232,35 @@ function RaceService.start()
 			stake = Config.RaceStake,
 			level = Racing.level(profile),
 			maxLevel = Racing.MaxLevel,
+			upgradeCost = Racing.upgradeCost(Racing.level(profile)),
+			money = profile and profile.money or 0,
 		}
+	end
+
+	--[[ Bought here rather than at the street shop, because it is only useful on
+	     this island and a player who has never been up cannot see it. Same
+	     validate-then-charge order as every other purchase: read the price from
+	     the server's own level, never from anything the client sent. ]]
+	Net.get("BuyRaceSpeed").OnServerInvoke = function(player)
+		local profile = DataService.get(player)
+		if not profile then
+			return { ok = false, err = "Still loading, one sec." }
+		end
+		local level = Racing.level(profile)
+		local cost = Racing.upgradeCost(level)
+		if not cost then
+			return { ok = false, err = "Already at top speed." }
+		end
+		if profile.money < cost then
+			return { ok = false, err = "Need " .. Format.money(cost) .. "." }
+		end
+		profile.money -= cost
+		profile.raceLevel = level + 1
+		PlayerState.push(player)
+		PlayerState.notify(player,
+			("Speed %d/%d — you win more often, and each win pays less.")
+				:format(profile.raceLevel, Racing.MaxLevel), "good")
+		return { ok = true, level = profile.raceLevel }
 	end
 
 	Players.PlayerRemoving:Connect(function(player)

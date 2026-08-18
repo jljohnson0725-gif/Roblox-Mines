@@ -59,6 +59,27 @@ Racing.MaxLevel = 8
 ]]
 Racing.UpgradeReach = 0.20
 
+--[[
+	What the next speed level costs.
+
+	Geometric, and steep on purpose. A level buys CONSISTENCY, never profit --
+	RTP is 80% at level 0 and 80% at level 8 -- so the thing being sold is a
+	smoother ride and a seal that arrives about 3x sooner. Priced against the
+	rebirth wall rather than against a race: all eight levels come to roughly
+	90M, so maxing this is a real project sitting just under the 150M rebirth
+	rather than something a good evening pays for.
+]]
+Racing.UpgradeBase = 1500000
+Racing.UpgradeGrowth = 1.55
+
+function Racing.upgradeCost(level)
+	level = math.floor(level or 0)
+	if level >= Racing.MaxLevel then
+		return nil -- maxed; callers show this rather than a price
+	end
+	return math.floor(Racing.UpgradeBase * (Racing.UpgradeGrowth ^ level))
+end
+
 function Racing.get(id)
 	return id and Racing.ById[id] or nil
 end

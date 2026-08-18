@@ -245,10 +245,25 @@ function RaceTrack.run(order, seconds)
 			local from = RaceTrack.laneStart(lane, count)
 			model.Parent = root
 			model:PivotTo(CFrame.new(from) * CFrame.Angles(0, math.rad(-90), 0))
+
+			--[[
+				STAND THEM ON THE SURFACE, MEASURED PER RUNNER.
+
+				ModelFactory sets PrimaryPart to Body, so a model's pivot is the
+				mesh's CENTRE, not its feet -- PivotTo onto the deck buried half
+				of every runner in the track. It cannot be a fixed offset either,
+				because these meshes run from a flat shark to a tall camel, so
+				each one is measured: how far its bounding box bottom sits below
+				its pivot, plus the strip's own 0.4 of thickness.
+			]]
+			local box, size = model:GetBoundingBox()
+			local bottom = box.Position.Y - size.Y / 2
+			local lift = (from.Y + 0.42) - bottom
+
 			table.insert(runners, {
 				model = model,
-				from = from,
-				to = RaceTrack.laneFinish(lane, count),
+				from = from + Vector3.new(0, lift, 0),
+				to = RaceTrack.laneFinish(lane, count) + Vector3.new(0, lift, 0),
 				--[[ Later places finish later. A tenth of a second apart is
 				     enough to be unambiguous at the line and far too little to
 				     read as a procession. ]]

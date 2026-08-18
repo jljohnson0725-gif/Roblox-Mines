@@ -30,6 +30,7 @@ local FUNCTIONS = {
 	"SummonMount", -- ride the brainrot you picked
 	"EnterRace", -- stake a race on one of the fields
 	"RaceOdds", -- the field list with this player's odds
+	"BuyRaceSpeed", -- one level of racing consistency
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 }
 
