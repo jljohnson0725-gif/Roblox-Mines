@@ -28,8 +28,11 @@ local SoundService = game:GetService("SoundService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Sounds = require(Shared.Sounds)
+local Islands = require(Shared.Islands)
 
 local Sky = require(script.Parent.Sky)
+
+local player = Players.LocalPlayer
 
 local Audio = {}
 
@@ -47,6 +50,18 @@ local GROUND_PLAYLIST = {
 	{ id = "rbxassetid://1848354536", gain = 1.00 },
 }
 local SKY_TRACK = "rbxassetid://139997523791273"
+
+--[[ The racing island gets its own rotation rather than the sky loop. It sits
+     at 1150, far above the altitude band, so without this it would inherit the
+     one track meant for the trip up and never change -- and this is a place you
+     stand and play in, not fly through. Three, alternating, for the same reason
+     the street has two. ]]
+local ISLAND_PLAYLIST = {
+	{ id = "rbxassetid://1847683499", gain = 1.00 },
+	{ id = "rbxassetid://85685374675332", gain = 1.00 },
+	{ id = "rbxassetid://117496769617516", gain = 1.00 },
+}
+local ISLAND_ID = "racing"
 
 local BUSES = { "Music", "SFX", "UI", "Ambient" }
 
@@ -135,6 +150,7 @@ function Audio.init(ctx)
 
 	local ground = makeTrack("ground")
 	local sky = makeTrack("sky")
+	local island = makeTrack("island")
 
 	sky.SoundId = SKY_TRACK
 	sky.Looped = true
@@ -155,10 +171,43 @@ function Audio.init(ctx)
 	ground.Ended:Connect(advance)
 	advance()
 
-	RunService.Heartbeat:Connect(function()
+	local islandIndex, islandGain = 0, 1
+	local function advanceIsland()
+		islandIndex = islandIndex % #ISLAND_PLAYLIST + 1
+		local track = ISLAND_PLAYLIST[islandIndex]
+		island.SoundId = track.id
+		islandGain = track.gain or 1
+		island:Play()
+	end
+	island.Looped = false
+	island.Ended:Connect(advanceIsland)
+	advanceIsland()
+
+	--[[
+		Three beds, one fader.
+
+		Standing on the racing island swaps the sky track out for the island
+		rotation. Eased rather than switched, because the boundary is a place you
+		can walk back and forth across -- a hard cut would slam the music every
+		time you wandered near the rim.
+
+		Everything keeps PLAYING throughout and only the volumes move, the same
+		rule the ground and sky beds already follow: restarting a track at the
+		boundary would begin it from bar one every time you crossed.
+	]]
+	local onIsland = 0
+	RunService.Heartbeat:Connect(function(dt)
 		local t = Sky.blend()
-		ground.Volume = (1 - t) * groundGain
-		sky.Volume = t
+
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local here = root and Islands.at(root.Position)
+		local target = (here and here.id == ISLAND_ID) and 1 or 0
+		onIsland += (target - onIsland) * math.min(dt * 1.6, 1)
+
+		ground.Volume = (1 - t) * groundGain * (1 - onIsland)
+		sky.Volume = t * (1 - onIsland)
+		island.Volume = onIsland * islandGain
 	end)
 
 	return Audio

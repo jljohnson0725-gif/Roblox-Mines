@@ -55,7 +55,7 @@ local MountService = {}
      player who has found one has found the other. ]]
 local PERCH = Vector3.new(-70, 0.3, -14)
 
-local RIDE_SECONDS = 12
+local RIDE_SECONDS = 15
 local MOUNT_SCALE = 1.8 -- big enough to sit on and read as a vehicle
 local TIMEOUT = RIDE_SECONDS + 8 -- the failsafe fires well after a healthy trip
 
@@ -123,21 +123,76 @@ local function buildMount(item)
 	return model
 end
 
---[[ A gentle S through the sky rather than a straight line, because a straight
-     line to a point a thousand studs up is a lift, and this is supposed to read
-     as a creature carrying you. Cubic Bezier: out over the street first, then
-     up, then level into the island. ]]
+--[[
+	A winding climb, not a lift.
+
+	The first version was a single Bezier that mostly went up, and up is the one
+	direction that reads as nothing happening -- with no landmarks passing you
+	sideways there is no sense of travel at all, just an altimeter. So the route
+	SPIRALS: waypoints swing wide of the straight line, alternating sides, while
+	the climb rate varies underneath them.
+
+	Catmull-Rom through the waypoints rather than one long curve, because a
+	spline actually passes through its control points -- which means the swings
+	are the size they say they are instead of being averaged into a gentle bend.
+]]
 local function flightPath(from, to)
 	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	local p1 = from + flat * 0.15 + Vector3.new(0, (to.Y - from.Y) * 0.35, 0)
-	local p2 = to - flat * 0.30 - Vector3.new(0, (to.Y - from.Y) * 0.18, 0)
-	return function(t)
-		local u = 1 - t
-		return from * (u * u * u)
-			+ p1 * (3 * u * u * t)
-			+ p2 * (3 * u * t * t)
-			+ to * (t * t * t)
+	local span = flat.Magnitude
+	local side = Vector3.new(-flat.Z, 0, flat.X)
+	side = side.Magnitude > 0 and side.Unit or Vector3.new(1, 0, 0)
+	local rise = to.Y - from.Y
+
+	--[[ How far off the direct line each waypoint sits, and how much of the
+	     climb is done by then. The climb fractions are deliberately uneven --
+	     0.10 then 0.34 is a slow lift into a hard surge, and the flat 0.80 to
+	     0.92 near the top is the part that reads as gliding in. ]]
+	local SWING = {
+		{ along = 0.14, out = 0.55, climb = 0.10 },
+		{ along = 0.33, out = -0.75, climb = 0.34 },
+		{ along = 0.52, out = 0.85, climb = 0.62 },
+		{ along = 0.72, out = -0.50, climb = 0.80 },
+		{ along = 0.89, out = 0.18, climb = 0.92 },
+	}
+
+	local points = { from }
+	for _, w in ipairs(SWING) do
+		table.insert(points, from
+			+ flat * w.along
+			+ side * (span * w.out * 0.30)
+			+ Vector3.new(0, rise * w.climb, 0))
 	end
+	table.insert(points, to)
+
+	-- duplicated ends so the spline starts and finishes exactly on the perch
+	-- and the landing rather than overshooting past them
+	table.insert(points, 1, points[1])
+	table.insert(points, points[#points])
+
+	return function(t)
+		local segments = #points - 3
+		local scaled = math.clamp(t, 0, 1) * segments
+		local i = math.min(math.floor(scaled), segments - 1)
+		local u = scaled - i
+		local p0, p1, p2, p3 = points[i + 1], points[i + 2], points[i + 3], points[i + 4]
+		local u2, u3 = u * u, u * u * u
+		return 0.5 * (
+			(2 * p1)
+			+ (-p0 + p2) * u
+			+ (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2
+			+ (-p0 + 3 * p1 - 3 * p2 + p3) * u3
+		)
+	end
+end
+
+--[[ Where along the path you are at time t. Not linear: a slow launch, a surge
+     through the middle, and an ease into the island, so the SPEED varies as
+     well as the direction. Both moving at once is what stops a long ride
+     feeling like a long wait. ]]
+local function pace(t)
+	local eased = t * t * (3 - 2 * t) -- smoothstep: slow off the perch, slow in
+	-- a gentle surge either side of halfway, worth about 8% of the route
+	return math.clamp(eased + math.sin(t * math.pi * 2) * 0.08, 0, 1)
 end
 
 function MountService.start()
@@ -295,18 +350,59 @@ function MountService.summon(player)
 	     so an arrival never puts anyone on the lip of a thousand-stud drop. ]]
 	local landing = island.center + Vector3.new(0, 6, -island.radius * 0.45)
 
+	--[[
+		THE SADDLE IS PLACED RELATIVE TO THE BRAINROT, then the whole model is
+		moved as one. Getting that order wrong is what made the mount invisible
+		on the first build: the seat was created already at the destination and
+		then PivotTo was called to the SAME point, so the delta was zero, the
+		body never left the world origin, and the rider flew a thousand studs
+		welded to a transparent block with nothing under them.
+
+		Sitting it on the model's back rather than its centre, using the actual
+		bounding box, because these meshes are every shape from a flat shark to
+		a tall camel and a fixed offset puts the rider inside half of them.
+	]]
+	local pivot, size = mount:GetBoundingBox()
 	local seat = Instance.new("Seat")
 	seat.Name = "Saddle"
 	seat.Size = Vector3.new(4, 1, 4)
 	seat.Transparency = 1
 	seat.Anchored = true
 	seat.CanCollide = false
-	seat.CFrame = CFrame.new(PERCH + Vector3.new(0, 8, 0))
+	seat.CFrame = pivot * CFrame.new(0, size.Y * 0.5 + 0.5, 0)
 	seat.Parent = mount
 
 	mount.PrimaryPart = seat
-	mount:PivotTo(CFrame.new(PERCH + Vector3.new(0, 8, 0)))
 	mount.Parent = Workspace
+	mount:PivotTo(CFrame.new(PERCH + Vector3.new(0, 8, 0)))
+
+	--[[ Sound rides WITH the mount, so it is spatial for anyone watching you go
+	     and it dies exactly when the mount does -- no separate teardown to
+	     forget, and no way for it to outlive the ride. ]]
+	local liftoff = Instance.new("Sound")
+	liftoff.Name = "Liftoff"
+	liftoff.SoundId = "rbxassetid://139638115866253"
+	liftoff.Volume = 0.75
+	liftoff.RollOffMaxDistance = 220
+	liftoff.Parent = seat
+
+	local cruise = Instance.new("Sound")
+	cruise.Name = "Cruise"
+	cruise.SoundId = "rbxassetid://93035214379043"
+	cruise.Volume = 0.60
+	cruise.Looped = true -- the climb outlasts the clip; it must not fall silent
+	cruise.RollOffMaxDistance = 220
+	cruise.Parent = seat
+
+	liftoff:Play()
+	--[[ Chained on Ended rather than started on a timer, because the timer would
+	     be a second copy of the clip's length that goes stale the day the asset
+	     is swapped. ]]
+	liftoff.Ended:Connect(function()
+		if cruise.Parent then
+			cruise:Play()
+		end
+	end)
 
 	PlayerState.notify(player, ("Summon %s?  —  going up.")
 		:format(Economy.displayName(item.charId, item.variantId)))
@@ -344,8 +440,7 @@ function MountService.summon(player)
 
 		elapsed += dt
 		local t = math.clamp(elapsed / RIDE_SECONDS, 0, 1)
-		-- ease both ends, so it lifts off and settles rather than snapping
-		local eased = t * t * (3 - 2 * t)
+		local eased = pace(t)
 
 		local position = curve(eased)
 		local ahead = curve(math.min(eased + 0.01, 1))
