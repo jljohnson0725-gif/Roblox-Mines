@@ -63,15 +63,42 @@ function FriendService.start()
 		end
 	end
 
-	local humanoid = model:FindFirstChildWhichIsA("Humanoid")
+	-- recursive: the asset nests its rig inside another Model
+	local humanoid = model:FindFirstChildWhichIsA("Humanoid", true)
+
+	--[[
+		THE SPARE PILLOW GOES.
+
+		The asset ships TWO of them: one tucked under his arm, and a second
+		lying seven studs away that the creator evidently left in the scene.
+		Cloned as-is, every player gets a body pillow abandoned in the street
+		outside their flat, which reads as a bug rather than as a joke.
+
+		Told apart by DISTANCE, not by name or parent -- both are called "Puro
+		Pillow", and neither is welded to anything, so there is no join to
+		follow. The held one sits 2.1 studs from the root and the stray 7.0, so
+		anything beyond four is not part of him.
+	]]
+	local root = model:FindFirstChild("HumanoidRootPart", true)
+	local strays = 0
+	if root then
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and d ~= root
+				and (d.Position - root.Position).Magnitude > 4
+			then
+				d:Destroy()
+				strays += 1
+			end
+		end
+	end
 	if humanoid then
 		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 		humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 		humanoid.EvaluateStateMachine = false
 	end
 
-	print(("[FriendService] friend ready: %d parts, rig %s")
-		:format(parts, humanoid and tostring(humanoid.RigType) or "none"))
+	print(("[FriendService] friend ready: %d parts, rig %s, %d stray part(s) dropped")
+		:format(parts, humanoid and tostring(humanoid.RigType) or "none", strays))
 end
 
 return FriendService

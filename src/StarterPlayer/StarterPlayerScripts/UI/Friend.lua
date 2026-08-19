@@ -286,8 +286,11 @@ function Friend.init(ctx)
 		npc:PivotTo(CFrame.lookAt(at, at - out) + drift + Vector3.new(0, size.Y / 2, 0))
 		npc.Parent = workspace
 
-		local root = npc:FindFirstChild("HumanoidRootPart")
-			or npc:FindFirstChildWhichIsA("BasePart")
+		--[[ RECURSIVE, both of them. The asset wraps its rig in another Model,
+		     so a shallow lookup finds only that wrapper and returns nil -- which
+		     silently skipped the prompt and left an NPC nobody could talk to. ]]
+		local root = npc:FindFirstChild("HumanoidRootPart", true)
+			or npc:FindFirstChildWhichIsA("BasePart", true)
 		if root then
 			prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "TalkPrompt"

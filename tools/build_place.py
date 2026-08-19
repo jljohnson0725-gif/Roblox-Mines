@@ -314,12 +314,12 @@ def build_rbxmx(path, model_name):
     one place file is a corrupt place.
     """
     if not path.is_file():
-        return None, 0
+        return None, 0, []
 
     tree = ET.parse(path)
     items = tree.getroot().findall("Item")
     if not items:
-        return None, 0
+        return None, 0, []
 
     #[[ A .rbxmx has one or more roots; take the first, and if it is a wrapper
     #   holding the real rig, keep the wrapper -- FriendService finds the
@@ -334,9 +334,28 @@ def build_rbxmx(path, model_name):
         name = ET.SubElement(props, "string", {"name": "Name"})
     name.text = model_name
 
+    #[[
+    #   THE SHARED STRINGS COME TOO, and forgetting them is what corrupts the
+    #   place rather than merely losing detail.
+    #
+    #   Roblox XML keeps big binary blobs -- mesh data, physics data -- once at
+    #   the end of the file in a <SharedStrings> block, and properties point at
+    #   them by md5. Copying the <Item> alone leaves those pointers aimed at
+    #   nothing, and Studio refuses to open the file at all:
+    #
+    #       Unknown referenced shared string md5 +BbohMYZKeGnt1C0uh9PZw==
+    #
+    #   Not a soft failure, and not visible in any part count -- the injected
+    #   model looked complete by every check that reads Items.
+    #]]
+    shared = []
+    block = tree.getroot().find("SharedStrings")
+    if block is not None:
+        shared = block.findall("SharedString")
+
     parts = sum(1 for n in model.iter("Item")
                 if n.get("class") in ("Part", "MeshPart", "WedgePart", "UnionOperation"))
-    return model, parts
+    return model, parts, shared
 
 
 def node_props(item):
@@ -436,7 +455,7 @@ def main():
         mesh_folder, mesh_count, skin_count = build_mesh_library()
         apartment, apartment_parts = build_psv_template(APARTMENT, "ApartmentTemplate")
         desk, desk_parts = build_psv_template(DESK, "DeskTemplate")
-        friend, friend_parts = build_rbxmx(FRIEND, "FriendTemplate")
+        friend, friend_parts, friend_shared = build_rbxmx(FRIEND, "FriendTemplate")
         for service, items in service_items:
             if service == "ReplicatedStorage":
                 if mesh_folder is not None:
@@ -466,6 +485,23 @@ def main():
             for item in items:
                 merge_into(target, item)
                 injected += 1
+
+        #[[ Merge the injected model's blobs into the place's own block, keyed
+        #   by md5 so a blob the map already has is not duplicated. Without
+        #   this the references written above dangle and the place will not
+        #   open. ]]
+        if friend is not None and friend_shared:
+            block = root.find("SharedStrings")
+            if block is None:
+                block = ET.SubElement(root, "SharedStrings")
+            have = {e.get("md5") for e in block.findall("SharedString")}
+            added = 0
+            for blob in friend_shared:
+                if blob.get("md5") not in have:
+                    block.append(blob)
+                    have.add(blob.get("md5"))
+                    added += 1
+            print("  shared strings carried across: %d" % added)
 
         tree.write(OUT, encoding="utf-8", xml_declaration=False)
         if mesh_folder is not None:
