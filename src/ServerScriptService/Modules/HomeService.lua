@@ -48,6 +48,20 @@ local BRAINROT_WIDTH = 9
 local DOOR_WIDTH = 14
 local DOOR_HEIGHT = 13
 
+--[[
+	How far a floor-laid part sits above the floor, and why it is not zero.
+
+	Two faces pointing the same way at the same height are the definition of
+	z-fighting: the renderer has no way to order them, so it picks per pixel per
+	frame and the surface boils. It only bites when the faces point the SAME way
+	-- a rug's underside resting exactly on the floor is fine, because the floor
+	is behind it and gets culled -- which is why the collect pad flickered and
+	the carpet, sitting on the same plane, never did.
+
+	Anything laid on the floor is lifted clear by this instead.
+]]
+local FLOOR_LIFT = 0.06
+
 local converted = {}
 
 --[[
@@ -494,8 +508,11 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 				--[[ A ledge, proud of the wall on the inside. It catches the
 				     light coming through and gives the opening a bottom edge,
 				     which is what stops a window reading as a painted rectangle. ]]
+				--[[ Hung a touch low on purpose: level with the opening its
+				     underside shared a plane with the pane's and the wall's,
+				     three down-facing faces in one spot. ]]
 				local ledge = piece("WindowSill", openW + 2, 0.5, at,
-					sillTop + 0.25, WALL * 2.2, TRIM, Enum.Material.Wood)
+					sillTop + 0.17, WALL * 2.2, TRIM, Enum.Material.Wood)
 				ledge.CFrame = ledge.CFrame - dir * (WALL * 0.5)
 				ledge.CanCollide = false
 				windows += 1
@@ -517,14 +534,21 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 			     the entrance was a rectangle of missing wall -- which is what it
 			     is, but a doorway is the one place a room should not look like
 			     it was built by subtraction. ]]
+			--[[ The casing sits INSIDE the opening, not above it. The head used
+			     to hang at DOOR_HEIGHT + 0.7, which put its underside on exactly
+			     the same plane as the lintel's -- two down-facing faces over a
+			     14-stud strip, both visible from below, boiling against each
+			     other. Now the head occupies the top of the opening and the
+			     lintel's underside is behind it, occluded rather than tied. ]]
+			local headBottom = deck + DOOR_HEIGHT - 1.4
 			for _, sign in ipairs({ -1, 1 }) do
-				local jamb = piece("DoorJamb", 1.4, DOOR_HEIGHT + 1.4,
-					sign * (DOOR_WIDTH + 1.4) / 2, deck + (DOOR_HEIGHT + 1.4) / 2,
+				local jamb = piece("DoorJamb", 1.4, DOOR_HEIGHT - 1.4,
+					sign * (DOOR_WIDTH + 1.4) / 2, deck + (DOOR_HEIGHT - 1.4) / 2,
 					WALL * 1.5, TRIM, Enum.Material.Wood)
 				jamb.CanCollide = false
 			end
 			local head = piece("DoorHead", DOOR_WIDTH + 2.8, 1.4, 0,
-				deck + DOOR_HEIGHT + 0.7, WALL * 1.5, TRIM, Enum.Material.Wood)
+				headBottom + 0.7, WALL * 1.5, TRIM, Enum.Material.Wood)
 			head.CanCollide = false
 		else
 			windowed("Wall", run * 2, 0)
@@ -807,7 +831,8 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	rug.Size = (math.abs(facing.X) > 0.5)
 		and Vector3.new(26, 0.12, math.min(24, hz * 0.9))
 		or Vector3.new(math.min(24, hx * 0.6), 0.12, 26)
-	rug.CFrame = CFrame.new(Vector3.new(cx, deck + 0.66, cz) - facing * 6)
+	rug.CFrame = CFrame.new(
+		Vector3.new(cx, deck + 0.6 + FLOOR_LIFT + 0.06, cz) - facing * 6)
 	rug.Color = TRIM
 	rug.Material = Enum.Material.Fabric
 	rug.TopSurface = Enum.SurfaceType.Smooth
@@ -829,9 +854,13 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	pad.Name = "CollectPad"
 	pad.Anchored = true
 	pad.CanCollide = false
-	pad.Size = Vector3.new(14, 0.3, DOOR_WIDTH)
+	--[[ Laid ON the floor, not sunk into it. It used to be 0.3 thick centred so
+	     its top landed at exactly the floor's surface, and the two coplanar
+	     up-facing faces fought over a 14x14 patch -- which is the flicker. ]]
+	pad.Size = Vector3.new(14, 0.14, DOOR_WIDTH)
 	pad.CFrame = CFrame.new(
-		Vector3.new(cx, deck + 0.45, cz) + facing * (math.abs(facing.X) > 0.5 and hx - 10 or hz - 10))
+		Vector3.new(cx, deck + 0.6 + FLOOR_LIFT + 0.07, cz)
+			+ facing * (math.abs(facing.X) > 0.5 and hx - 10 or hz - 10))
 	pad.Color = Color3.fromRGB(96, 226, 130)
 	pad.Material = Enum.Material.Neon
 	pad.Transparency = 0.35
