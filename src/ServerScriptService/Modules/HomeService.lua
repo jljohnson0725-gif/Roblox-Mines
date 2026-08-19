@@ -80,15 +80,16 @@ local RING_STANDOFF = 5
 local RING_COLOR = Color3.fromRGB(178, 240, 200)
 
 --[[
-	PLACEHOLDER. 524440363 -- the id given for this sound -- is the DESK model
-	(AssetTypeId 10, "Computer set up and Table w/ Chair!"), not audio; it was
-	the same number as the model and got repeated by mistake. Checked with
-	GetProductInfo rather than discovered by silence.
+	A cash register. Verified as audio before wiring: AssetTypeId 3,
+	"cash-register-sound-fx", 1.045 seconds.
 
-	Until a real id arrives this borrows the unlock sting, which is already the
-	game's "you got something" sound. Swap the number, nothing else.
+	Worth the check. The first id given for this was 524440363, which is the
+	DESK MODEL -- AssetTypeId 10 -- given twice by mistake, and a Sound pointed
+	at a model does not error, it just never plays. The placeholder that stood
+	in meanwhile was the unlock sting, which is why collecting sounded exactly
+	like buying a pad.
 ]]
-local COLLECT_SOUND = 136993031050456
+local COLLECT_SOUND = 120891770644830
 
 local converted = {}
 
