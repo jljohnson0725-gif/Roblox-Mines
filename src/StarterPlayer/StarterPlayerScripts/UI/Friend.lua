@@ -55,9 +55,12 @@ local TOPICS = {
 			return (state.stats and (state.stats.rounds or 0) or 0) < 1
 		end,
 		lines = {
-			"Oh — you're the one who just moved in. I heard about the breakup. Brutal.",
-			"Me? I'm good. Great, actually. Puro doesn't judge me and she never asks where this is going.",
-			"Anyway. Press M. Bet some cash, click tiles, don't click a bomb. That's the whole game.",
+			"Hey, neighbour!",
+			"Heard you got dumped. Sorry, mate. Plenty of fish in the sea, though.",
+			"Well — not for me. I've got my Puro Pillow. She's perfect.",
+			"But you could win her back. If you became a <b>true Adam</b>.",
+			"Takes money and looks, that does. Try betting — quickest way to get rich, if you're lucky.",
+			"Get enough and you can buy peptides. Sort that mug of yours right out.",
 		},
 	},
 	{
@@ -188,6 +191,9 @@ function Friend.init(ctx)
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
 	body.TextWrapped = true
+	--[[ So <b>true Adam</b> reads as emphasis rather than as literal tags. He
+	     is not shouting it -- caps would be shouting -- he is leaning on it. ]]
+	body.RichText = true
 
 	local advance = Theme.button({
 		parent = card, name = "Next", text = "Next",
@@ -280,11 +286,38 @@ function Friend.init(ctx)
 		--[[ Stood ON the step, by his bounding box rather than his pivot -- a
 		     rig's pivot is at its HumanoidRootPart, which is chest height, so
 		     pivoting to floor level buries him to the shoulders. ]]
-		npc:PivotTo(CFrame.lookAt(at, at - out))
-		local box, size = npc:GetBoundingBox()
-		local drift = npc:GetPivot().Position - box.Position
-		npc:PivotTo(CFrame.lookAt(at, at - out) + drift + Vector3.new(0, size.Y / 2, 0))
+		local function stand(lookAt)
+			local aim = CFrame.lookAt(at, Vector3.new(lookAt.X, at.Y, lookAt.Z))
+			npc:PivotTo(aim)
+			local box, size = npc:GetBoundingBox()
+			local drift = npc:GetPivot().Position - box.Position
+			npc:PivotTo(aim + drift + Vector3.new(0, size.Y / 2, 0))
+		end
+		stand(at - out)
 		npc.Parent = workspace
+
+		--[[
+			HE TURNS TO LOOK AT YOU, rather than being aimed once at a guess.
+
+			A fixed facing has no right answer here: he stands beside a doorway
+			people arrive at from the street AND come out of, so any single
+			direction shows his back half the time -- which is exactly how the
+			first version looked.
+
+			Levelled to the player's XZ so he never tilts to track someone on a
+			roof, and only while you are close enough to care. Cheap: eight
+			anchored parts, and only when somebody is actually there.
+		]]
+		task.spawn(function()
+			while npc and npc.Parent do
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if hrp and (hrp.Position - at).Magnitude < 40 then
+					stand(hrp.Position)
+				end
+				task.wait(0.2)
+			end
+		end)
 
 		--[[ RECURSIVE, both of them. The asset wraps its rig in another Model,
 		     so a shallow lookup finds only that wrapper and returns nil -- which
