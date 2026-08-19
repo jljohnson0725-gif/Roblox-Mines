@@ -250,8 +250,31 @@ function HomeService.convert(base)
 		end
 		if isShell then
 			for _, d in ipairs(c:IsA("BasePart") and { c } or c:GetDescendants()) do
+				--[[
+					A DECAL DOES NOT CARE THAT ITS PART IS INVISIBLE.
+
+					Transparency = 1 on a BasePart hides the part and nothing
+					stuck to it: Decals and Textures keep drawing at their own
+					transparency, floating exactly where the surface used to be.
+
+					That is what "the floating windows" were the whole time. The
+					base's window walls are six Unions, thin and ten studs tall,
+					each carrying six Decals at 0.5 -- so hiding the Unions left
+					six sheets of glass standing in the open. It survived every
+					hunt because every probe I wrote read the PART's transparency,
+					saw 1.00, and moved on. The part was invisible. The glass on
+					it was not.
+				]]
+				if d:IsA("Decal") or d:IsA("Texture") then
+					d.Transparency = 1
+				end
 				if d:IsA("BasePart") then
 					d.Transparency = 1
+					for _, skin in ipairs(d:GetChildren()) do
+						if skin:IsA("Decal") or skin:IsA("Texture") then
+							skin.Transparency = 1
+						end
+					end
 					--[[
 						COLLISION COMES OFF TALL THINGS ONLY.
 
