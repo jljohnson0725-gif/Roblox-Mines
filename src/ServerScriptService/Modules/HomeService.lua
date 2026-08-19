@@ -310,6 +310,41 @@ function HomeService.convert(base)
 		end
 	end
 
+	--[[
+		THE GROUND-FLOOR SHELL COMES OFF ENTIRELY.
+
+		Our doorway is a gap in OUR wall, but the template's ground floor is one
+		mesh that runs straight across it -- and that mesh is single-sided. From
+		inside it is invisible and the doorway looked open; from outside it is
+		opaque and the doorway looked like a wall. Same surface, two answers,
+		which is the tell for single-sided geometry every time.
+
+		A hole cannot be cut in a mesh, and its collision is a Box no matter what
+		fidelity is asked for, so there is nothing to subtract. The mesh goes.
+		What replaces it is our own wall, which is WIDER than the mesh in both
+		directions (66x49 against 50x70's frontage) -- so the building keeps an
+		exterior, it is just ours, with our windows and our cased door in it.
+
+		Only the ground floor. Everything above still hangs there, which is the
+		whole point of the building being tall.
+	]]
+	--[[ No "is this ours?" guard, deliberately: this runs BEFORE the Interior
+	     model is built, so everything under `home` is template geometry by
+	     definition. The guard was there in the first draft and it matched
+	     nothing at all -- IsDescendantOf against a folder that does not exist
+	     yet is false for every part, so the loop hid zero meshes and the
+	     doorway stayed walled. ]]
+	local unshelled = 0
+	for _, d in ipairs(home:GetDescendants()) do
+		if d:IsA("MeshPart")
+			and d.Size.X > 45 and d.Size.Y < 16
+			and d.Position.Y - d.Size.Y / 2 < deck + 2
+		then
+			d.Transparency = 1
+			unshelled += 1
+		end
+	end
+
 	local shell = Instance.new("Model")
 	shell.Name = "Interior"
 	shell.Parent = home
@@ -351,7 +386,7 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	local HEIGHT = 18
 	local midY = deck + HEIGHT / 2
 
-	slab("Floor", Vector3.new(hx * 2, 0.6, hz * 2),
+	local floorSlab = slab("Floor", Vector3.new(hx * 2, 0.6, hz * 2),
 		Vector3.new(cx, deck + 0.3, cz),
 		Color3.fromRGB(96, 68, 44), Enum.Material.WoodPlanks)
 
@@ -574,6 +609,42 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 				part.CanCollide = false
 				part.CanTouch = false
 				cleared += 1
+			end
+		end
+	end
+
+	--[[
+		GIVE THE OUTSIDE ITS COLLISION BACK.
+
+		Hollowing the whole facade is what made the stoop and its steps walk-
+		through: they are part of the template, so they lost collision along with
+		the walls. But the reason for hollowing was MESHES -- a MeshPart's
+		CollisionFidelity is stuck at Box (asking for anything else is accepted
+		and ignored, and emitting it into the place file does not apply either),
+		so a hollow shell mesh collides as a filled brick. Plain Parts have no
+		such problem; a Part is exactly the box it looks like.
+
+		So: plain Parts get their collision back, meshes stay off. Two guards on
+		top of that, both of which would otherwise produce something worse than
+		the bug being fixed --
+
+		  - OUTSIDE THE ROOM ONLY. Template parts standing inside our walls would
+		    become furniture nobody can walk past, in a room whose whole job is
+		    holding brainrots.
+		  - VISIBLE ONLY. Everything hidden above -- the doorway blockers, the
+		    shopfront -- is still there at Transparency 1. Re-solidifying those
+		    would put an invisible wall exactly where the door is.
+	]]
+	local resolid = 0
+	local roomX = floorSlab.Size.X / 2 + 2
+	local roomZ = floorSlab.Size.Z / 2 + 2
+	for _, d in ipairs(home:GetDescendants()) do
+		if d:IsA("Part") and not d:IsDescendantOf(shell) and d.Transparency < 0.9 then
+			local dx = math.abs(d.Position.X - floorSlab.Position.X)
+			local dz = math.abs(d.Position.Z - floorSlab.Position.Z)
+			if dx > roomX or dz > roomZ then
+				d.CanCollide = true
+				resolid += 1
 			end
 		end
 	end
@@ -807,9 +878,9 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	HomeService.applyTier(base, 0)
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d shopfront parts removed, %d slots, facing %s")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d shopfront parts removed, %d shell, %d re-solidified, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
-			hidden, hollowed, doored, lit, windows, cleared, deglazed, moved,
+			hidden, hollowed, doored, lit, windows, cleared, deglazed, unshelled, resolid, moved,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end
