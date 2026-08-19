@@ -188,6 +188,14 @@ local function buildGround(island, rng, root)
 		the camera moves, because the depth buffer cannot decide which is in
 		front. Same fault the wheel had at its hub. A hundredth of a stud
 		between them is invisible and settles it.
+
+		THE STAGGER RUNS 1..14, NOT i % 7. It was the modulo, over fourteen
+		facets, which handed every height out exactly TWICE -- so the fix that
+		was supposed to separate them left seven coplanar pairs instead of
+		fourteen coplanar faces, and the two that happened to be drawn in
+		different greens carried on flickering. A stagger that wraps is not a
+		stagger. Fourteen steps of 0.014 spans a fifth of a stud, still far
+		below anything the eye picks up on a walking surface.
 	]]
 	for i = 1, 14 do
 		local angle = rng:NextNumber(0, math.pi * 2)
@@ -197,7 +205,7 @@ local function buildGround(island, rng, root)
 			name = "Facet",
 			size = Vector3.new(size, 1.6, size * rng:NextNumber(0.7, 1.3)),
 			cframe = CFrame.new(c + Vector3.new(
-				math.cos(angle) * dist, 2.2 + (i % 7) * 0.014,
+				math.cos(angle) * dist, 2.2 + i * 0.014,
 				math.sin(angle) * dist))
 				* CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
 			color = rng:NextNumber() < 0.5 and P.grassLit or P.grassDark,

@@ -294,8 +294,15 @@ function PlinkoService.build(island)
 	PlinkoService.bins = {}
 	for j = 1, Plinko.BINS do
 		local x = (j - (Plinko.BINS + 1) / 2) * W
+		--[[ Lifted a hair, and the hair matters. At `binTop - BINS_H + 1` the
+		     bin floor's top face lands at -total/2 - 0.6, which is exactly where
+		     the Plinth's top face is -- work it through and the two expressions
+		     reduce to the same number. Two up-facing coplanar surfaces with
+		     nothing to order them is z-fighting, and because these two differ
+		     (neon bin colour against the metal frame) it is the visible kind:
+		     the bins flickered. ]]
 		part({ name = "BinFloor", size = Vector3.new(W - 0.4, 0.8, DEPTH - 0.4),
-			cframe = at(x, binTop - BINS_H + 1), color = binColor(j),
+			cframe = at(x, binTop - BINS_H + 1.06), color = binColor(j),
 			material = Enum.Material.Neon }, root)
 		if j < Plinko.BINS then
 			part({ name = "Divider", size = Vector3.new(0.6, BINS_H, DEPTH - 0.4),
