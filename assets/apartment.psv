@@ -1,7 +1,9 @@
-# The apartment block, extracted from Creator Store model 8914897052.
+# The apartment block. Regenerate with:
+#
+#     python tools/extract_apartment.py <model.rbxmx>
 #
 # Pipe-separated so it stays diffable and hand-editable; build_place.py turns it
-# into ReplicatedStorage.ApartmentTemplate and PlotService clones one per base.
+# into ReplicatedStorage.ApartmentTemplate and HomeService clones one per base.
 # Extracted rather than referenced because a Studio-inserted model only survives
 # a rebuild if it lives in assets/map.rbxlx, and hand-placing seven of these --
 # then re-exporting the whole 18MB map every time one moves -- is not a pipeline.
@@ -12,8 +14,7 @@
 # class|name|size|pos|rot(9)|color|material|transparency|meshId|textureId|nativeSize
 #
 # nativeSize matters: a MeshPart draws its mesh at Size/InitialSize, so emitting
-# a mesh without its TRUE intrinsic size inflates it by that ratio. Most of these
-# are unscaled, but 5635562380 is authored at 60x18x84 and used at 50x15x70.
+# a mesh without its TRUE intrinsic size inflates it by that ratio.
 MeshPart|MeshPart|5.000,31.500,4.000|22.050,78.750,-36.250|-1.0000,0.0000,-0.0000,0.0000,1.0000,0.0000,0.0000,0.0000,-1.0000|163,162,165|Plastic|0.00|5635278610||5.000,31.500,4.000
 Part|Part|0.050,6.000,1.000|20.875,7.000,-16.120|1.0000,0.0000,0.0000,0.0000,1.0000,0.0000,-0.0000,0.0000,1.0000|27,42,53|Glass|0.00|||
 MeshPart|MeshPart|0.200,6.000,1.200|20.900,7.000,-16.120|1.0000,0.0000,0.0000,0.0000,1.0000,0.0000,-0.0000,0.0000,1.0000|91,93,105|Metal|0.00|5635621534||0.240,7.200,1.440

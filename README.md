@@ -52,6 +52,38 @@ Every rebuild overwrites it from `assets/map.rbxlx` + `src/`. So:
 
 Saving the place file itself and expecting it to stick is the mistake to avoid.
 
+## Editing the apartment building
+
+The building is not in the map. `assets/apartment.psv` is the source; the build
+turns it into `ReplicatedStorage.ApartmentTemplate` and `HomeService` stamps one
+onto each base. So dragging it around in Studio does nothing on its own.
+
+To edit it **visually**, round-trip it:
+
+1. open the place, find `ReplicatedStorage.ApartmentTemplate` (or insert any
+   building you like from the Creator Store)
+2. move / recolour / add / delete parts
+3. right-click the model → **Save to File As…** → `something.rbxmx`
+4. `python tools/extract_apartment.py something.rbxmx`
+5. `python tools/build_place.py`
+
+To edit it **by hand**, open `assets/apartment.psv` — one part per line, pipe
+separated, positions relative to the centre of the footprint at ground level.
+
+Two things that will confuse you if you don't know them:
+
+- **The interior is not in the psv.** Walls, windows, sills, skirting, the
+  doorway, carpet, lights, slot layout and the collect pad are all built in code
+  by `HomeService` on every launch. Edit the constants at the top of that file.
+- **Ground-floor Glass and Metal from the template are hidden on sight.** That's
+  what removes the shopfront glazing the interior replaced. Add a glass part at
+  ground level and it won't show; change the rule in `HomeService` if you want
+  an exception.
+
+`UnionOperation` parts survive the round trip only as their bounding box — solid
+geometry is a binary blob, not properties, so there's nothing to write down. The
+extractor tells you when it flattens one.
+
 ## File suffix convention
 
 | suffix        | make this in Studio |
