@@ -167,7 +167,10 @@ function Friend.init(ctx)
 		parent = ctx.gui,
 		name = "Friend",
 		color = Theme.color.panel,
-		size = UDim2.fromOffset(440, 132),
+		--[[ 156 tall, not 132. Body ran y22..80 and the button sat at y70..100,
+		     so the two overlapped by ten pixels and the button printed straight
+		     over the last line of every message that wrapped past two lines. ]]
+		size = UDim2.fromOffset(440, 156),
 		position = UDim2.new(0.5, 0, 1, -110),
 		anchor = Vector2.new(0.5, 1),
 		radius = 14,
@@ -186,7 +189,7 @@ function Friend.init(ctx)
 	local body = Theme.label({
 		parent = card, name = "Body", text = "",
 		font = Theme.font.medium, textSize = 14, color = Theme.color.text,
-		size = UDim2.new(1, 0, 0, 58), position = UDim2.fromOffset(0, 22),
+		size = UDim2.new(1, 0, 0, 66), position = UDim2.fromOffset(0, 22),
 	})
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
@@ -198,7 +201,10 @@ function Friend.init(ctx)
 	local advance = Theme.button({
 		parent = card, name = "Next", text = "Next",
 		color = Theme.color.accent,
-		size = UDim2.new(1, 0, 0, 30), position = UDim2.new(0, 0, 1, -30),
+		--[[ Flush to the bottom edge. It was offset up by its own height as well
+		     as being anchored there, which left thirty pixels of dead card
+		     under the button. ]]
+		size = UDim2.new(1, 0, 0, 30), position = UDim2.new(0, 0, 1, 0),
 		anchor = Vector2.new(0, 1),
 		radius = 10,
 	})
@@ -286,8 +292,31 @@ function Friend.init(ctx)
 		--[[ Stood ON the step, by his bounding box rather than his pivot -- a
 		     rig's pivot is at its HumanoidRootPart, which is chest height, so
 		     pivoting to floor level buries him to the shoulders. ]]
+		--[[
+			AIM THE RIG, NOT THE MODEL.
+
+			The character sits rotated inside its wrapper Model, so pointing the
+			model's PIVOT at someone leaves the body ninety degrees off -- which
+			read as "not tracking" even though he was turning correctly the whole
+			time, because the error was a constant offset rather than a failure.
+
+			So the twist between the two is measured once, here, and cancelled
+			every time he turns. Same family as pivot-is-not-centre, one step
+			further in: a model's pivot tells you nothing about which way the
+			thing inside it is looking.
+		]]
+		local rigPart = npc:FindFirstChild("HumanoidRootPart", true)
+			or npc:FindFirstChildWhichIsA("BasePart", true)
+		local rigTwist = npc:GetPivot().Rotation:Inverse() * rigPart.CFrame.Rotation
+
 		local function stand(lookAt)
-			local aim = CFrame.lookAt(at, Vector3.new(lookAt.X, at.Y, lookAt.Z))
+			local dir = Vector3.new(lookAt.X - at.X, 0, lookAt.Z - at.Z)
+			if dir.Magnitude < 0.1 then
+				dir = Vector3.new(0, 0, 1)
+			end
+			local face = CFrame.lookAt(Vector3.zero, dir.Unit).Rotation
+			local aim = CFrame.new(at) * face * rigTwist:Inverse()
+
 			npc:PivotTo(aim)
 			local box, size = npc:GetBoundingBox()
 			local drift = npc:GetPivot().Position - box.Position
@@ -319,11 +348,11 @@ function Friend.init(ctx)
 			end
 		end)
 
-		--[[ RECURSIVE, both of them. The asset wraps its rig in another Model,
-		     so a shallow lookup finds only that wrapper and returns nil -- which
-		     silently skipped the prompt and left an NPC nobody could talk to. ]]
-		local root = npc:FindFirstChild("HumanoidRootPart", true)
-			or npc:FindFirstChildWhichIsA("BasePart", true)
+		--[[ Same part the twist was measured from: recursive, because the asset
+		     wraps its rig in another Model and a shallow lookup returns nil --
+		     which silently skipped the prompt and left an NPC nobody could talk
+		     to. ]]
+		local root = rigPart
 		if root then
 			prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "TalkPrompt"
