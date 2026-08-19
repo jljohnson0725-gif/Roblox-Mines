@@ -918,11 +918,26 @@ function PlotService.tickCollect(player)
 	]]
 	local home = plot.model and plot.model:FindFirstChild("Home")
 	local interior = home and home:FindFirstChild("Interior")
-	local collectPad = interior and interior:FindFirstChild("CollectPad")
+	local zone = interior and interior:FindFirstChild("CollectZone")
 
+	--[[
+		A RADIUS, NOT A BOX.
+
+		The trigger is a circle round the desk because the thing marking it is a
+		ring, and a box behind a circle means the corners pay out and the edges
+		do not -- a difference the player can feel and cannot see. HomeService
+		writes the radius onto the zone so the two can never disagree; changing
+		the ring's size in one place changes both.
+
+		Compared in XZ only. A player jumping next to their desk is still next
+		to their desk.
+	]]
 	local claimed = 0
-	if collectPad then
-		if withinPad(root, collectPad, 8) then
+	if zone then
+		local radius = zone:GetAttribute("Radius") or 9
+		local flat = Vector3.new(root.Position.X - zone.Position.X, 0,
+			root.Position.Z - zone.Position.Z)
+		if flat.Magnitude <= radius then
 			for index = 1, #plot.pads do
 				local amount = profile.pending[index] or 0
 				if amount >= 1 then
@@ -947,6 +962,16 @@ function PlotService.tickCollect(player)
 	end
 
 	profile.money += math.floor(claimed)
+
+	--[[ The chime, played FROM the desk rather than into the player's head, so
+	     it is positional and tells you the sound belongs to that object.
+	     Server-side Play() replicates, and only fires on a claim that actually
+	     moved money -- tickCollect runs constantly while you stand there, and a
+	     sound on every tick would be a buzz, not a reward. ]]
+	local zoneSound = zone and zone:FindFirstChildWhichIsA("Sound")
+	if zoneSound then
+		zoneSound:Play()
+	end
 
 	--[[ The one place that can honestly say a pile was collected. The coach's
 	     last step reads this: inferring it client-side from `pending == 0` is

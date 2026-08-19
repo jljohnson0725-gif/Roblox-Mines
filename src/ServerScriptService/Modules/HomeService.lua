@@ -62,6 +62,34 @@ local DOOR_HEIGHT = 13
 ]]
 local FLOOR_LIFT = 0.06
 
+--[[
+	THE COLLECT RING: how far from the desk banking happens, and where the ring
+	sits relative to the desk.
+
+	Deliberately generous. The thing this replaced was a 14x14 slab you had to
+	stand ON, and the reason it was that big is that it was the trigger and the
+	sign for the trigger at once. Splitting those means the ring can read as
+	furniture-scale while the radius stays forgiving -- you should never be
+	stood next to your own desk wondering why nothing happened.
+
+	The ring is offset toward the door rather than centred on the desk, because
+	a circle centred on a 13-stud desk is half underneath it.
+]]
+local COLLECT_RADIUS = 9
+local RING_STANDOFF = 5
+local RING_COLOR = Color3.fromRGB(178, 240, 200)
+
+--[[
+	PLACEHOLDER. 524440363 -- the id given for this sound -- is the DESK model
+	(AssetTypeId 10, "Computer set up and Table w/ Chair!"), not audio; it was
+	the same number as the model and got repeated by mistake. Checked with
+	GetProductInfo rather than discovered by silence.
+
+	Until a real id arrives this borrows the unlock sting, which is already the
+	game's "you got something" sound. Swap the number, nothing else.
+]]
+local COLLECT_SOUND = 136993031050456
+
 local converted = {}
 
 --[[
@@ -840,51 +868,123 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	rug.Parent = shell
 
 	--[[
-		ONE COLLECT PAD, by the door.
+		THE DESK, AT THE FAR END OF THE AISLE.
 
-		Every slot used to carry its own collect strip, so an empty pad was a
-		bright teal tile lying on the floor and five of them read as five bugs.
-		Banking is not a per-brainrot decision anyway -- you always want all of
-		it -- so eight strips were eight places to stand for one action.
+		This replaces a 14x14 slab of neon lying in the walkway. The slab was
+		honest -- stand here, get paid -- and it looked like a debug volume,
+		because it WAS the trigger as well as the sign for it. Separating those
+		is what lets the collector be furniture: the desk is the thing you see,
+		a ring on the floor is the thing you read, and the trigger is a radius
+		neither of them has to match.
 
-		Placed at the entrance because it is the thing you walk over on the way
-		in and out, which is exactly when you want your money.
+		Put at the BACK, not by the door, so the walk to it runs the length of
+		your own collection. The room stops being a corridor with a pad in it
+		and becomes somewhere you walk past your brainrots to reach the machine
+		that pays you. It is also the machine the endgame runs on -- the
+		peptides get ordered from this desk -- so it earns being the thing at
+		the end of the room.
 	]]
-	local pad = Instance.new("Part")
-	pad.Name = "CollectPad"
-	pad.Anchored = true
-	pad.CanCollide = false
-	--[[ Laid ON the floor, not sunk into it. It used to be 0.3 thick centred so
-	     its top landed at exactly the floor's surface, and the two coplanar
-	     up-facing faces fought over a 14x14 patch -- which is the flicker. ]]
-	pad.Size = Vector3.new(14, 0.14, DOOR_WIDTH)
-	pad.CFrame = CFrame.new(
-		Vector3.new(cx, deck + 0.6 + FLOOR_LIFT + 0.07, cz)
-			+ facing * (math.abs(facing.X) > 0.5 and hx - 10 or hz - 10))
-	pad.Color = Color3.fromRGB(96, 226, 130)
-	pad.Material = Enum.Material.Neon
-	pad.Transparency = 0.35
-	pad.Parent = shell
+	local deskTemplate = ReplicatedStorage:FindFirstChild("DeskTemplate")
+	local backReach = (math.abs(facing.X) > 0.5) and hx or hz
+	if deskTemplate then
+		local desk = deskTemplate:Clone()
+		desk.Name = "Desk"
 
-	local padGui = Instance.new("BillboardGui")
-	padGui.Name = "CollectLabel"
-	padGui.Size = UDim2.fromOffset(150, 40)
-	padGui.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
-	padGui.MaxDistance = 70
-	padGui.Parent = pad
+		--[[ The rig is approached from its -X side (chair at x=-2.5, desk top
+		     at x=+1.5), so local +X has to point AWAY from the door. Built with
+		     fromMatrix rather than a yaw angle because "which way does +X go"
+		     is the thing being stated; an angle would need rediscovering. ]]
+		local deskAt = Vector3.new(cx, deck + 0.6, cz) - facing * (backReach - 7)
+		local aim = CFrame.fromMatrix(deskAt, -facing, Vector3.new(0, 1, 0))
 
-	local padText = Instance.new("TextLabel")
-	padText.Size = UDim2.fromScale(1, 1)
-	padText.BackgroundTransparency = 1
-	padText.Font = Enum.Font.GothamBlack
-	padText.TextScaled = true
-	padText.TextColor3 = Color3.fromRGB(120, 255, 160)
-	padText.TextStrokeTransparency = 0.3
-	padText.Text = "COLLECT"
-	padText.Parent = padGui
-	local padCap = Instance.new("UITextSizeConstraint")
-	padCap.MaxTextSize = 16
-	padCap.Parent = padText
+		--[[ PLACED BY ITS BOX, NOT ITS PIVOT, and standing on the floor rather
+		     than centred on it. A model's pivot is wherever the asset's author
+		     left it -- for this rig it is the bounding-box centre, so pivoting
+		     to floor level buried the desk 5.6 studs under it. Aim, measure the
+		     drift, aim again: the offset can only be known once the model is
+		     somewhere. Fifth time this project has paid for pivot-is-not-centre,
+		     after the race runners, the building, the pads and the saddle. ]]
+		desk:PivotTo(aim)
+		local box, boxSize = desk:GetBoundingBox()
+		local drift = desk:GetPivot().Position - box.Position
+		desk:PivotTo(aim + drift + Vector3.new(0, boxSize.Y / 2, 0))
+		desk.Parent = shell
+
+		for _, part in ipairs(desk:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored = true
+				part.CanCollide = true
+			end
+		end
+
+		--[[
+			THE RING. A circle you step into, drawn as an OUTLINE rather than a
+			disc -- a filled 18-stud circle is the neon slab again, just round.
+
+			Segments, because Roblox has no torus and no annulus. The count is
+			derived from the radius so the polygon stays smooth if the radius
+			changes; at a fixed count a bigger ring visibly becomes a polygon.
+			Lifted off the floor by FLOOR_LIFT, or it z-fights exactly the way
+			the pad did.
+		]]
+		local ring = Instance.new("Model")
+		ring.Name = "CollectRing"
+		ring.Parent = shell
+
+		local ringAt = deskAt + facing * RING_STANDOFF
+		local segments = math.clamp(math.floor(COLLECT_RADIUS * 4), 24, 72)
+		local step = math.pi * 2 / segments
+		-- chord length, so neighbours meet instead of leaving gaps
+		local segLen = 2 * COLLECT_RADIUS * math.sin(step / 2) + 0.15
+		for i = 0, segments - 1 do
+			local a = i * step
+			local seg = Instance.new("Part")
+			seg.Name = "RingSegment"
+			seg.Anchored = true
+			seg.CanCollide = false
+			seg.CastShadow = false
+			seg.Size = Vector3.new(segLen, 0.08, 0.55)
+			seg.CFrame = CFrame.new(
+				ringAt + Vector3.new(math.cos(a), 0, math.sin(a)) * COLLECT_RADIUS
+					+ Vector3.new(0, 0.6 + FLOOR_LIFT + 0.04, 0))
+				--[[ Minus a quarter turn, and it matters: CFrame.Angles(0, -a, 0)
+				     sends local +X along the RADIUS, so the segments came out as
+				     a sunburst of spokes rather than a ring. The length was
+				     right the whole time, which is why it looked like a gap
+				     problem. +X has to land on the tangent. ]]
+				* CFrame.Angles(0, -a - math.pi / 2, 0)
+			seg.Color = RING_COLOR
+			seg.Material = Enum.Material.Neon
+			seg.Transparency = 0.35
+			seg.Parent = ring
+		end
+
+		--[[ The trigger itself: invisible, and NOT the ring. PlotService checks
+		     a radius against this part, so the ring can be restyled or removed
+		     without touching what actually collects. ]]
+		local zone = Instance.new("Part")
+		zone.Name = "CollectZone"
+		zone.Anchored = true
+		zone.CanCollide = false
+		zone.CanQuery = false
+		zone.CanTouch = false
+		zone.Transparency = 1
+		zone.Size = Vector3.new(1, 1, 1)
+		zone.CFrame = CFrame.new(ringAt + Vector3.new(0, 3, 0))
+		zone:SetAttribute("Radius", COLLECT_RADIUS)
+		zone.Parent = shell
+
+		--[[ Parented in the world so the chime plays FROM the desk rather than
+		     inside your head. Played server-side, which replicates. ]]
+		local chime = Instance.new("Sound")
+		chime.Name = "CollectSound"
+		chime.SoundId = "rbxassetid://" .. COLLECT_SOUND
+		chime.Volume = 0.55
+		chime.RollOffMaxDistance = 90
+		chime.Parent = zone
+	end
+
+
 
 	--[[ The per-slot strips stop pretending to be collect zones. They stay as
 	     the pad surface -- you still need to see where a brainrot goes -- but in
@@ -969,13 +1069,19 @@ function HomeService.applyTier(base, rebirths)
 				part.Color = tier.trim
 			elseif part.Name == "Carpet" then
 				part.Color = tier.carpet
-			elseif part.Name == "CollectPad" then
-				part.Color = tier.accent
-				local label = part:FindFirstChild("CollectLabel")
-				local text = label and label:FindFirstChildWhichIsA("TextLabel")
-				if text then
-					text.TextColor3 = tier.accent
-				end
+			end
+		end
+	end
+
+	--[[ The ring lives in its own model, so it is walked separately. It takes
+	     the tier accent lightened toward white -- a floor marking wants to read
+	     as a marking, not as a second light source competing with the bulbs. ]]
+	local ring = shell:FindFirstChild("CollectRing")
+	if ring then
+		local marked = tier.accent:Lerp(Color3.new(1, 1, 1), 0.45)
+		for _, seg in ipairs(ring:GetChildren()) do
+			if seg:IsA("BasePart") then
+				seg.Color = marked
 			end
 		end
 	end

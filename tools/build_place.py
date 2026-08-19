@@ -34,6 +34,7 @@ SRC = ROOT / "src"
 MAP = ROOT / "assets" / "map.rbxlx"
 MESHES = ROOT / "assets" / "meshes.json"
 APARTMENT = ROOT / "assets" / "apartment.psv"
+DESK = ROOT / "assets" / "desk.psv"
 OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
@@ -240,21 +241,25 @@ MATERIALS = {
 }
 
 
-def build_apartment():
+def build_psv_template(path, model_name):
     """
-    ReplicatedStorage.ApartmentTemplate, from assets/apartment.psv.
+    One ReplicatedStorage model, built from a .psv of parts.
 
-    Extracted from a Creator Store model rather than referenced, because a
+    Extracted from Creator Store models rather than referenced, because a
     Studio-inserted model only survives a rebuild if it lives in the map -- and
     hand-placing one per base, then re-exporting an 18MB map whenever one moves,
-    is not a pipeline. This way the building is source.
+    is not a pipeline. This way the furniture is source.
+
+    Takes a path rather than being hardcoded to the apartment: the desk arrived
+    on the same pipeline, and two near-identical copies of this loop is how the
+    two quietly drift apart.
     """
-    if not APARTMENT.is_file():
+    if not path.is_file():
         return None, 0
 
-    folder = make_item("Model", "ApartmentTemplate")
+    folder = make_item("Model", model_name)
     count = 0
-    for line in APARTMENT.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -380,13 +385,16 @@ def main():
         # Baked mesh library rides along in ReplicatedStorage. Built after the
         # referent namespace is claimed so its ids can't collide with the map's.
         mesh_folder, mesh_count, skin_count = build_mesh_library()
-        apartment, apartment_parts = build_apartment()
+        apartment, apartment_parts = build_psv_template(APARTMENT, "ApartmentTemplate")
+        desk, desk_parts = build_psv_template(DESK, "DeskTemplate")
         for service, items in service_items:
             if service == "ReplicatedStorage":
                 if mesh_folder is not None:
                     items.append(mesh_folder)
                 if apartment is not None:
                     items.append(apartment)
+                if desk is not None:
+                    items.append(desk)
                 break
 
         injected = 0
@@ -412,6 +420,8 @@ def main():
             print("  mesh library: %d characters, %d variant skins" % (mesh_count, skin_count))
         if apartment is not None:
             print("  apartment template: %d parts" % apartment_parts)
+        if desk is not None:
+            print("  desk template: %d parts" % desk_parts)
         print("  injected %d top-level items across %d services"
               % (injected, len(service_items)))
     else:
