@@ -497,6 +497,46 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	end
 
 	--[[
+		THE GROUND FLOOR'S OWN SHOPFRONT GOES.
+
+		The template's ground floor is a glazed storefront: 8x10 glass panels
+		hung on a metal mullion grid, sitting about a third of a stud in front of
+		where our wall now stands. Our wall has its own windows cut into it and
+		they do not line up, so looking out through one of ours you saw a sheet
+		of glass and a grid of frames hanging in mid-air with daylight behind
+		them. That is the "floating windows outside".
+
+		BOTH MATERIALS, because removing only the glass left the frames -- and an
+		empty frame floating in front of a wall reads worse than a glazed one.
+		The frame is one 42x10x42 metal mesh, which is also why probing this by
+		raycast kept coming back as the concrete wall behind it: a sparse fan of
+		rays slips between mullions and reports whatever is behind them. It took
+		a dense sweep to catch it.
+
+		Only the GROUND FLOOR goes. The upper storeys are glazed the same way and
+		none of it is redundant up there, because there is no room of ours behind
+		it -- so the cut-off is the height of our ceiling, and the 47x11x64 slabs
+		that start above it are left exactly as they are.
+
+		The colonnade stays. Columns and the cornice above them give the entrance
+		a porch, and none of them read as floating -- they meet the ground.
+	]]
+	local deglazed = 0
+	for _, part in ipairs(home:GetDescendants()) do
+		local skin = part:IsA("BasePart")
+			and (part.Material == Enum.Material.Glass
+				or part.Material == Enum.Material.Metal)
+		if skin and not part:IsDescendantOf(shell)
+			and part.Position.Y - part.Size.Y / 2 < deck + HEIGHT - 3
+			and part.Position.Y + part.Size.Y / 2 > deck
+		then
+			part.Transparency = 1
+			part.CanCollide = false
+			deglazed += 1
+		end
+	end
+
+	--[[
 		CLEAR THE DOORWAY.
 
 		Leaving a gap in OUR wall does not make a hole in the building: the
@@ -767,9 +807,9 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	HomeService.applyTier(base, 0)
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d slots, facing %s")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d shopfront parts removed, %d slots, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
-			hidden, hollowed, doored, lit, windows, cleared, moved,
+			hidden, hollowed, doored, lit, windows, cleared, deglazed, moved,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end
