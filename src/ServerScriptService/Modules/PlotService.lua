@@ -1178,6 +1178,14 @@ local function assignPlot(player)
 		if plot.userId == nil then
 			plot.userId = player.UserId
 			byUserId[player.UserId] = plot
+			--[[ Published as an attribute so the CLIENT can tell which of the
+			     seven bases is its own. It could not before: assignment lives
+			     entirely on the server, and the only outward sign was the owner
+			     nameplate's text, which is a display string and a bad thing to
+			     parse. UI/Friend needs this to stand outside the right door. ]]
+			if plot.model then
+				plot.model:SetAttribute("OwnerUserId", player.UserId)
+			end
 			return plot
 		end
 	end
@@ -1192,6 +1200,9 @@ local function releasePlot(player)
 	end
 	byUserId[player.UserId] = nil
 	plot.userId = nil
+	if plot.model then
+		plot.model:SetAttribute("OwnerUserId", nil)
+	end
 
 	--[[ Back to the bare studio. A base keeps whatever it was last painted, so
 	     without this the next player to claim it walks into the penthouse the

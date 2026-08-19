@@ -30,6 +30,7 @@ local PlinkoService = require(Modules.PlinkoService)
 local MountService = require(Modules.MountService)
 local RaceService = require(Modules.RaceService)
 local HomeService = require(Modules.HomeService)
+local FriendService = require(Modules.FriendService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
@@ -58,6 +59,7 @@ WheelService.clearSite()
      the slots out from under those cached coordinates -- brainrots were placed
      on the old grid, one of them standing outside the room through a wall. ]]
 HomeService.start()
+FriendService.start()
 
 PlotService.start()
 MinesService.start()

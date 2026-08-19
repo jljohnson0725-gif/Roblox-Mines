@@ -35,6 +35,7 @@ MAP = ROOT / "assets" / "map.rbxlx"
 MESHES = ROOT / "assets" / "meshes.json"
 APARTMENT = ROOT / "assets" / "apartment.psv"
 DESK = ROOT / "assets" / "desk.psv"
+FRIEND = ROOT / "assets" / "friend.rbxmx"
 OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
@@ -297,6 +298,54 @@ def build_psv_template(path, model_name):
     return folder, count
 
 
+def build_rbxmx(path, model_name):
+    """
+    One ReplicatedStorage model lifted straight out of a saved .rbxmx.
+
+    The .psv pipeline carries PARTS -- class, size, CFrame, colour, material --
+    which is everything the apartment and the desk are made of. A character is
+    not: the friend's rig is a Humanoid, six Motor6D joints, a BodyColors, an
+    Accessory, a ShirtGraphic and four Decals, and writing a text format that
+    round-trips all of that is a serialiser, not a pipeline.
+
+    So this one keeps Roblox's own format and is copied through verbatim. The
+    referents are rewritten on the way in, because a model saved out of Studio
+    carries ids from the file it came from and two items sharing a referent in
+    one place file is a corrupt place.
+    """
+    if not path.is_file():
+        return None, 0
+
+    tree = ET.parse(path)
+    items = tree.getroot().findall("Item")
+    if not items:
+        return None, 0
+
+    #[[ A .rbxmx has one or more roots; take the first, and if it is a wrapper
+    #   holding the real rig, keep the wrapper -- FriendService finds the
+    #   Humanoid wherever it sits. ]]
+    model = items[0]
+    for node in model.iter("Item"):
+        node.set("referent", fresh_referent())
+
+    props = node_props(model)
+    name = props.find("string[@name='Name']")
+    if name is None:
+        name = ET.SubElement(props, "string", {"name": "Name"})
+    name.text = model_name
+
+    parts = sum(1 for n in model.iter("Item")
+                if n.get("class") in ("Part", "MeshPart", "WedgePart", "UnionOperation"))
+    return model, parts
+
+
+def node_props(item):
+    props = item.find("Properties")
+    if props is None:
+        props = ET.SubElement(item, "Properties")
+    return props
+
+
 def merge_into(dest, new_child):
     """Merge one item into dest, replacing or recursing by Name."""
     nm = name_of(new_child)
@@ -387,6 +436,7 @@ def main():
         mesh_folder, mesh_count, skin_count = build_mesh_library()
         apartment, apartment_parts = build_psv_template(APARTMENT, "ApartmentTemplate")
         desk, desk_parts = build_psv_template(DESK, "DeskTemplate")
+        friend, friend_parts = build_rbxmx(FRIEND, "FriendTemplate")
         for service, items in service_items:
             if service == "ReplicatedStorage":
                 if mesh_folder is not None:
@@ -395,6 +445,8 @@ def main():
                     items.append(apartment)
                 if desk is not None:
                     items.append(desk)
+                if friend is not None:
+                    items.append(friend)
                 break
 
         injected = 0
@@ -422,6 +474,10 @@ def main():
             print("  apartment template: %d parts" % apartment_parts)
         if desk is not None:
             print("  desk template: %d parts" % desk_parts)
+        if friend is not None:
+            print("  friend template: %d parts" % friend_parts)
+        elif not FRIEND.is_file():
+            print("  friend template: SKIPPED (no assets/friend.rbxmx)")
         print("  injected %d top-level items across %d services"
               % (injected, len(service_items)))
     else:
