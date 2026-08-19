@@ -918,6 +918,92 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 		end
 
 		--[[
+			THE MONITOR, BUILT RATHER THAN IMPORTED.
+
+			The asset's own computer was 72 cubes and it read as a white blob --
+			see the note in assets/desk.psv. This is four parts: a foot, a stem,
+			a bezel and a screen, in the dark greys a monitor actually is.
+
+			Positioned off DESKTOP'S OWN CFRAME, not the room's. The desk has
+			already been rotated to face the door and nudged to sit on the floor,
+			so anything placed in world coordinates here would need both of those
+			re-derived. Asking the desk top where it is means the monitor cannot
+			drift away from the desk no matter what moves it.
+
+			In that frame X is across the desk's 5-stud width and Z is along its
+			13-stud length, so a screen facing the chair is THIN IN X and wide in
+			Z -- which is why the sizes look transposed.
+		]]
+		local deskTop = desk:FindFirstChild("DeskTop", true)
+		if deskTop then
+			local function fitting(name, size, offset, color)
+				local part = Instance.new("Part")
+				part.Name = name
+				part.Anchored = true
+				part.CanCollide = false
+				part.CastShadow = false
+				part.Size = size
+				part.CFrame = deskTop.CFrame * CFrame.new(offset)
+				part.Color = color
+				part.Material = Enum.Material.SmoothPlastic
+				part.TopSurface = Enum.SurfaceType.Smooth
+				part.BottomSurface = Enum.SurfaceType.Smooth
+				part.Parent = desk
+				return part
+			end
+
+			local surface = 0.2 -- the desk top's upper face, in its own frame
+			fitting("MonitorFoot", Vector3.new(1.4, 0.25, 3.0),
+				Vector3.new(1.2, surface + 0.125, 0), Color3.fromRGB(28, 28, 32))
+			fitting("MonitorStem", Vector3.new(0.4, 1.8, 0.5),
+				Vector3.new(1.2, surface + 1.15, 0), Color3.fromRGB(28, 28, 32))
+			fitting("MonitorBezel", Vector3.new(0.32, 4.2, 6.8),
+				Vector3.new(1.2, surface + 4.1, 0), Color3.fromRGB(20, 20, 24))
+
+			--[[ Proud of the bezel on the CHAIR side (-X), which is also the
+			     side you walk in from, so the readout faces the door. ]]
+			local screen = fitting("MonitorScreen", Vector3.new(0.12, 3.5, 6.1),
+				Vector3.new(1.02, surface + 4.1, 0), Color3.fromRGB(14, 18, 26))
+			screen.Material = Enum.Material.Neon
+
+			local face = Instance.new("SurfaceGui")
+			face.Name = "Readout"
+			face.Face = Enum.NormalId.Left -- -X, the chair side
+			face.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			face.PixelsPerStud = 48
+			face.LightInfluence = 0
+			face.Parent = screen
+
+			local bg = Instance.new("Frame")
+			bg.Size = UDim2.fromScale(1, 1)
+			bg.BackgroundColor3 = Color3.fromRGB(12, 16, 24)
+			bg.BorderSizePixel = 0
+			bg.Parent = face
+
+			local rate = Instance.new("TextLabel")
+			rate.Name = "Rate"
+			rate.BackgroundTransparency = 1
+			rate.Size = UDim2.fromScale(1, 0.34)
+			rate.Position = UDim2.fromScale(0, 0.12)
+			rate.Font = Enum.Font.GothamBlack
+			rate.TextScaled = true
+			rate.TextColor3 = Color3.fromRGB(150, 240, 180)
+			rate.Text = "--/s"
+			rate.Parent = bg
+
+			local ready = Instance.new("TextLabel")
+			ready.Name = "Ready"
+			ready.BackgroundTransparency = 1
+			ready.Size = UDim2.fromScale(1, 0.26)
+			ready.Position = UDim2.fromScale(0, 0.52)
+			ready.Font = Enum.Font.GothamBold
+			ready.TextScaled = true
+			ready.TextColor3 = Color3.fromRGB(120, 150, 190)
+			ready.Text = "READY  $0"
+			ready.Parent = bg
+		end
+
+		--[[
 			THE RING. A circle you step into, drawn as an OUTLINE rather than a
 			disc -- a filled 18-stud circle is the neon slab again, just round.
 

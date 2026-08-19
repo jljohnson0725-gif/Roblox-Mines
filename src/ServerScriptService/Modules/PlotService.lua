@@ -867,6 +867,36 @@ function PlotService.renderPiles(player)
 			renderPile(pad, amount, amount > 0 and 1 or 0)
 		end
 	end
+
+	--[[
+		The desk monitor says what the piles say, in one place you can read from
+		the doorway.
+
+		Driven from here rather than its own loop because renderPiles already
+		runs on the collect cadence and already has both numbers -- a second
+		timer computing the same two figures is how the screen and the strips
+		end up disagreeing by a tick.
+	]]
+	local home = plot.model and plot.model:FindFirstChild("Home")
+	local interior = home and home:FindFirstChild("Interior")
+	local desk = interior and interior:FindFirstChild("Desk")
+	local readout = desk and desk:FindFirstChild("MonitorScreen")
+	readout = readout and readout:FindFirstChild("Readout")
+	if readout then
+		local total = 0
+		for i = 1, #plot.pads do
+			total += profile.pending[i] or 0
+		end
+		local frame = readout:FindFirstChildWhichIsA("Frame")
+		local rate = frame and frame:FindFirstChild("Rate")
+		local ready = frame and frame:FindFirstChild("Ready")
+		if rate then
+			rate.Text = Format.rate(Economy.totalIncome(profile.inventory))
+		end
+		if ready then
+			ready.Text = "READY  " .. Format.money(math.floor(total))
+		end
+	end
 end
 
 local function withinPad(root, part, pad)
