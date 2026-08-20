@@ -32,6 +32,7 @@ local FUNCTIONS = {
 	"RaceOdds", -- the field list with this player's odds
 	"BuyRaceSpeed", -- one level of racing consistency
 	"RequestState", -- client pulls on startup, so it can't miss the first push
+	"ReplayIntro", -- run the cold open again on demand; does not clear the seen flag
 }
 
 --[[
@@ -54,6 +55,7 @@ local EVENTS = {
 	"OpenSummon", -- the perch was used; let them pick a ride
 	"OpenRace", -- the podium was used; show the fields
 	"OpenWheel", -- the wheel console was used
+	"PlayIntro", -- roll the cold open on this client
 }
 
 local folder

@@ -31,6 +31,7 @@ local MountService = require(Modules.MountService)
 local RaceService = require(Modules.RaceService)
 local HomeService = require(Modules.HomeService)
 local FriendService = require(Modules.FriendService)
+local IntroService = require(Modules.IntroService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
 
@@ -60,6 +61,7 @@ WheelService.clearSite()
      on the old grid, one of them standing outside the room through a wall. ]]
 HomeService.start()
 FriendService.start()
+IntroService.start()
 
 PlotService.start()
 MinesService.start()
@@ -118,6 +120,7 @@ local function onPlayerAdded(player)
 	DataService.load(player)
 	PlotService.assign(player)
 	PlotService.refresh(player)
+	IntroService.consider(player)
 	PlayerState.push(player)
 
 	player.CharacterAdded:Connect(function(character)

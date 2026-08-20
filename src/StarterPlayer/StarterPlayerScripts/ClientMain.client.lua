@@ -34,6 +34,7 @@ local WheelUI = require(UI.WheelUI)
 local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
 local Friend = require(UI.Friend)
+local Intro = require(UI.Intro)
 local Flight = require(UI.Flight)
 local Tutorial = require(UI.Tutorial)
 local RebirthUI = require(UI.RebirthUI)
@@ -134,6 +135,33 @@ local summonUI = SummonUI.init(ctx)
 local raceUI = RaceUI.init(ctx)
 Coach.init(ctx)
 Friend.init(ctx)
+local intro = Intro.init(ctx)
+
+--[[
+	A handle the command bar can reach, for tuning the cutscene.
+
+	NOT _G: the console runs in its own Luau VM, so it sees a different _G and a
+	different require cache than the game does -- the same separation that makes
+	a module required there a separate instance. A BindableFunction lives in the
+	datamodel instead, which both share.
+
+	  ReplicatedStorage.IntroPreview:Invoke(2.5)   -- hold at t = 2.5s
+	  ReplicatedStorage.IntroPreview:Invoke(nil)   -- put everything back
+]]
+local previewBridge = Instance.new("BindableFunction")
+previewBridge.Name = "IntroPreview"
+previewBridge.OnInvoke = function(t)
+	if t == nil then
+		intro.previewStop()
+		return "stopped"
+	end
+	intro.preview(t)
+	return ("held at t=%.2f"):format(t)
+end
+previewBridge.Parent = ReplicatedStorage
+Net.get("PlayIntro").OnClientEvent:Connect(function()
+	intro.play()
+end)
 -- Gates the first two steps; Coach carries the rest as a suggestion.
 Tutorial.init(ctx)
 -- Not a panel: it poses characters and drives flight, so it never enters the

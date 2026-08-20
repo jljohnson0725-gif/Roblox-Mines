@@ -77,7 +77,7 @@ local function newProfile()
 		     `collected` records that a cash pile has actually been banked (the
 		     coach's last step reads it), and `done` latches once the whole loop
 		     has worked, so the coach never returns for an existing player. ]]
-		onboarding = { drops = Config.OnboardingDrops, collected = false, done = false },
+		onboarding = { drops = Config.OnboardingDrops, collected = false, done = false, introSeen = false },
 		stats = {
 			rounds = 0,
 			busts = 0,
@@ -115,11 +115,19 @@ local function reconcile(profile)
 	if type(profile.fragments) ~= "table" then profile.fragments = {} end
 	if type(profile.seals) ~= "table" then profile.seals = {} end
 	if type(profile.onboarding) ~= "table" then
-		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false }
+		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false, introSeen = false }
 	end
 	profile.onboarding.drops = tonumber(profile.onboarding.drops) or 0
 	profile.onboarding.collected = profile.onboarding.collected == true
 	profile.onboarding.done = profile.onboarding.done == true
+	--[[ Old saves predate the cold open. They are EXISTING players, so the
+	     kind thing and the correct thing agree: they have already lived the
+	     breakup, and replaying it now would be a cutscene about a game they
+	     have been playing for weeks. ]]
+	if profile.onboarding.introSeen == nil then
+		profile.onboarding.introSeen = (profile.stats and (profile.stats.rounds or 0) > 0) or false
+	end
+	profile.onboarding.introSeen = profile.onboarding.introSeen == true
 
 	--[[ Saves made before the index existed still hold proof of discovery in
 	     the inventory, so seed from it rather than starting everyone at zero. ]]

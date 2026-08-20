@@ -35,7 +35,15 @@ MAP = ROOT / "assets" / "map.rbxlx"
 MESHES = ROOT / "assets" / "meshes.json"
 APARTMENT = ROOT / "assets" / "apartment.psv"
 DESK = ROOT / "assets" / "desk.psv"
-FRIEND = ROOT / "assets" / "friend.rbxmx"
+#[[ Rigs come through as Roblox's own model format rather than .psv, because
+#   a character is joints and Humanoids and decals, not just parts. Add a row
+#   and the file rides along -- injection, referent rewriting and the shared
+#   string merge below are all driven off this list, so a new rig cannot
+#   repeat the dangling-blob corruption that a hand-wired second one would. ]]
+RIGS = [
+    (ROOT / "assets" / "friend.rbxmx", "FriendTemplate"),
+    (ROOT / "assets" / "ex.rbxmx", "ExTemplate"),
+]
 OUT = ROOT / "BrainrotMines.rbxlx"
 
 SERVICES = ["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "Lighting"]
@@ -325,8 +333,50 @@ def build_rbxmx(path, model_name):
     #   holding the real rig, keep the wrapper -- FriendService finds the
     #   Humanoid wherever it sits. ]]
     model = items[0]
+
+    #[[
+    #   REFERENTS ARE REMAPPED, NOT JUST REISSUED, and the difference is every
+    #   joint in the rig.
+    #
+    #   Giving each Item a fresh referent stops it colliding with the map's own
+    #   ids. But half the things in a character are POINTERS to other items --
+    #   Motor6D.Part0 and .Part1, Attachment0/1, ObjectValues, WrapLayer targets
+    #   -- and each is stored as a <Ref> holding a referent string. Reissuing the
+    #   ids without rewriting the pointers leaves all fifteen joints aimed at
+    #   referents that no longer exist, and Roblox resolves those to nil.
+    #
+    #   It fails SILENTLY and it does not look like this. The rig loads, every
+    #   part is present, nothing warns -- and then posing it moves nothing,
+    #   because walking outward from the root finds no joints attached to
+    #   anything. It reads as a bug in the pose code. The friend has been
+    #   shipping with fifteen broken joints for exactly this reason and nobody
+    #   noticed, because anchored scenery never asks its joints a question.
+    #
+    #   So: map old -> new first, then rewrite every <Ref> that points inside the
+    #   subtree. A Ref pointing OUTSIDE it is left alone -- it was already
+    #   dangling and inventing a target would be worse than the dangle.
+    # ]]
+    remap = {}
     for node in model.iter("Item"):
-        node.set("referent", fresh_referent())
+        old = node.get("referent")
+        new = fresh_referent()
+        if old:
+            remap[old] = new
+        node.set("referent", new)
+
+    rewired, dangling = 0, 0
+    for ref in model.iter("Ref"):
+        target = (ref.text or "").strip()
+        if not target or target == "null":
+            continue
+        if target in remap:
+            ref.text = remap[target]
+            rewired += 1
+        else:
+            dangling += 1
+    if dangling:
+        print("  %s: %d reference(s) point outside the model, left as-is"
+              % (path.name, dangling))
 
     props = node_props(model)
     name = props.find("string[@name='Name']")
@@ -455,7 +505,10 @@ def main():
         mesh_folder, mesh_count, skin_count = build_mesh_library()
         apartment, apartment_parts = build_psv_template(APARTMENT, "ApartmentTemplate")
         desk, desk_parts = build_psv_template(DESK, "DeskTemplate")
-        friend, friend_parts, friend_shared = build_rbxmx(FRIEND, "FriendTemplate")
+        rigs = []
+        for rig_path, rig_name in RIGS:
+            node, node_parts, node_shared = build_rbxmx(rig_path, rig_name)
+            rigs.append((rig_path, rig_name, node, node_parts, node_shared))
         for service, items in service_items:
             if service == "ReplicatedStorage":
                 if mesh_folder is not None:
@@ -464,8 +517,9 @@ def main():
                     items.append(apartment)
                 if desk is not None:
                     items.append(desk)
-                if friend is not None:
-                    items.append(friend)
+                for _, _, node, _, _ in rigs:
+                    if node is not None:
+                        items.append(node)
                 break
 
         injected = 0
@@ -490,13 +544,14 @@ def main():
         #   by md5 so a blob the map already has is not duplicated. Without
         #   this the references written above dangle and the place will not
         #   open. ]]
-        if friend is not None and friend_shared:
+        pending = [b for _, _, node, _, shared in rigs if node is not None for b in shared]
+        if pending:
             block = root.find("SharedStrings")
             if block is None:
                 block = ET.SubElement(root, "SharedStrings")
             have = {e.get("md5") for e in block.findall("SharedString")}
             added = 0
-            for blob in friend_shared:
+            for blob in pending:
                 if blob.get("md5") not in have:
                     block.append(blob)
                     have.add(blob.get("md5"))
@@ -510,10 +565,11 @@ def main():
             print("  apartment template: %d parts" % apartment_parts)
         if desk is not None:
             print("  desk template: %d parts" % desk_parts)
-        if friend is not None:
-            print("  friend template: %d parts" % friend_parts)
-        elif not FRIEND.is_file():
-            print("  friend template: SKIPPED (no assets/friend.rbxmx)")
+        for rig_path, rig_name, node, node_parts, _ in rigs:
+            if node is not None:
+                print("  %s: %d parts" % (rig_name, node_parts))
+            else:
+                print("  %s: SKIPPED (no %s)" % (rig_name, rig_path.name))
         print("  injected %d top-level items across %d services"
               % (injected, len(service_items)))
     else:
