@@ -144,6 +144,29 @@ function Tutorial.init(ctx)
 		opened = true
 		local character = player.Character or player.CharacterAdded:Wait()
 		character:WaitForChild("HumanoidRootPart")
+
+		--[[
+			AFTER THE COLD OPEN, not on top of it.
+
+			This used to fire 1.2 seconds after the character loaded, which is
+			the same moment the intro starts. Two cutscenes then fought over one
+			camera -- and because this one sets Scriptable, the intro captured
+			THAT as the state to restore, handed it back at the end, and left the
+			player looking at empty sky unable to move.
+
+			Bounded, so a cold open that never finishes cannot cost the player
+			this as well.
+		]]
+		local deadline = os.clock() + 45
+		while os.clock() < deadline do
+			local busy = player:GetAttribute("CutscenePlaying")
+				or player.PlayerGui:FindFirstChild("IntroEpilogue")
+				or player.PlayerGui:FindFirstChild("ColdOpenCover")
+			if not busy then
+				break
+			end
+			task.wait(0.25)
+		end
 		task.wait(1.2)
 		Cutscene.play(opening(character), "Skip intro")
 	end)

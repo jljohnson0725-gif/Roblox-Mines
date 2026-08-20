@@ -1538,20 +1538,43 @@ local function playEpilogue(player, saved, out)
 	cam.CFrame = CFrame.lookAt(from, aimFrom)
 	TweenService:Create(black, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play()
 
+	--[[
+		SELF-LIMITING, and tracked from outside.
+
+		This loop pins the camera to Scriptable on every frame, which is what
+		makes it survive anything else grabbing it -- and also what makes it
+		catastrophic if it outlives the scene. Leaked once: the connection stayed
+		up after the set was gone, so the camera sat at the desk's coordinates
+		looking at a destroyed room, showing nothing but skybox, with no way for
+		the player to move it. The game was running perfectly underneath.
+
+		Three guards, because "the player cannot move their camera again" is not
+		a failure worth being clever about:
+		  - `out.conn` so the caller can disconnect it if the epilogue throws
+		  - it stops itself once the set is gone
+		  - and it stops itself on a hard deadline regardless
+	]]
 	local PUSH = 5.6
+	local DEADLINE = PUSH + 6
 	local started = os.clock()
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
-		local k = math.clamp((os.clock() - started) / PUSH, 0, 1)
-		local e = smooth(k)
+		local age = os.clock() - started
+		if age > DEADLINE or not set.Parent then
+			conn:Disconnect()
+			return
+		end
+		local e = smooth(math.clamp(age / PUSH, 0, 1))
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = CFrame.lookAt(from:Lerp(to, e), aimFrom:Lerp(aimTo, e))
 	end)
+	out.conn = conn
 
 	task.wait(PUSH + 0.7)
 	TweenService:Create(black, TweenInfo.new(0.9), { BackgroundTransparency = 0 }):Play()
 	task.wait(1.1)
 	conn:Disconnect()
+	out.conn = nil
 	set:Destroy()
 	out.set = nil
 
@@ -1587,7 +1610,24 @@ function Intro.init(ctx)
 		player:SetAttribute("CutscenePlaying", true)
 
 		local cam = workspace.CurrentCamera
+
+		--[[
+			NEVER HAND BACK A SCRIPTABLE CAMERA.
+
+			This captures whatever it finds and puts it back at the end, which is
+			correct right up until what it finds is Scriptable -- then it
+			faithfully restores a camera the player cannot move, and the NEXT run
+			captures that too. One poisoned value and every future run of the
+			cold open ends with the player stuck, which is exactly what happened:
+			the tutorial's own opening cutscene starts within a second of this
+			one and sets Scriptable, so this captured it.
+
+			Whatever state the camera was in, the player gets a working one back.
+		]]
 		local savedType = cam.CameraType
+		if savedType == Enum.CameraType.Scriptable then
+			savedType = Enum.CameraType.Custom
+		end
 		local savedFov = cam.FieldOfView
 		local savedLighting = snapshotLighting()
 		local char = player.Character
@@ -1904,6 +1944,12 @@ function Intro.init(ctx)
 			if not shown then
 				warn("[Intro] epilogue failed, dropping it: " .. tostring(err2))
 				deferGui = false
+				--[[ FIRST, before anything else: a live loop here owns the
+				     camera every frame and would keep it. ]]
+				if out.conn then
+					out.conn:Disconnect()
+					out.conn = nil
+				end
 				if out.set then
 					out.set:Destroy()
 					out.set = nil
@@ -1920,6 +1966,22 @@ function Intro.init(ctx)
 		local epilogueGui, epilogueBlack = out.gui, out.black
 
 		restore()
+
+		--[[
+			THE CAMERA IS THE PLAYER'S AGAIN, asserted rather than assumed.
+
+			restore() sets it back, but the epilogue drives it from a render loop
+			and any path that leaves one connected outlives restore() and pins it
+			-- which stranded a player looking at empty sky with the game running
+			underneath. Cheap to say twice; expensive to get wrong once.
+		]]
+		if out.conn then
+			out.conn:Disconnect()
+			out.conn = nil
+		end
+		cam.CameraType = savedType
+		cam.FieldOfView = savedFov
+		cam.CameraSubject = hum
 
 		if not epilogueGui then
 			--[[ No epilogue means nothing is going to turn the HUD on later. ]]
