@@ -51,8 +51,13 @@ local TALK_RANGE = 14
 local TOPICS = {
 	{
 		id = "welcome",
-		when = function(state)
-			return (state.stats and (state.stats.rounds or 0) or 0) < 1
+		--[[ Gated on having HEARD it, not on being new. Keyed off rounds first,
+		     which meant playing a single round before saying hello deleted the
+		     introduction permanently -- and the introduction is the one speech
+		     that has to land, because it plants the peptides ending. Now it
+		     waits for you however long you take to walk over. ]]
+		when = function(state, seen)
+			return not seen.welcome
 		end,
 		lines = {
 			"Hey, neighbour!",
@@ -142,9 +147,9 @@ local TOPICS = {
 	},
 }
 
-local function topicFor(state)
+local function topicFor(state, seen)
 	for _, topic in ipairs(TOPICS) do
-		local ok, want = pcall(topic.when, state)
+		local ok, want = pcall(topic.when, state, seen)
 		if ok and want then
 			return topic
 		end
@@ -160,6 +165,9 @@ function Friend.init(ctx)
 	     to a new topic starts it at the beginning while an old one remembers
 	     where you left it. ]]
 	local progress = {}
+	--[[ Which topics have been heard all the way through. Separate from
+	     `progress`, which is only a line index for cycling. ]]
+	local seen = {}
 	local npc, prompt
 
 	-- ── the dialogue card ──────────────────────────────────────────────────
@@ -218,7 +226,7 @@ function Friend.init(ctx)
 	end
 
 	local function open()
-		current = topicFor(state)
+		current = topicFor(state, seen)
 		--[[ Resume where this topic left off, wrapping. Talking to him again in
 		     the same state should not replay line one forever, and should not
 		     dead-end either. ]]
@@ -233,6 +241,7 @@ function Friend.init(ctx)
 		end
 		progress[current.id] = index
 		if index >= #current.lines then
+			seen[current.id] = true
 			card.Visible = false
 			current = nil
 		else
@@ -361,7 +370,11 @@ function Friend.init(ctx)
 			prompt.HoldDuration = 0
 			prompt.MaxActivationDistance = TALK_RANGE
 			prompt.RequiresLineOfSight = false
-			prompt.Parent = root
+			--[[ On the HEAD and nudged up, not on the torso. Anchored at the
+			     root it rendered dead centre of his chest, straight over the
+			     body pillow -- covering the one thing that explains him. ]]
+			prompt.Parent = npc:FindFirstChild("Head", true) or root
+			prompt.UIOffset = Vector2.new(0, -46)
 			prompt.Triggered:Connect(open)
 		end
 		return true
