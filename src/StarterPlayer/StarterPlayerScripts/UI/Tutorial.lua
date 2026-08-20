@@ -236,6 +236,24 @@ function Tutorial.init(ctx)
 		pixels high, which is precisely how far off the first build looked.
 		Subtracting the gui's own origin converts one to the other.
 	]]
+	--[[
+		The dim and the ring, together, because they only make sense together.
+
+		A world target that is off screen has NO rect worth surrounding, and
+		laying the four shades around one anyway dims the entire screen -- which
+		is what happens while the player is walking over to the neighbour, since
+		WorldToViewportPoint reports a positive depth for anything merely outside
+		the frame rather than behind the camera. So off screen keeps the card and
+		drops the highlight entirely.
+	]]
+	local function highlight(on)
+		ring.Visible = on
+		for _, shade in pairs(shades) do
+			shade.BackgroundTransparency = on and (1 - DIM) or 1
+			shade.Active = on
+		end
+	end
+
 	local function frame(rect)
 		local view = gui.AbsoluteSize
 		local origin = gui.AbsolutePosition
@@ -287,6 +305,16 @@ function Tutorial.init(ctx)
 			return
 		end
 
+		--[[ Out of the way entirely while he is talking. Hiding the root takes
+		     the ring, all four shades and the tutorial card with it, which is
+		     the whole overlay -- the dialogue should have the screen to itself
+		     for as long as it is up. ]]
+		if Players.LocalPlayer:GetAttribute("TalkingToNeighbour") then
+			root.Visible = false
+			setGating(false)
+			return
+		end
+
 		local step
 		for index, candidate in ipairs(STEPS) do
 			if not candidate.done(gui, state) then
@@ -315,9 +343,13 @@ function Tutorial.init(ctx)
 			local model = step.world()
 			if model and model.Parent then
 				local cam = workspace.CurrentCamera
-				local box = model:GetPivot().Position
-				local sp = cam:WorldToViewportPoint(box)
-				if sp.Z > 0 then
+				local sp = cam:WorldToViewportPoint(model:GetPivot().Position)
+				local view = cam.ViewportSize
+				--[[ IN FRONT is not the same as IN FRAME. Depth alone still
+				     reports a point twenty thousand pixels off to the right as
+				     visible, so the bounds are checked too. ]]
+				if sp.Z > 0 and sp.X > 0 and sp.X < view.X
+					and sp.Y > 0 and sp.Y < view.Y then
 					local half = 62
 					rect = {
 						Position = Vector2.new(sp.X - half, sp.Y - half * 1.6),
@@ -326,10 +358,20 @@ function Tutorial.init(ctx)
 				end
 			end
 			if not rect then
-				--[[ Not on screen: keep the card up, because the instruction is
-				     "go and find him" and hiding it would leave the player with
-				     nothing to go on. Frame nothing. ]]
-				rect = { Position = Vector2.new(-4000, -4000), Size = Vector2.new(1, 1) }
+				--[[ Not on screen: keep the card, drop the highlight. The
+				     instruction is "go and find him", so hiding the card would
+				     leave the player with nothing to go on -- but dimming the
+				     screen around a hole they cannot see is worse than no dim. ]]
+				root.Visible = true
+				setGating(false)
+				highlight(false)
+				if shown ~= step.key then
+					shown = step.key
+					eyebrow.Text = ("STEP %d OF %d"):format(step.index, #STEPS)
+					title.Text = step.title
+					body.Text = step.body
+				end
+				return
 			end
 		else
 			local target = step.find(gui)
@@ -347,6 +389,7 @@ function Tutorial.init(ctx)
 
 		root.Visible = true
 		setGating(not step.world)
+		highlight(true)
 		frame(rect)
 
 		if shown ~= step.key then

@@ -219,10 +219,19 @@ function Friend.init(ctx)
 
 	local current, index = nil, 1
 
+	--[[ One place decides whether the card is up, and it publishes that on the
+	     player. The tutorial's highlight watches it so the ring and the four
+	     shades get out of the way while he is actually talking -- being told to
+	     go and meet someone, over the top of meeting them, is just clutter. ]]
+	local function setOpen(on)
+		card.Visible = on
+		game.Players.LocalPlayer:SetAttribute("TalkingToNeighbour", on)
+	end
+
 	local function show()
 		body.Text = current.lines[index]
 		advance.Text = (index >= #current.lines) and "Alright" or "Next"
-		card.Visible = true
+		setOpen(true)
 	end
 
 	local function open()
@@ -236,7 +245,7 @@ function Friend.init(ctx)
 
 	advance.Activated:Connect(function()
 		if not current then
-			card.Visible = false
+			setOpen(false)
 			return
 		end
 		progress[current.id] = index
@@ -249,7 +258,7 @@ function Friend.init(ctx)
 			if current.id == "welcome" then
 				game.Players.LocalPlayer:SetAttribute("MetNeighbour", true)
 			end
-			card.Visible = false
+			setOpen(false)
 			current = nil
 		else
 			index += 1
@@ -404,8 +413,12 @@ function Friend.init(ctx)
 	end)
 
 	return {
+		--[[ Through setOpen like every other hide, or this path leaves the
+		     player flagged as mid-conversation forever and the tutorial overlay
+		     never comes back. ]]
 		close = function()
-			card.Visible = false
+			current = nil
+			setOpen(false)
 		end,
 	}
 end
