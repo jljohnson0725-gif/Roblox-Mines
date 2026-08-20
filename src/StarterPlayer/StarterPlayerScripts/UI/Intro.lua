@@ -1316,12 +1316,49 @@ function Intro.init(ctx)
 
 			local started = os.clock()
 			local subtitled, cleared, fading = false, false, false
+			local lastGrade = -1
 
 			conn = RunService.RenderStepped:Connect(function()
 				local t = os.clock() - started
+
+				--[[
+					RE-ASSERTED EVERY FRAME, both of them.
+
+					Three separate things in this game write Lighting or take the
+					camera, on their own schedules: the sky's altitude blend, the
+					map's daylight pass, and whatever hands the camera back on a
+					respawn. Each one was found and dealt with individually and a
+					fourth kept turning up -- the scene would play correctly four
+					times and then lose its lighting a second and a half in, which
+					from the player's seat is everything vanishing after the line.
+
+					Setting it once at the start and hoping is what made this
+					intermittent. The cutscene owns the camera and the look for
+					fourteen seconds, so it says so on every frame and stops
+					caring who else writes. Ten property assignments a frame is
+					nothing next to the rain.
+				]]
+				if cam.CameraType ~= Enum.CameraType.Scriptable then
+					cam.CameraType = Enum.CameraType.Scriptable
+				end
+				cam.FieldOfView = FOV
+				for k, v in pairs(LOOK) do
+					if Lighting[k] ~= v then
+						Lighting[k] = v
+					end
+				end
+
 				Intro.applyReveal(set, t)
 				cam.CFrame = Intro.cameraAt(t)
 				rainFollow(set, cam)
+
+				--[[ The graded effects re-asserted a few times a second rather
+				     than every frame: heavier to write, and nothing changes them
+				     as aggressively as the per-frame lighting blend does. ]]
+				if t - lastGrade > 0.25 then
+					lastGrade = t
+					applyLook(savedLighting)
+				end
 
 				if not subtitled and t >= SUBTITLE_AT then
 					subtitled = true
