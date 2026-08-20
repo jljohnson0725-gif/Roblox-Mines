@@ -73,6 +73,28 @@ local LINES = {
      contrast and the rule stays readable. ]]
 local HER_COLOR = Color3.fromRGB(255, 156, 196)
 
+--[[
+	THE SOUND OF IT. Rain underneath, something sad under that, and one crack of
+	thunder as the camera leaves her.
+
+	DELIBERATELY OUTSIDE THE GAME'S MIXER. Audio.lua routes everything through a
+	Master SoundGroup, and the cutscene mutes that group for its whole run so the
+	tycoon's music is not playing under a break-up. These three have no
+	SoundGroup at all, which is what lets them be heard while everything else is
+	silenced.
+
+	The thunder lands with "I'm sorry. Goodbye." and the move onto his face -- it
+	is the punctuation on her leaving, so it wants to be the loudest thing in the
+	scene and the only one that is not a loop.
+]]
+local SOUNDS = {
+	{ name = "Rain",    id = 140222159035827, volume = 0.5,  looped = true },
+	{ name = "Music",   id = 114213622974713, volume = 0.45, looped = true },
+}
+local THUNDER_ID = 139319051979882
+local THUNDER_AT = 15.0
+local THUNDER_VOLUME = 0.9
+
 local SUBTITLE_AT = 1.2
 --[[ The line clears BEFORE the last beat, so the closing shot is silent. Her
      words are done; what is left is him. ]]
@@ -1229,7 +1251,8 @@ function Intro.init(ctx)
 		local savedWalk = hum and hum.WalkSpeed or 16
 		local savedJump = hum and hum.JumpPower or 50
 
-		local set, screen, conn
+		local set, screen, conn, thunder
+		local struck = false
 
 		local function restore()
 			if conn then
@@ -1254,6 +1277,9 @@ function Intro.init(ctx)
 			end
 			if ctx.gui then
 				ctx.gui.Enabled = true
+			end
+			if ctx.audio and ctx.audio.mute then
+				ctx.audio.mute(false)
 			end
 			player:SetAttribute("CutscenePlaying", false)
 			running = false
@@ -1291,6 +1317,28 @@ function Intro.init(ctx)
 			screen.DisplayOrder = 500
 			screen.Parent = player:WaitForChild("PlayerGui")
 
+			--[[ Parented to the ScreenGui on purpose: restore() destroys it, so
+			     there is no path where the cutscene ends and the rain keeps
+			     playing over the tycoon. ]]
+			if ctx.audio and ctx.audio.mute then
+				ctx.audio.mute(true)
+			end
+			for _, spec in ipairs(SOUNDS) do
+				local snd = Instance.new("Sound")
+				snd.Name = spec.name
+				snd.SoundId = "rbxassetid://" .. spec.id
+				snd.Volume = spec.volume
+				snd.Looped = spec.looped
+				snd.Parent = screen
+				snd:Play()
+			end
+
+			thunder = Instance.new("Sound")
+			thunder.Name = "Thunder"
+			thunder.SoundId = "rbxassetid://" .. THUNDER_ID
+			thunder.Volume = THUNDER_VOLUME
+			thunder.Parent = screen
+
 			local function bar(anchorY, posY)
 				local f = Instance.new("Frame")
 				f.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -1304,6 +1352,10 @@ function Intro.init(ctx)
 			end
 			local top, bottom = bar(0, 0), bar(1, 1)
 
+			--[[ The cold-open cover hands over here and not a moment earlier.
+			     Its whole job was to keep the tycoon off screen until this
+			     exists; dropping it before the fade is standing would show one
+			     frame of daylight in the middle of the handover. ]]
 			local fade = Instance.new("Frame")
 			fade.BackgroundColor3 = Color3.new(0, 0, 0)
 			fade.BorderSizePixel = 0
@@ -1311,6 +1363,14 @@ function Intro.init(ctx)
 			fade.BackgroundTransparency = 0
 			fade.ZIndex = 10
 			fade.Parent = screen
+
+			--[[ Handover. The cover and this fade are both opaque black, so
+			     there is no visible seam -- and no frame where the tycoon shows
+			     through between the two. ]]
+			if ctx.cover then
+				ctx.cover:Destroy()
+				ctx.cover = nil
+			end
 
 			local sub = Instance.new("TextLabel")
 			sub.BackgroundTransparency = 1
@@ -1393,6 +1453,13 @@ function Intro.init(ctx)
 					The gaps between entries are deliberate silence -- she is
 					not talking for most of this.
 				]]
+				if not struck and t >= THUNDER_AT then
+					struck = true
+					if thunder then
+						thunder:Play()
+					end
+				end
+
 				local want = 0
 				for i, line in ipairs(LINES) do
 					if t >= line.t and t < line.t + line.hold then

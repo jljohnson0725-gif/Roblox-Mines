@@ -12,11 +12,41 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+--[[
+	A BLACK COVER, UP BEFORE ANYTHING ELSE.
+
+	The cold open fires a couple of seconds after joining, and those couple of
+	seconds were the player standing in their own tycoon in daylight with the
+	tycoon music going, immediately before a break-up in the rain. It gave the
+	whole thing away and cost the cutscene its opening.
+
+	So the screen starts black and stays black until something decides
+	otherwise: the cutscene takes it over -- it fades up from black anyway, so
+	the two joins are invisible -- or nothing plays and it fades off on its own.
+
+	FIRST THING IN THE FILE ON PURPOSE. Everything below this line can take a
+	frame or a WaitForChild; the cover cannot, or the tycoon shows through the
+	gap it leaves.
+]]
+local cover = Instance.new("ScreenGui")
+cover.Name = "ColdOpenCover"
+cover.IgnoreGuiInset = true
+cover.ResetOnSpawn = false
+cover.DisplayOrder = 1000
+cover.Parent = playerGui
+
+local coverFill = Instance.new("Frame")
+coverFill.BackgroundColor3 = Color3.new(0, 0, 0)
+coverFill.BorderSizePixel = 0
+coverFill.Size = UDim2.fromScale(1, 1)
+coverFill.Parent = cover
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
@@ -85,6 +115,7 @@ end
 
 local ctx = {
 	gui = gui,
+	cover = cover,
 	state = state,
 	remotes = {
 		StartRound = Net.get("StartRound"),
@@ -171,6 +202,42 @@ Flight.init(ctx)
 Sky.init(ctx)
 -- Buses first, so anything that makes a noise after this can be routed.
 Audio.init(ctx)
+--[[ Handed to ctx AFTER init, because mute() needs the buses to exist -- called
+     before this it silently does nothing, which is exactly the kind of failure
+     that looks like the mute "not working". ]]
+ctx.audio = Audio
+
+--[[
+	AND THE COVER COMES OFF, one way or the other.
+
+	The cutscene takes it: play() drops it once its own black fade is standing,
+	so there is never a frame of tycoon between the two.
+
+	If no intro is coming -- every join after the first -- nothing arrives to
+	take it, so it lifts on a timer. Long enough that the map and the UI have
+	settled behind it, short enough not to read as a hang.
+
+	Muted while it is up for the same reason it is up: the tycoon's music under
+	a black screen is the same spoiler as the tycoon itself.
+]]
+if ctx.audio and ctx.audio.mute then
+	ctx.audio.mute(true)
+end
+task.delay(4.5, function()
+	if cover.Parent and not player:GetAttribute("CutscenePlaying") then
+		if ctx.audio and ctx.audio.mute then
+			ctx.audio.mute(false)
+		end
+		TweenService:Create(coverFill, TweenInfo.new(0.6),
+			{ BackgroundTransparency = 1 }):Play()
+		task.delay(0.7, function()
+			if cover.Parent and not player:GetAttribute("CutscenePlaying") then
+				cover:Destroy()
+			end
+		end)
+	end
+end)
+
 -- Fragment progress, under the event card. Hides itself until you hold one.
 SealTracker.init(ctx)
 
