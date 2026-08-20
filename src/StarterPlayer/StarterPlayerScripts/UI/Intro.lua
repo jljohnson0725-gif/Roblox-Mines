@@ -80,8 +80,14 @@ local SHOTS = {
 	     turned the right way round -- it had been facing back under his own chest,
 	     so every angle that should have found his face found an upper arm. She is
 	     behind the lens for this shot; he is on his own. ]]
-	{ t = 11.2, pos = Vector3.new(3.0, 1.40, 6.8), look = "hisface" },
-	{ t = 14.0, pos = Vector3.new(2.4, 1.12, 6.2), look = "hisface" },
+	--[[ RELATIVE TO HIS HEAD, not to the set origin. As fixed world offsets
+	     these two worked for exactly one avatar: the pose is solved from
+	     whatever proportions the player has, so his head lands anywhere from
+	     about z 2.9 to z 3.9, and a camera pinned to z 6.8 was a comfortable
+	     three studs in front of one body and standing inside HER on another.
+	     That is what "the camera turns round and there is nothing there" was. ]]
+	{ t = 11.2, pos = Vector3.new(2.6, -0.35, 3.4), look = "hisface", rel = "hisface" },
+	{ t = 14.0, pos = Vector3.new(2.1, -0.55, 2.8), look = "hisface", rel = "hisface" },
 }
 
 local AIM = {
@@ -103,6 +109,21 @@ local function aimOf(name)
 	return AIM[name]
 end
 
+--[[ Where a shot's camera actually sits. Most are offsets from the set origin;
+     the closing pair hang off his head so they fit whoever is in the scene.
+
+     CLAMPED SHORT OF HER. Pushing the camera in front of his face moves it
+     toward the only other person on the set, and an avatar whose head sits
+     far enough forward would put her in front of the lens instead of behind
+     it -- she would loom, blurred, over the last shot of the cutscene. ]]
+local function shotPos(shot)
+	if shot.rel ~= "hisface" then
+		return ORIGIN + shot.pos
+	end
+	local at = himFaceAt + shot.pos
+	return Vector3.new(at.X, at.Y, math.min(at.Z, HER.Z - 0.9))
+end
+
 --[[
 	NIGHT, BUT LEGIBLE.
 
@@ -118,8 +139,8 @@ local LOOK = {
 	Ambient = Color3.fromRGB(64, 68, 84),
 	OutdoorAmbient = Color3.fromRGB(48, 52, 66),
 	FogColor = Color3.fromRGB(20, 23, 32),
-	FogStart = 20,
-	FogEnd = 120,
+	FogStart = 26,
+	FogEnd = 190,
 }
 
 --[[
@@ -178,7 +199,7 @@ local FACE_BRIGHTNESS = 2.0
 	it lands. Everything before it is held.
 ]]
 local HEAD_HUNG, HEAD_LIFTED = math.rad(-58), math.rad(-16)
-local HIS_BRIGHTNESS = 1.7
+local HIS_BRIGHTNESS = 7.5
 local LIFT_FROM, LIFT_TO = 11.4, 12.9
 
 --[[ Filled in by the pose so the lift can rebuild the head's CFrame from the
@@ -234,6 +255,18 @@ local SCENE_EFFECTS = {
 		TintColor = Color3.fromRGB(222, 232, 255),
 	},
 	BloomEffect = { Intensity = 0.35, Size = 20, Threshold = 1.5 },
+	--[[ The night sky the scene is played under. Swapped in and put back with
+	     everything else, so the map keeps its own daylight sky for the game. ]]
+	Sky = {
+		SkyboxBk = "rbxassetid://48020371",
+		SkyboxDn = "rbxassetid://48020144",
+		SkyboxFt = "rbxassetid://48020234",
+		SkyboxLf = "rbxassetid://48020211",
+		SkyboxRt = "rbxassetid://48020254",
+		SkyboxUp = "rbxassetid://48020383",
+		StarCount = 3000,
+		CelestialBodiesShown = false,
+	},
 	BlurEffect = { Size = 0 },
 	SunRaysEffect = { Enabled = false },
 	DepthOfFieldEffect = {
@@ -797,25 +830,6 @@ local function cloneAvatar(player, origin)
 		end
 	end
 
-	--[[ Where each accessory sits relative to the head, MEASURED BEFORE the
-	     joints come off. Once the welds are gone nothing says where a hat
-	     belongs and it ends up at the world origin. ]]
-	local head = clone:FindFirstChild("Head")
-	local hats = {}
-	if head then
-		for _, acc in ipairs(clone:GetChildren()) do
-			if acc:IsA("Accessory") then
-				local handle = acc:FindFirstChild("Handle")
-				if handle then
-					hats[#hats + 1] = {
-						handle = handle,
-						offset = head.CFrame:ToObjectSpace(handle.CFrame),
-					}
-				end
-			end
-		end
-	end
-
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("Motor6D") or d:IsA("Weld") or d:IsA("WeldConstraint") then
 			d:Destroy()
@@ -832,12 +846,27 @@ local function cloneAvatar(player, origin)
 		return nil
 	end
 
-	-- hats back on, now that the head has moved
-	if head then
-		for _, hat in ipairs(hats) do
-			hat.handle.CFrame = head.CFrame * hat.offset
-		end
+	--[[
+		ACCESSORIES BACK ON, EACH TO ITS OWN BODY PART.
+
+		The previous version pinned every one of them to the HEAD, having
+		measured its offset there before the joints came off. That is right for a
+		hat and wrong for everything else: a back-mounted item -- and plenty of
+		avatars have a large one -- got placed as though it were headwear and
+		ended up lying across his body, big enough to hide most of him from the
+		opening angle. Which is a large part of what "I can't see my character"
+		looked like.
+
+		The same attachment-name match her rig uses: an accessory names the
+		attachment it belongs to, and the body part carrying that name is where
+		it goes. Correct per accessory, and for any avatar.
+	]]
+	local seated, orphans = seatAccessories(clone)
+	if #orphans > 0 then
+		warn("[Intro] accessory with no matching attachment on the player: "
+			.. table.concat(orphans, ", "))
 	end
+	clone:SetAttribute("AccessoriesSeated", seated)
 
 	clone.Name = "Him"
 	return clone
@@ -862,28 +891,21 @@ local function buildSet(player)
 	ground.Reflectance = 0.18
 
 	--[[
-		A ROOM AROUND THE SET, because fog does not hide the sky.
+		NO SHELL AT ALL ANY MORE. The sky IS the background.
 
-		The first pass relied on FogEnd to close the world off and the skybox
-		rendered straight through it -- stars, clouds and a bright horizon
-		behind a scene that is supposed to be a wet street at night. Fog dims
-		what is IN the world; the sky is drawn behind all of it.
+		This started as six slabs sealing the set into a black box, because the
+		only sky available was the map's bright daylight one and fog does not
+		hide a skybox -- fog dims what is IN the world, the sky is drawn behind
+		all of it. The box was the right answer to that problem.
 
-		Six slabs facing inward is the whole fix. It also gives the rain
-		somewhere to be, and the key light something to fall off.
+		Given a night sky of its own (SCENE_EFFECTS.Sky) the box became the
+		problem: it put a lid and four walls between the camera and the thing it
+		was supposed to be looking at, and the reveal played against black. Gone,
+		the same shot has her in silhouette against cloud with the rain reading
+		across it, which is the shot that was wanted all along.
+
+		Fog carries the horizon now instead of geometry.
 	]]
-	local W, H = 150, 60
-	local shellColor = Color3.fromRGB(10, 11, 14)
-	for _, face in ipairs({
-		{ Vector3.new(W, 2, W), Vector3.new(0, H, 0) },       -- ceiling
-		{ Vector3.new(2, H, W), Vector3.new(-W / 2, H / 2, 0) },
-		{ Vector3.new(2, H, W), Vector3.new(W / 2, H / 2, 0) },
-		{ Vector3.new(W, H, 2), Vector3.new(0, H / 2, -W / 2) },
-		{ Vector3.new(W, H, 2), Vector3.new(0, H / 2, W / 2) },
-	}) do
-		block(set, "Shell", face[1], CFrame.new(ORIGIN + face[2]),
-			shellColor, Enum.Material.SmoothPlastic)
-	end
 
 	--[[
 		Puddles: LIGHTER than the ground, and barely reflective.
@@ -1055,7 +1077,10 @@ local function buildSet(player)
 	hisAt.CanQuery = false
 	hisAt.Transparency = 1
 	hisAt.Size = Vector3.new(1, 1, 1)
-	hisAt.CFrame = CFrame.new(HIM + Vector3.new(3.0, 3.4, 8.2))
+	--[[ Placed off his head for the same reason the camera is. Pinned to the
+	     origin it lit the spot one avatar's head happened to occupy and left
+	     every other one in the dark. ]]
+	hisAt.CFrame = CFrame.new(himFaceAt + Vector3.new(1.6, 1.1, 2.2))
 	hisAt.Parent = set
 
 	local his = Instance.new("PointLight")
@@ -1064,7 +1089,12 @@ local function buildSet(player)
 	     backing off to six with a third of the intensity is the same amount of
 	     light with a gradient across it. ]]
 	his.Brightness = 0
-	his.Range = 32
+	--[[ Close and hot, with a short range so it falls off before it reaches
+	     anything else. It has to beat a lit SKY behind him now rather than the
+	     black box this scene used to be played in -- at the old 1.7 he read as a
+	     silhouette against cloud, which is a nice frame and not the one asked
+	     for. ]]
+	his.Range = 17
 	his.Color = Color3.fromRGB(255, 244, 232)
 	his.Shadows = false
 	his.Parent = hisAt
@@ -1236,7 +1266,7 @@ local function solve(t)
 	end
 	local span = math.max(b.t - a.t, 0.001)
 	local k = smooth(math.clamp((t - a.t) / span, 0, 1))
-	return ORIGIN + a.pos:Lerp(b.pos, k), aimOf(a.look):Lerp(aimOf(b.look), k)
+	return shotPos(a):Lerp(shotPos(b), k), aimOf(a.look):Lerp(aimOf(b.look), k)
 end
 
 function Intro.cameraAt(t)
