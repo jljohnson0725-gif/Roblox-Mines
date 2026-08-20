@@ -116,7 +116,7 @@ local DESK_ORIGIN = Vector3.new(0, -1000, 0)
 local WEB_TITLE = "HOW TO LOOKSMAX AND BECOME A TRUE CHAD"
 local WEB_LINES = {
 	"Step 1.  Get rich. Nothing else works until this one does.",
-	"Step 2.  Buy brainrots. They print money while you sleep.",
+	"Step 2.  Buy peptides.",
 	"Step 3.  Mew. Bone smash. Ascend.",
 	"Step 4.  She comes back. (results may vary)",
 }
@@ -1348,8 +1348,21 @@ local function buildDeskSet(player)
 	local face = Instance.new("SurfaceGui")
 	face.Name = "Page"
 	face.Face = Enum.NormalId.Left
+	--[[
+		A HUNDRED PIXELS PER STUD, not sixty-four.
+
+		The screen is 3.5 studs tall by 6.1 wide, which at 64 gave a canvas of
+		390x224 -- and the layout wanted about 244 of height for the body rows
+		alone. So the last rows fell off the bottom, and the title had no room
+		for a second line, which is where the word CHAD went. Everything measured
+		fine because nothing here reports overflow; it just stops drawing.
+
+		At 100 the canvas is 610x350, and the content is laid out by a list
+		rather than by hand-placed offsets so it cannot silently run off the
+		edge again.
+	]]
 	face.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	face.PixelsPerStud = 64
+	face.PixelsPerStud = 100
 	face.LightInfluence = 0
 	face.Parent = screen
 
@@ -1360,45 +1373,73 @@ local function buildDeskSet(player)
 	page.Parent = face
 
 	local chrome = Instance.new("Frame")
-	chrome.Size = UDim2.new(1, 0, 0, 34)
+	chrome.Size = UDim2.new(1, 0, 0, 40)
 	chrome.BackgroundColor3 = Color3.fromRGB(222, 224, 232)
 	chrome.BorderSizePixel = 0
 	chrome.Parent = page
 
 	local url = Instance.new("TextLabel")
 	url.BackgroundTransparency = 1
-	url.Position = UDim2.fromOffset(14, 0)
-	url.Size = UDim2.new(1, -28, 1, 0)
+	url.Position = UDim2.fromOffset(16, 0)
+	url.Size = UDim2.new(1, -32, 1, 0)
 	url.Font = Enum.Font.Gotham
-	url.TextSize = 15
+	url.TextSize = 16
 	url.TextXAlignment = Enum.TextXAlignment.Left
 	url.TextColor3 = Color3.fromRGB(96, 100, 112)
 	url.Text = "looksmaxxing.wiki/true-chad"
 	url.Parent = chrome
 
+	local body = Instance.new("Frame")
+	body.BackgroundTransparency = 1
+	body.Position = UDim2.new(0, 0, 0, 40)
+	body.Size = UDim2.new(1, 0, 1, -40)
+	body.Parent = page
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 24)
+	pad.PaddingRight = UDim.new(0, 24)
+	pad.PaddingTop = UDim.new(0, 18)
+	pad.Parent = body
+
+	local list = Instance.new("UIListLayout")
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 10)
+	list.Parent = body
+
+	--[[ TextScaled so the headline always fits its box whatever the copy says.
+	     Hand-picked sizes are how the last word went missing in the first
+	     place. ]]
 	local title = Instance.new("TextLabel")
+	title.LayoutOrder = 1
 	title.BackgroundTransparency = 1
-	title.Position = UDim2.fromOffset(26, 52)
-	title.Size = UDim2.new(1, -52, 0, 62)
+	title.Size = UDim2.new(1, 0, 0, 92)
 	title.Font = Enum.Font.GothamBlack
-	title.TextSize = 30
-	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextScaled = true
 	title.TextWrapped = true
+	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.TextColor3 = Color3.fromRGB(18, 18, 24)
 	title.Text = WEB_TITLE
-	title.Parent = page
+	title.Parent = body
+
+	local rule = Instance.new("Frame")
+	rule.LayoutOrder = 2
+	rule.Size = UDim2.new(1, 0, 0, 2)
+	rule.BackgroundColor3 = Color3.fromRGB(206, 208, 218)
+	rule.BorderSizePixel = 0
+	rule.Parent = body
 
 	for i, line in ipairs(WEB_LINES) do
 		local row = Instance.new("TextLabel")
+		row.LayoutOrder = 2 + i
 		row.BackgroundTransparency = 1
-		row.Position = UDim2.fromOffset(26, 128 + (i - 1) * 30)
-		row.Size = UDim2.new(1, -52, 0, 26)
+		row.Size = UDim2.new(1, 0, 0, 30)
 		row.Font = Enum.Font.Gotham
-		row.TextSize = 17
+		row.TextSize = 18
 		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextTruncate = Enum.TextTruncate.AtEnd
 		row.TextColor3 = Color3.fromRGB(52, 54, 64)
 		row.Text = line
-		row.Parent = page
+		row.Parent = body
 	end
 
 	--[[ The screen is the only light in the room, which is the whole picture:
