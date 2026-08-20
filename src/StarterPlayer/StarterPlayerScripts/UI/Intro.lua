@@ -805,6 +805,56 @@ end
 --[[ A poseable copy of the player. Returns nil if anything is missing and the
      caller falls back to the built figure -- the cutscene must never fail
      because an avatar was slow to load. ]]
+--[[
+	EVERY PART OF AN R15 BODY, because a Head on its own is not an avatar.
+
+	The old guard asked only whether the character had a Head, and 2.5 seconds
+	after joining that is usually true while half the limbs are still streaming
+	in. A clone taken then is missing pieces; if UpperTorso is one of them
+	poseKneeling bails and the whole thing is thrown away for the blocky
+	stand-in.
+
+	Which is what "I can't see my character" was. Not invisible -- REPLACED, by a
+	generic figure that looks exactly the same whichever avatar you are wearing,
+	which is why changing characters never helped.
+]]
+local R15_PARTS = {
+	"Head", "UpperTorso", "LowerTorso",
+	"LeftUpperArm", "LeftLowerArm", "LeftHand",
+	"RightUpperArm", "RightLowerArm", "RightHand",
+	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+	"RightUpperLeg", "RightLowerLeg", "RightFoot",
+}
+
+local function avatarReady(char)
+	if not char or not char:FindFirstChildWhichIsA("Humanoid") then
+		return false
+	end
+	for _, name in ipairs(R15_PARTS) do
+		if not char:FindFirstChild(name) then
+			return false
+		end
+	end
+	return true
+end
+
+--[[ Bounded, because the cutscene must start even if the avatar never finishes.
+     The stand-in is a worse opening than the player's own body, but a cold open
+     that never plays is worse than either. ]]
+local function waitForAvatar(player, timeout)
+	local deadline = os.clock() + (timeout or 8)
+	while os.clock() < deadline do
+		if avatarReady(player.Character) then
+			--[[ A further beat for accessories and layered clothing, which
+			     arrive after the limbs do and are what the pose re-seats. ]]
+			task.wait(0.4)
+			return true
+		end
+		task.wait(0.1)
+	end
+	return false
+end
+
 local function cloneAvatar(player, origin)
 	local char = player.Character
 	if not char or not char:FindFirstChild("Head") then
@@ -943,6 +993,10 @@ local function buildSet(player)
 	if avatar then
 		avatar.Parent = set
 	else
+		--[[ Said out loud. Silently swapping the player for a stand-in is the
+		     kind of failure that gets reported as "it's broken" with nothing in
+		     the log to point at. ]]
+		warn("[Intro] could not clone the player's avatar -- using the stand-in")
 		buildHim(set)
 	end
 	buildHer(set)
@@ -1328,6 +1382,14 @@ function Intro.init(ctx)
 		end
 		running = true
 
+		--[[ BEFORE ANYTHING IS BUILT OR THE CAMERA IS TAKEN. The server fires
+		     this a couple of seconds after joining, which is often before the
+		     avatar has all of its limbs; cloning it then gets a partial body and
+		     falls through to the stand-in. Waiting here costs a moment of the
+		     player still holding their own camera, which is the harmless half of
+		     the trade. ]]
+		waitForAvatar(player, 8)
+
 		local cam = workspace.CurrentCamera
 		local savedType = cam.CameraType
 		local savedFov = cam.FieldOfView
@@ -1494,6 +1556,7 @@ function Intro.init(ctx)
 	local previewSet, previewLighting, previewFov
 
 	local function preview(t)
+		waitForAvatar(player, 8)
 		local cam = workspace.CurrentCamera
 		if previewSet then
 			previewSet:Destroy()
