@@ -11,11 +11,11 @@ Run it after changing any timing in UI/Intro.lua and keep the two in step.
 
 # t, name, camera position (relative to the set origin), what it looks at, why
 SHOTS = [
-    (0.0,  "cold open", (-7.0, 9.0, -9.0), "him",     "High and behind. He is small, the rain is huge."),
-    (3.4,  "the wait",  (-4.0, 4.5, -5.5), "him",     "Push in on silence. Nothing happens. That is the point."),
-    (6.0,  "the turn",  ( 7.5, 2.4, -2.0), "between", "Camera swings round him -- the move that reveals her."),
-    (7.4,  "reveal",    ( 5.2, 2.8, -4.2), "her",     "Over his shoulder. She stands at full height, he does not."),
-    (9.2,  "settle",    ( 4.0, 2.4, -2.4), "her",     "The reveal shot keeps drifting in while she speaks."),
+    (0.0,  "cold open", (-8.0, 10.0, -11.0), "him",     "High and behind. He is small, the rain is huge."),
+    (3.4,  "the wait",  (-5.0, 6.2, -7.5), "him",     "Push in on silence. Nothing happens. That is the point."),
+    (6.0,  "the turn",  ( 8.0, 4.2, -2.5), "between", "Camera swings round him -- the move that reveals her."),
+    (7.4,  "reveal",    ( 5.6, 4.6, -4.6), "her",     "Over his shoulder. She stands at full height, he does not."),
+    (9.2,  "settle",    ( 4.4, 4.4, -2.8), "her",     "The reveal shot keeps drifting in while she speaks."),
     (11.2, "back to him",( 3.0, 1.40,  6.8), "hisface", "Leaves her, drops in front of him. Her part is over."),
     (14.0, "the sit",    ( 2.4, 1.12,  6.2), "hisface", "He lifts his head. Held in silence before the fade."),
 ]
@@ -31,7 +31,7 @@ FADE_IN, FADE_OUT = 0.4, 0.6
 #[[ Where his head ends up once the pose is solved -- the closing shot aims here.
 #   Kept in step with poseKneeling's neck target by hand; if that moves, this
 #   moves. ]]
-HIS_FACE = (0.0, 1.72, 2.96)
+HIS_FACE = (0.0, 4.40, 0.0)
 
 
 def dist(a, b):
@@ -42,7 +42,7 @@ def target(kind):
     if kind == "hisface":
         return HIS_FACE
     if kind == "him":
-        return (HIM[0], HIM[1] + 1.2, HIM[2])
+        return (HIM[0], HIM[1] + 3.4, HIM[2])
     if kind == "her":
         return (HER[0], HER[1] + 4.4, HER[2])
     return (0.0, 1.8, 3.5)

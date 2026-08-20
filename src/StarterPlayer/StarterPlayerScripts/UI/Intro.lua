@@ -66,11 +66,11 @@ local BAR = 0.11
 	which is also the shot that says she is standing over him.
 ]]
 local SHOTS = {
-	{ t = 0.0,  pos = Vector3.new(-7.0, 9.0, -9.0), look = "him" },
-	{ t = 3.4,  pos = Vector3.new(-4.0, 4.5, -5.5), look = "him" },
-	{ t = 6.0,  pos = Vector3.new(7.5, 2.4, -2.0),  look = "between" },
-	{ t = 7.4,  pos = Vector3.new(5.2, 2.8, -4.2),  look = "her" },
-	{ t = 9.2,  pos = Vector3.new(4.0, 2.4, -2.4),  look = "her" },
+	{ t = 0.0,  pos = Vector3.new(-8.0, 10.0, -11.0), look = "him" },
+	{ t = 3.4,  pos = Vector3.new(-5.0, 6.2, -7.5),  look = "him" },
+	{ t = 6.0,  pos = Vector3.new(8.0, 4.2, -2.5),  look = "between" },
+	{ t = 7.4,  pos = Vector3.new(5.6, 4.6, -4.6),  look = "her" },
+	{ t = 9.2,  pos = Vector3.new(4.4, 4.4, -2.8),  look = "her" },
 	--[[ AND THEN BACK TO HIM. Cutting to black on her last syllable made the
 	     line the end of the scene; it is not, it is the start of his. The camera
 	     leaves her, comes round in front and sits at his eyeline for nearly three
@@ -92,21 +92,24 @@ local SHOTS = {
 	     about z 2.9 to z 3.9, and a camera pinned to z 6.8 was a comfortable
 	     three studs in front of one body and standing inside HER on another.
 	     That is what "the camera turns round and there is nothing there" was. ]]
-	{ t = 11.2, pos = Vector3.new(3.1, 1.05, 5.0), look = "hisface", rel = "hisface" },
-	{ t = 14.0, pos = Vector3.new(2.6, 0.75, 4.3), look = "hisface", rel = "hisface" },
+	--[[ THE CLOSE-UP, off his head so it fits any avatar. He faces her, so the
+	     lens sits BETWEEN them looking back at him -- which puts her behind the
+	     camera and leaves him alone in the last shot. ]]
+	{ t = 11.2, pos = Vector3.new(1.7, 0.15, 4.6), look = "hisface", rel = "hisface" },
+	{ t = 14.0, pos = Vector3.new(1.3, 0.05, 3.4), look = "hisface", rel = "hisface" },
 }
 
 local AIM = {
-	him = HIM + Vector3.new(0, 1.2, 0),
+	him = HIM + Vector3.new(0, 3.4, 0),
 	her = HER + Vector3.new(0, 4.4, 0),
-	between = ORIGIN + Vector3.new(0, 1.8, 3.5),
+	between = ORIGIN + Vector3.new(0, 3.6, 3.5),
 }
 
 --[[ His head, MEASURED off the posed rig rather than guessed, because the pose
      is derived from whatever proportions the player's own avatar has and no
      fixed offset fits every body. buildSet overwrites this; the default only
      has to be sane for a caller that runs before any set exists. ]]
-local himFaceAt = HIM + Vector3.new(0, 2.1, 0.6)
+local himFaceAt = HIM + Vector3.new(0, 4.4, 0)
 
 local function aimOf(name)
 	if name == "hisface" then
@@ -192,30 +195,16 @@ local RAIN_AHEAD = 6
 local REVEAL_FROM, REVEAL_TO = 6.1, 7.3
 local FACE_BRIGHTNESS = 2.0
 
---[[
-	AND THEN HE LIFTS HIS HEAD.
+--[[ His front light for the closing shot, brought up as the camera arrives.
+     Off until then for the same reason hers is: lit early it puts a glow across
+     the set and gives the reveal away. ]]
+local HIS_BRIGHTNESS = 3.4
+local LIFT_FROM, LIFT_TO = 11.0, 12.4
 
-	The closing shot is supposed to be his face, and a head hung at -58 degrees
-	does not have a visible one from anywhere -- it is pointed at the tarmac with
-	his own arms around it. Rather than keep hunting for an angle that does not
-	exist, he moves: over about a second and a half after she has finished, his
-	head comes up to -16.
+--[[ Filled in by buildSet: his head, and where it is, so the closing shot aims
+     at the real thing whatever the player's proportions are. ]]
+local himHead
 
-	It is the only thing either figure does in ten seconds, which is exactly why
-	it lands. Everything before it is held.
-]]
-local HEAD_HUNG, HEAD_LIFTED = math.rad(-58), math.rad(-16)
-local HIS_BRIGHTNESS = 7.5
-local LIFT_FROM, LIFT_TO = 11.4, 12.9
-
---[[ Filled in by the pose so the lift can rebuild the head's CFrame from the
-     same neck it was hung off. ]]
-local himNeck, himHang, himAhead, himHead
-
---[[ Every Lighting property anyone else writes, not just the ones this scene
-     sets. UI/Sky's altitude blend also drives exposure and the colour shifts;
-     leaving those out meant the cutscene could hand back a Lighting it had
-     never fully captured. ]]
 local LIGHTING_KEYS = {
 	"ClockTime", "Brightness", "Ambient", "OutdoorAmbient",
 	"FogStart", "FogEnd", "FogColor",
@@ -326,25 +315,16 @@ local function buildHim(parent)
 	local m = Instance.new("Model")
 	m.Name = "Him"
 	m.Parent = parent
-	local at = CFrame.new(HIM)
+	--[[ Facing her, matching the clone, so the closing shot frames a face
+	     whichever figure ends up standing there. ]]
+	local at = CFrame.lookAt(HIM, Vector3.new(HER.X, HIM.Y, HER.Z))
 
-	-- shins flat on the ground, knees under the hips
-	block(m, "LeftLeg", Vector3.new(1, 2, 1),
-		at * CFrame.new(-0.55, 0.5, -1.6) * CFrame.Angles(math.rad(90), 0, 0), trousers)
-	block(m, "RightLeg", Vector3.new(1, 2, 1),
-		at * CFrame.new(0.55, 0.5, -1.6) * CFrame.Angles(math.rad(90), 0, 0), trousers)
-
-	-- back sloping down from the hips to the shoulders
-	block(m, "Torso", Vector3.new(2, 2, 1),
-		at * CFrame.new(0, 1.55, -0.55) * CFrame.Angles(math.rad(74), 0, 0), shirt)
-
-	-- arms straight down, taking his weight
-	block(m, "LeftArm", Vector3.new(1, 2, 1), at * CFrame.new(-1.05, 0.95, 0.35), skin)
-	block(m, "RightArm", Vector3.new(1, 2, 1), at * CFrame.new(1.05, 0.95, 0.35), skin)
-
-	-- head hanging, looking at the ground
-	block(m, "Head", Vector3.new(2, 1, 1),
-		at * CFrame.new(0, 1.5, 0.75) * CFrame.Angles(math.rad(35), 0, 0), skin)
+	block(m, "LeftLeg", Vector3.new(1, 3, 1), at * CFrame.new(-0.55, 1.5, 0), trousers)
+	block(m, "RightLeg", Vector3.new(1, 3, 1), at * CFrame.new(0.55, 1.5, 0), trousers)
+	block(m, "Torso", Vector3.new(2, 2, 1), at * CFrame.new(0, 4.0, 0), shirt)
+	block(m, "LeftArm", Vector3.new(1, 2, 1), at * CFrame.new(-1.55, 4.0, 0), skin)
+	block(m, "RightArm", Vector3.new(1, 2, 1), at * CFrame.new(1.55, 4.0, 0), skin)
+	block(m, "Head", Vector3.new(1.4, 1.4, 1.4), at * CFrame.new(0, 5.7, 0), skin)
 	return m
 end
 
@@ -609,213 +589,22 @@ local function buildHer(parent)
 end
 
 --[[
-	THE PLAYER'S OWN AVATAR, on its hands and knees.
+	THE PLAYER'S OWN AVATAR, standing in the rain.
 
-	It has to be them. A generic blocky stand-in is a man; this is YOU, in your
-	hat and your shirt, face down in the rain -- and that is most of why the
-	opening lands at all.
+	It has to be them. A generic stand-in is a man; this is YOU, in your hat and
+	your shirt -- and that is most of why the opening lands at all.
 
-	THREE THINGS MAKE IT AWKWARD, all checked rather than assumed:
+	Character.Archivable is FALSE, so :Clone() on a live character returns nil
+	unless it is flipped first. The naive version produced nothing and fell
+	silently through to the stand-in.
 
-	  - Character.Archivable is FALSE, so :Clone() on a live character returns
-	    nil unless it is flipped first. The naive version produced nothing and
-	    fell silently through to the stand-in.
-	  - The rig is R15: fifteen parts with per-avatar proportions, because
-	    nobody's limbs are the same length. Hardcoded offsets would fit one body
-	    and dislocate every other.
-	  - Accessories hang off the head by weld. Strip the joints to pose the body
-	    and the hat drops through the floor.
-
-	So the pose is a CHAIN walked outward from the ground contacts, each segment
-	as long as the part actually is. Knees and hands are placed first, because
-	"hands and knees" is a statement about where the body meets the floor;
-	everything else follows from them and fits whoever walked in.
+	EVERYTHING THAT USED TO LIVE HERE IS GONE: a limb-spanning helper, a two-bone
+	IK solver, a kneeling pose built outward from the ground contacts, and an
+	accessory re-seater to undo the damage that pose did to the welds. It was a
+	lot of machinery for one silhouette, and it broke in a different place every
+	time. A standing clone needs none of it.
 ]]
 
---[[ Lay a limb so its length runs from `a` to `b`. R15 parts are built along
-     their own +Y, so the part is turned to put +Y on that line and centred on
-     it, which is what keeps joints meeting instead of overlapping. ]]
-local function span(part, a, b)
-	if not part then
-		return b
-	end
-	local dir = b - a
-	if dir.Magnitude < 0.001 then
-		return b
-	end
-	local up = dir.Unit
-	local ref = math.abs(up.Z) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 0, 1)
-	local right = up:Cross(ref).Unit
-	local back = right:Cross(up).Unit
-	part.CFrame = CFrame.fromMatrix(a + dir * 0.5, right, up, back)
-	return b
-end
-
---[[ Step out from `from` along `dir` by the part's OWN length, place it, and
-     hand back the far end for the next bone in the chain. ]]
-local function bone(part, from, dir)
-	if not part then
-		return from
-	end
-	return span(part, from, from + dir.Unit * part.Size.Y)
-end
-
---[[
-	Two-bone solve: put the elbow somewhere that lets a fixed-length arm reach a
-	fixed target, instead of aiming each segment by hand and hoping the hand
-	lands near the floor.
-
-	This is what the hand-aimed version could not do. Guessing three directions
-	and multiplying by the part lengths puts the hand wherever the arithmetic
-	says -- 1.6 studs underground on the first attempt -- so the fix each time
-	was to re-guess the angles. Solving for the elbow instead makes ground
-	contact an INPUT: the hand is placed on the tarmac and the arm bends however
-	much it has to, whatever the avatar's proportions are.
-]]
-local function twoBone(from, to, upperLen, lowerLen, bendHint)
-	local delta = to - from
-	local reach = math.min(delta.Magnitude, upperLen + lowerLen - 0.01)
-	if reach < 0.001 then
-		return from
-	end
-	local along = delta.Unit
-	--[[ Distance from the shoulder to the point on the straight line that the
-	     elbow sits square to, then the height of the triangle off that line. ]]
-	local run = (upperLen * upperLen - lowerLen * lowerLen + reach * reach) / (2 * reach)
-	local rise = math.sqrt(math.max(upperLen * upperLen - run * run, 0))
-	local perp = bendHint - along * bendHint:Dot(along)
-	if perp.Magnitude < 0.001 then
-		perp = Vector3.new(0, 1, 0) - along * along.Y
-	end
-	return from + along * run + perp.Unit * rise
-end
-
-local function poseKneeling(char, origin)
-	local function get(n)
-		return char:FindFirstChild(n)
-	end
-	if not get("UpperTorso") then
-		return false -- not an R15 rig; the caller falls back
-	end
-
-	--[[ Ground contacts first. Everything else is derived from these, because
-	     this pose is defined by what is touching the floor. ]]
-	local kneeL = origin + Vector3.new(-0.45, 0.25, -0.55)
-	local kneeR = origin + Vector3.new(0.45, 0.25, -0.55)
-
-	-- shins lie flat, running back from the knees
-	local backward = Vector3.new(0, 0.04, -1)
-	local ankleL = bone(get("LeftLowerLeg"), kneeL, backward)
-	local ankleR = bone(get("RightLowerLeg"), kneeR, backward)
-	bone(get("LeftFoot"), ankleL, backward)
-	bone(get("RightFoot"), ankleR, backward)
-
-	-- thighs near vertical from the knees, which is what sets the hip height
-	local thighDir = Vector3.new(0, 0.97, 0.24)
-	local hipL = bone(get("LeftUpperLeg"), kneeL, thighDir)
-	local hipR = bone(get("RightUpperLeg"), kneeR, thighDir)
-	local hip = (hipL + hipR) * 0.5
-
-	--[[
-		A FLAT BACK, NOT A CLIMBING ONE.
-
-		Measured off the rig: the arm is 3.83 studs shoulder to fingertips and
-		the whole leg is 2.85. The arms are LONGER than the legs, and the first
-		attempt to deal with that raised the shoulders until the arms hung nearly
-		vertical -- which put the neck at 3.2 studs, the head at 2.6, and the hips
-		at 1.5, so the back ran UPHILL from hip to shoulder.
-
-		Seen from the side that is not a man on his hands and knees, it is a
-		downward dog: both ends on the floor and his hips the highest point in
-		the shot. The screenshot said so immediately and the numbers never would
-		have -- every part was exactly where the arithmetic put it.
-
-		So the spine now aims at a LOW, FORWARD target and the arms fold to reach
-		the ground instead of the shoulders rising to meet it. The back runs
-		nearly flat, and his head ends up around a stud and a half off the
-		tarmac, which is the whole point of the shot.
-	]]
-	local lower, upper = get("LowerTorso"), get("UpperTorso")
-	local neckTarget = origin + Vector3.new(0, 2.25, 2.70)
-	local spine = (neckTarget - hip).Unit
-	local waist = bone(lower, hip, spine)
-	local neck = bone(upper, waist, spine)
-	local halfW = upper and upper.Size.X * 0.5 or 1
-
-	-- head hanging off the end of the spine, looking at the ground
-	local head = get("Head")
-	if head then
-		--[[
-			FACING THE WAY HIS BODY GOES, which it was not.
-
-			The head was placed with an identity yaw and pitched down from there.
-			Identity faces -Z; his body runs toward +Z. So his face was aimed back
-			underneath his own chest, and every camera angle that should have
-			found it found an upper arm instead. It never looked like a rotation
-			bug -- it looked like the shot was badly placed, and three of them
-			were moved before the head itself was suspected.
-
-			Built off the SPINE now rather than off world axes, so it points
-			wherever the body points regardless of how the pose is laid out.
-		]]
-		local ahead = Vector3.new(spine.X, 0, spine.Z)
-		ahead = ahead.Magnitude > 0.01 and ahead.Unit or Vector3.new(0, 0, 1)
-		himNeck = neck
-		himHang = Vector3.new(0, -0.62, 0.26)
-		himAhead = ahead
-		head.CFrame = CFrame.lookAt(neck + himHang, neck + himHang + ahead)
-			* CFrame.Angles(HEAD_HUNG, 0, 0)
-	end
-
-	--[[
-		ARMS SOLVED TO THE FLOOR.
-
-		A straight arm from these shoulders is 3.8 studs of reach into a gap
-		around 2, which is how the floor got punched through the first time. The
-		previous fix aimed each segment by hand -- upper arm down and forward,
-		forearm flattening, hand flat -- and that only ever held for one set of
-		proportions, because the hand lands wherever three guessed directions
-		times three part lengths happen to put it.
-
-		Now the HAND IS PLACED FIRST, on the ground and slightly ahead of the
-		shoulder, and the elbow is solved for. The arm folds as much as it needs
-		to and the contact is exact for any avatar. Elbows are hinted backwards,
-		which is the way they actually go on someone holding themselves up.
-	]]
-	for _, side in ipairs({ { "Left", -1 }, { "Right", 1 } }) do
-		local name, sign = side[1], side[2]
-		local shoulder = neck + Vector3.new(sign * (halfW - 0.15), -0.15, -0.1)
-		local upperArm, foreArm, hand =
-			get(name .. "UpperArm"), get(name .. "LowerArm"), get(name .. "Hand")
-		local upperLen = upperArm and upperArm.Size.Y or 1.4
-		local foreLen = (foreArm and foreArm.Size.Y or 1.2) + (hand and hand.Size.Y or 0.7)
-
-		local palm = origin + Vector3.new(sign * (halfW - 0.05), 0.12, 2.95)
-		local elbow = twoBone(shoulder, palm, upperLen, foreLen,
-			Vector3.new(sign * 0.35, 0.1, -1))
-
-		span(upperArm, shoulder, elbow)
-		--[[ Forearm and hand share the run from elbow to palm, split by their
-		     own lengths so the wrist lands where the two actually meet. ]]
-		local toPalm = palm - elbow
-		if toPalm.Magnitude > 0.001 then
-			local dir = toPalm.Unit
-			local wrist = elbow + dir * (foreArm and foreArm.Size.Y or 1.2)
-			span(foreArm, elbow, wrist)
-			span(hand, wrist, wrist + dir * (hand and hand.Size.Y or 0.7))
-		end
-	end
-
-	local root = get("HumanoidRootPart")
-	if root then
-		root.CFrame = CFrame.new(waist)
-	end
-	return true
-end
-
---[[ A poseable copy of the player. Returns nil if anything is missing and the
-     caller falls back to the built figure -- the cutscene must never fail
-     because an avatar was slow to load. ]]
 --[[
 	EVERY PART OF AN R15 BODY, because a Head on its own is not an avatar.
 
@@ -882,19 +671,31 @@ local function cloneAvatar(player, origin)
 		return nil
 	end
 
-	--[[ Anything that would drive the body has to go. A live Humanoid stands
-	     the pose back up the moment it evaluates. ]]
+	--[[
+		HE STANDS. Nothing is posed, and that is the whole point.
+
+		The previous version put him on his hands and knees, which meant stripping
+		every joint, solving the arms to the floor with a two-bone IK, turning the
+		head back the right way round because identity yaw faces the wrong axis,
+		and then re-seating every accessory by attachment name because anchored
+		parts ignore their welds. Each of those was a real mechanism and each one
+		broke separately.
+
+		A clone that is simply ANCHORED WHERE IT STANDS needs none of it. The pose
+		is whatever the player's avatar was already in, the accessories are
+		already welded exactly where they belong, and moving the model moves all
+		of it rigidly. There is nothing left to get wrong.
+
+		The Humanoid still goes -- a live one would animate him -- but the joints
+		can stay: with every part anchored they are inert.
+	]]
 	for _, d in ipairs(clone:GetDescendants()) do
 		if d:IsA("Humanoid") or d:IsA("Animator") or d:IsA("Script")
 			or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("ForceField") then
 			d:Destroy()
 		end
 	end
-
 	for _, d in ipairs(clone:GetDescendants()) do
-		if d:IsA("Motor6D") or d:IsA("Weld") or d:IsA("WeldConstraint") then
-			d:Destroy()
-		end
 		if d:IsA("BasePart") then
 			d.Anchored = true
 			d.CanCollide = false
@@ -902,32 +703,25 @@ local function cloneAvatar(player, origin)
 		end
 	end
 
-	if not poseKneeling(clone, origin) then
-		clone:Destroy()
-		return nil
+	--[[ Turned to face her, off the ROOT PART's own rotation rather than the
+	     model pivot -- a rig can sit crooked inside its own model, and the pivot
+	     describes the wrapper rather than the body. ]]
+	local root = clone:FindFirstChild("HumanoidRootPart")
+		or clone:FindFirstChild("UpperTorso")
+		or clone:FindFirstChild("Torso")
+	local want = CFrame.lookAt(origin, Vector3.new(HER.X, origin.Y, HER.Z))
+	if root then
+		clone:PivotTo(clone:GetPivot() * root.CFrame.Rotation:Inverse() * want.Rotation)
 	end
 
-	--[[
-		ACCESSORIES BACK ON, EACH TO ITS OWN BODY PART.
-
-		The previous version pinned every one of them to the HEAD, having
-		measured its offset there before the joints came off. That is right for a
-		hat and wrong for everything else: a back-mounted item -- and plenty of
-		avatars have a large one -- got placed as though it were headwear and
-		ended up lying across his body, big enough to hide most of him from the
-		opening angle. Which is a large part of what "I can't see my character"
-		looked like.
-
-		The same attachment-name match her rig uses: an accessory names the
-		attachment it belongs to, and the body part carrying that name is where
-		it goes. Correct per accessory, and for any avatar.
-	]]
-	local seated, orphans = seatAccessories(clone)
-	if #orphans > 0 then
-		warn("[Intro] accessory with no matching attachment on the player: "
-			.. table.concat(orphans, ", "))
-	end
-	clone:SetAttribute("AccessoriesSeated", seated)
+	--[[ Then stood on the ground by BOUNDING BOX. A pivot is not a geometry
+	     centre; placing by one buried the desk five studs into the floor once
+	     already. ]]
+	local cf, size = clone:GetBoundingBox()
+	clone:PivotTo(clone:GetPivot() + Vector3.new(
+		origin.X - cf.Position.X,
+		origin.Y - (cf.Position.Y - size.Y / 2),
+		origin.Z - cf.Position.Z))
 
 	clone.Name = "Him"
 	return clone
@@ -1145,7 +939,7 @@ local function buildSet(player)
 	--[[ Placed off his head for the same reason the camera is. Pinned to the
 	     origin it lit the spot one avatar's head happened to occupy and left
 	     every other one in the dark. ]]
-	hisAt.CFrame = CFrame.new(himFaceAt + Vector3.new(1.6, 1.1, 2.2))
+	hisAt.CFrame = CFrame.new(himFaceAt + Vector3.new(1.5, 1.0, 3.0))
 	hisAt.Parent = set
 
 	local his = Instance.new("PointLight")
@@ -1360,19 +1154,14 @@ function Intro.applyReveal(set, t)
 		face.Brightness = FACE_BRIGHTNESS * k
 	end
 
-	--[[ The head lift, and the aim point moving with it so the closing shot
-	     stays on his face while it comes up rather than on where it used to be. ]]
+	--[[ His front light comes up as the camera arrives on him. ]]
 	local hisAt = set:FindFirstChild("HisLight")
 	local hisLight = hisAt and hisAt:FindFirstChildWhichIsA("PointLight")
-
-	if himHead and himNeck then
+	if hisLight then
 		local k = smooth(math.clamp((t - LIFT_FROM) / (LIFT_TO - LIFT_FROM), 0, 1))
-		if hisLight then
-			hisLight.Brightness = HIS_BRIGHTNESS * k
-		end
-		local pitch = HEAD_HUNG + (HEAD_LIFTED - HEAD_HUNG) * k
-		local at = himNeck + himHang + Vector3.new(0, 0.24 * k, 0)
-		himHead.CFrame = CFrame.lookAt(at, at + himAhead) * CFrame.Angles(pitch, 0, 0)
+		hisLight.Brightness = HIS_BRIGHTNESS * k
+	end
+	if himHead and himHead.Parent then
 		himFaceAt = himHead.Position
 	end
 
