@@ -13,7 +13,9 @@
 		6.0  the camera swings round him -- the move that reveals her.
 		7.4  low, looking up. She stands, he does not.
 		7.9  "You're ugly and broke, we're done."
-		10.0 out.
+		9.2  the camera leaves her.
+		11.2 round to his face. He lifts his head. Nobody says anything.
+		14.0 out.
 
 	BUILT ON ITS OWN SET, nine hundred studs under the map, entirely on the
 	client. Staging it in the world would mean fighting the daylight pass, the
@@ -44,7 +46,10 @@ local HER = ORIGIN + Vector3.new(0, 0, 7)
 
 local LINE = "You're ugly and broke, we're done."
 local SUBTITLE_AT = 7.9
-local RUNTIME = 10.0
+--[[ The line clears BEFORE the last beat, so the closing shot is silent. Her
+     words are done; what is left is him. ]]
+local SUBTITLE_OUT = 10.6
+local RUNTIME = 14.0
 local FADE_IN, FADE_OUT = 0.4, 0.6
 local BAR = 0.11
 
@@ -65,7 +70,18 @@ local SHOTS = {
 	{ t = 3.4,  pos = Vector3.new(-4.0, 4.5, -5.5), look = "him" },
 	{ t = 6.0,  pos = Vector3.new(7.5, 2.4, -2.0),  look = "between" },
 	{ t = 7.4,  pos = Vector3.new(5.2, 2.8, -4.2),  look = "her" },
-	{ t = 10.0, pos = Vector3.new(4.0, 2.4, -2.4),  look = "her" },
+	{ t = 9.2,  pos = Vector3.new(4.0, 2.4, -2.4),  look = "her" },
+	--[[ AND THEN BACK TO HIM. Cutting to black on her last syllable made the
+	     line the end of the scene; it is not, it is the start of his. The camera
+	     leaves her, comes round in front and sits at his eyeline for nearly three
+	     seconds with nothing said.
+
+	     In FRONT of him and low, which only became possible once his head was
+	     turned the right way round -- it had been facing back under his own chest,
+	     so every angle that should have found his face found an upper arm. She is
+	     behind the lens for this shot; he is on his own. ]]
+	{ t = 11.2, pos = Vector3.new(3.0, 1.40, 6.8), look = "hisface" },
+	{ t = 14.0, pos = Vector3.new(2.4, 1.12, 6.2), look = "hisface" },
 }
 
 local AIM = {
@@ -73,6 +89,19 @@ local AIM = {
 	her = HER + Vector3.new(0, 4.4, 0),
 	between = ORIGIN + Vector3.new(0, 1.8, 3.5),
 }
+
+--[[ His head, MEASURED off the posed rig rather than guessed, because the pose
+     is derived from whatever proportions the player's own avatar has and no
+     fixed offset fits every body. buildSet overwrites this; the default only
+     has to be sane for a caller that runs before any set exists. ]]
+local himFaceAt = HIM + Vector3.new(0, 2.1, 0.6)
+
+local function aimOf(name)
+	if name == "hisface" then
+		return himFaceAt
+	end
+	return AIM[name]
+end
 
 --[[
 	NIGHT, BUT LEGIBLE.
@@ -135,6 +164,26 @@ local RAIN_AHEAD = 6
 ]]
 local REVEAL_FROM, REVEAL_TO = 6.1, 7.3
 local FACE_BRIGHTNESS = 2.0
+
+--[[
+	AND THEN HE LIFTS HIS HEAD.
+
+	The closing shot is supposed to be his face, and a head hung at -58 degrees
+	does not have a visible one from anywhere -- it is pointed at the tarmac with
+	his own arms around it. Rather than keep hunting for an angle that does not
+	exist, he moves: over about a second and a half after she has finished, his
+	head comes up to -16.
+
+	It is the only thing either figure does in ten seconds, which is exactly why
+	it lands. Everything before it is held.
+]]
+local HEAD_HUNG, HEAD_LIFTED = math.rad(-58), math.rad(-16)
+local HIS_BRIGHTNESS = 1.7
+local LIFT_FROM, LIFT_TO = 11.4, 12.9
+
+--[[ Filled in by the pose so the lift can rebuild the head's CFrame from the
+     same neck it was hung off. ]]
+local himNeck, himHang, himAhead, himHead
 
 local LIGHTING_KEYS = {
 	"ClockTime", "Brightness", "Ambient", "OutdoorAmbient",
@@ -567,6 +616,36 @@ local function bone(part, from, dir)
 	return span(part, from, from + dir.Unit * part.Size.Y)
 end
 
+--[[
+	Two-bone solve: put the elbow somewhere that lets a fixed-length arm reach a
+	fixed target, instead of aiming each segment by hand and hoping the hand
+	lands near the floor.
+
+	This is what the hand-aimed version could not do. Guessing three directions
+	and multiplying by the part lengths puts the hand wherever the arithmetic
+	says -- 1.6 studs underground on the first attempt -- so the fix each time
+	was to re-guess the angles. Solving for the elbow instead makes ground
+	contact an INPUT: the hand is placed on the tarmac and the arm bends however
+	much it has to, whatever the avatar's proportions are.
+]]
+local function twoBone(from, to, upperLen, lowerLen, bendHint)
+	local delta = to - from
+	local reach = math.min(delta.Magnitude, upperLen + lowerLen - 0.01)
+	if reach < 0.001 then
+		return from
+	end
+	local along = delta.Unit
+	--[[ Distance from the shoulder to the point on the straight line that the
+	     elbow sits square to, then the height of the triangle off that line. ]]
+	local run = (upperLen * upperLen - lowerLen * lowerLen + reach * reach) / (2 * reach)
+	local rise = math.sqrt(math.max(upperLen * upperLen - run * run, 0))
+	local perp = bendHint - along * bendHint:Dot(along)
+	if perp.Magnitude < 0.001 then
+		perp = Vector3.new(0, 1, 0) - along * along.Y
+	end
+	return from + along * run + perp.Unit * rise
+end
+
 local function poseKneeling(char, origin)
 	local function get(n)
 		return char:FindFirstChild(n)
@@ -577,73 +656,110 @@ local function poseKneeling(char, origin)
 
 	--[[ Ground contacts first. Everything else is derived from these, because
 	     this pose is defined by what is touching the floor. ]]
-	local kneeL = origin + Vector3.new(-0.45, 0.26, -0.75)
-	local kneeR = origin + Vector3.new(0.45, 0.26, -0.75)
+	local kneeL = origin + Vector3.new(-0.45, 0.25, -0.55)
+	local kneeR = origin + Vector3.new(0.45, 0.25, -0.55)
 
 	-- shins lie flat, running back from the knees
-	local backward = Vector3.new(0, 0.06, -1)
+	local backward = Vector3.new(0, 0.04, -1)
 	local ankleL = bone(get("LeftLowerLeg"), kneeL, backward)
 	local ankleR = bone(get("RightLowerLeg"), kneeR, backward)
 	bone(get("LeftFoot"), ankleL, backward)
 	bone(get("RightFoot"), ankleR, backward)
 
 	-- thighs near vertical from the knees, which is what sets the hip height
-	local thighDir = Vector3.new(0, 0.95, 0.31)
+	local thighDir = Vector3.new(0, 0.97, 0.24)
 	local hipL = bone(get("LeftUpperLeg"), kneeL, thighDir)
 	local hipR = bone(get("RightUpperLeg"), kneeR, thighDir)
 	local hip = (hipL + hipR) * 0.5
 
 	--[[
-		SHOULDERS ABOVE HIPS, and the reason is this avatar's proportions.
+		A FLAT BACK, NOT A CLIMBING ONE.
 
 		Measured off the rig: the arm is 3.83 studs shoulder to fingertips and
-		the whole leg is 2.85. The arms are LONGER than the legs, so there is no
-		pose where hips and shoulders sit level and the hands still reach the
-		floor -- the first attempt sloped the back down and put his hands 1.6
-		studs underground, and flattening it stretched him to eight studs long
-		with his arms reaching out like a diver.
+		the whole leg is 2.85. The arms are LONGER than the legs, and the first
+		attempt to deal with that raised the shoulders until the arms hung nearly
+		vertical -- which put the neck at 3.2 studs, the head at 2.6, and the hips
+		at 1.5, so the back ran UPHILL from hip to shoulder.
 
-		Raising the shoulders lets the arms hang closer to vertical, which both
-		shortens him and is what a long-armed body on all fours actually does.
+		Seen from the side that is not a man on his hands and knees, it is a
+		downward dog: both ends on the floor and his hips the highest point in
+		the shot. The screenshot said so immediately and the numbers never would
+		have -- every part was exactly where the arithmetic put it.
+
+		So the spine now aims at a LOW, FORWARD target and the arms fold to reach
+		the ground instead of the shoulders rising to meet it. The back runs
+		nearly flat, and his head ends up around a stud and a half off the
+		tarmac, which is the whole point of the shot.
 	]]
-	local spine = Vector3.new(0, 0.55, 0.83)
-	local waist = bone(get("LowerTorso"), hip, spine)
-	local neck = bone(get("UpperTorso"), waist, spine)
-
-	local upper = get("UpperTorso")
+	local lower, upper = get("LowerTorso"), get("UpperTorso")
+	local neckTarget = origin + Vector3.new(0, 2.25, 2.70)
+	local spine = (neckTarget - hip).Unit
+	local waist = bone(lower, hip, spine)
+	local neck = bone(upper, waist, spine)
 	local halfW = upper and upper.Size.X * 0.5 or 1
 
 	-- head hanging off the end of the spine, looking at the ground
 	local head = get("Head")
 	if head then
-		--[[ Hung below the neck rather than thrown forward of it. Out front it
-		     added a stud to his length and read as looking up, which is the
-		     opposite of the pose. ]]
-		head.CFrame = CFrame.new(neck + Vector3.new(0, -0.62, 0.26))
-			* CFrame.Angles(math.rad(-62), 0, 0)
+		--[[
+			FACING THE WAY HIS BODY GOES, which it was not.
+
+			The head was placed with an identity yaw and pitched down from there.
+			Identity faces -Z; his body runs toward +Z. So his face was aimed back
+			underneath his own chest, and every camera angle that should have
+			found it found an upper arm instead. It never looked like a rotation
+			bug -- it looked like the shot was badly placed, and three of them
+			were moved before the head itself was suspected.
+
+			Built off the SPINE now rather than off world axes, so it points
+			wherever the body points regardless of how the pose is laid out.
+		]]
+		local ahead = Vector3.new(spine.X, 0, spine.Z)
+		ahead = ahead.Magnitude > 0.01 and ahead.Unit or Vector3.new(0, 0, 1)
+		himNeck = neck
+		himHang = Vector3.new(0, -0.62, 0.26)
+		himAhead = ahead
+		head.CFrame = CFrame.lookAt(neck + himHang, neck + himHang + ahead)
+			* CFrame.Angles(HEAD_HUNG, 0, 0)
 	end
 
 	--[[
-		BENT ARMS, not straight ones.
+		ARMS SOLVED TO THE FLOOR.
 
-		A straight arm from these shoulders is 3.8 studs of reach into a 1.9
-		stud gap, which is how the floor got punched through. Each segment gets
-		its own direction instead: upper arm down and forward, forearm flattening
-		out, hand flat on the tarmac.
+		A straight arm from these shoulders is 3.8 studs of reach into a gap
+		around 2, which is how the floor got punched through the first time. The
+		previous fix aimed each segment by hand -- upper arm down and forward,
+		forearm flattening, hand flat -- and that only ever held for one set of
+		proportions, because the hand lands wherever three guessed directions
+		times three part lengths happen to put it.
 
-		It also just looks better. Locked vertical arms read as a shop dummy;
-		bent ones read as weight being carried by someone who would rather not
-		be carrying it.
+		Now the HAND IS PLACED FIRST, on the ground and slightly ahead of the
+		shoulder, and the elbow is solved for. The arm folds as much as it needs
+		to and the contact is exact for any avatar. Elbows are hinted backwards,
+		which is the way they actually go on someone holding themselves up.
 	]]
-	local upperArmDir = Vector3.new(0, -0.98, 0.20)
-	local foreArmDir = Vector3.new(0, -0.93, 0.37)
-	local handDir = Vector3.new(0, -0.35, 0.94)
 	for _, side in ipairs({ { "Left", -1 }, { "Right", 1 } }) do
 		local name, sign = side[1], side[2]
 		local shoulder = neck + Vector3.new(sign * (halfW - 0.15), -0.15, -0.1)
-		local elbow = bone(get(name .. "UpperArm"), shoulder, upperArmDir)
-		local wrist = bone(get(name .. "LowerArm"), elbow, foreArmDir)
-		bone(get(name .. "Hand"), wrist, handDir)
+		local upperArm, foreArm, hand =
+			get(name .. "UpperArm"), get(name .. "LowerArm"), get(name .. "Hand")
+		local upperLen = upperArm and upperArm.Size.Y or 1.4
+		local foreLen = (foreArm and foreArm.Size.Y or 1.2) + (hand and hand.Size.Y or 0.7)
+
+		local palm = origin + Vector3.new(sign * (halfW - 0.05), 0.12, 2.95)
+		local elbow = twoBone(shoulder, palm, upperLen, foreLen,
+			Vector3.new(sign * 0.35, 0.1, -1))
+
+		span(upperArm, shoulder, elbow)
+		--[[ Forearm and hand share the run from elbow to palm, split by their
+		     own lengths so the wrist lands where the two actually meet. ]]
+		local toPalm = palm - elbow
+		if toPalm.Magnitude > 0.001 then
+			local dir = toPalm.Unit
+			local wrist = elbow + dir * (foreArm and foreArm.Size.Y or 1.2)
+			span(foreArm, elbow, wrist)
+			span(hand, wrist, wrist + dir * (hand and hand.Size.Y or 0.7))
+		end
 	end
 
 	local root = get("HumanoidRootPart")
@@ -809,6 +925,15 @@ local function buildSet(player)
 	end
 	buildHer(set)
 
+	--[[ The closing shot aims at his head, so take it from the rig that actually
+	     got built. Whichever figure is standing in, and whatever proportions the
+	     player's avatar has, the camera ends up on the real thing. ]]
+	local himModel = avatar or set:FindFirstChild("Him")
+	himHead = himModel and himModel:FindFirstChild("Head", true)
+	if himHead then
+		himFaceAt = himHead.Position
+	end
+
 	--[[
 		Backlight behind her, so the reveal is a silhouette stepping out of the
 		rain rather than a lit character standing there.
@@ -912,6 +1037,39 @@ local function buildSet(player)
 	dome.Parent = domeAt
 
 	--[[
+		A LIGHT FOR THE LAST SHOT, and nothing before it.
+
+		The closing beat is his face, and every light in the scene is behind him
+		for it -- the fill sits off his back shoulder, which is right for the six
+		seconds it was placed for and leaves him a silhouette the moment the
+		camera comes round in front of him.
+
+		Ramped rather than switched, and off for the whole first act, for the same
+		reason her front light is: lit early it would put a glow on her from
+		across the set and give the reveal away before the camera gets there.
+	]]
+	local hisAt = Instance.new("Part")
+	hisAt.Name = "HisLight"
+	hisAt.Anchored = true
+	hisAt.CanCollide = false
+	hisAt.CanQuery = false
+	hisAt.Transparency = 1
+	hisAt.Size = Vector3.new(1, 1, 1)
+	hisAt.CFrame = CFrame.new(HIM + Vector3.new(3.0, 3.4, 8.2))
+	hisAt.Parent = set
+
+	local his = Instance.new("PointLight")
+	--[[ Zero until the lift ramps it. Range and distance matter more than
+	     brightness here: at three studs it blew his face to white paper, and
+	     backing off to six with a third of the intensity is the same amount of
+	     light with a gradient across it. ]]
+	his.Brightness = 0
+	his.Range = 32
+	his.Color = Color3.fromRGB(255, 244, 232)
+	his.Shadows = false
+	his.Parent = hisAt
+
+	--[[
 		RAIN, AND IT RIDES THE CAMERA. See RAIN_OFFSET / rainFollow below.
 
 		The first version hung one wide emitter high over the set, which is the
@@ -945,13 +1103,17 @@ local function buildSet(player)
 	sky.Parent = set
 
 	local rain = Instance.new("ParticleEmitter")
-	rain.Rate = 4200
+	--[[ HELD DOWN DELIBERATELY. A shadow-casting light through ~1350 particles
+	     already wedged Studio once in this project, and play mode stopped
+	     starting again at 4200 even with shadows off. Bigger, more opaque
+	     streaks at half the count read the same and cost far less. ]]
+	rain.Rate = 2000
 	rain.Lifetime = NumberRange.new(0.8, 1.1)
 	rain.Speed = NumberRange.new(20, 26)
 	rain.SpreadAngle = Vector2.new(3, 3)
 	rain.Rotation = NumberRange.new(0, 0)
-	rain.Size = NumberSequence.new(0.3)
-	rain.Transparency = NumberSequence.new(0.22)
+	rain.Size = NumberSequence.new(0.36)
+	rain.Transparency = NumberSequence.new(0.16)
 	rain.Color = ColorSequence.new(Color3.fromRGB(222, 234, 255))
 	rain.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	rain.LightEmission = 1
@@ -1074,7 +1236,7 @@ local function solve(t)
 	end
 	local span = math.max(b.t - a.t, 0.001)
 	local k = smooth(math.clamp((t - a.t) / span, 0, 1))
-	return ORIGIN + a.pos:Lerp(b.pos, k), AIM[a.look]:Lerp(AIM[b.look], k)
+	return ORIGIN + a.pos:Lerp(b.pos, k), aimOf(a.look):Lerp(aimOf(b.look), k)
 end
 
 function Intro.cameraAt(t)
@@ -1101,6 +1263,22 @@ function Intro.applyReveal(set, t)
 	if face then
 		local k = smooth(math.clamp((t - REVEAL_FROM) / (REVEAL_TO - REVEAL_FROM), 0, 1))
 		face.Brightness = FACE_BRIGHTNESS * k
+	end
+
+	--[[ The head lift, and the aim point moving with it so the closing shot
+	     stays on his face while it comes up rather than on where it used to be. ]]
+	local hisAt = set:FindFirstChild("HisLight")
+	local hisLight = hisAt and hisAt:FindFirstChildWhichIsA("PointLight")
+
+	if himHead and himNeck then
+		local k = smooth(math.clamp((t - LIFT_FROM) / (LIFT_TO - LIFT_FROM), 0, 1))
+		if hisLight then
+			hisLight.Brightness = HIS_BRIGHTNESS * k
+		end
+		local pitch = HEAD_HUNG + (HEAD_LIFTED - HEAD_HUNG) * k
+		local at = himNeck + himHang + Vector3.new(0, 0.24 * k, 0)
+		himHead.CFrame = CFrame.lookAt(at, at + himAhead) * CFrame.Angles(pitch, 0, 0)
+		himFaceAt = himHead.Position
 	end
 
 	local dof = Lighting:FindFirstChildWhichIsA("DepthOfFieldEffect")
@@ -1230,27 +1408,32 @@ function Intro.init(ctx)
 
 			-- ── roll ──────────────────────────────────────────────────────
 			cam.CameraType = Enum.CameraType.Scriptable
+			Intro.applyReveal(set, 0)
 			cam.CFrame = Intro.cameraAt(0)
 			rainFollow(set, cam)
-			Intro.applyReveal(set, 0)
 
 			TweenService:Create(top, TweenInfo.new(0.5), { Size = UDim2.new(1, 0, BAR, 0) }):Play()
 			TweenService:Create(bottom, TweenInfo.new(0.5), { Size = UDim2.new(1, 0, BAR, 0) }):Play()
 			TweenService:Create(fade, TweenInfo.new(FADE_IN), { BackgroundTransparency = 1 }):Play()
 
 			local started = os.clock()
-			local subtitled, fading = false, false
+			local subtitled, cleared, fading = false, false, false
 
 			conn = RunService.RenderStepped:Connect(function()
 				local t = os.clock() - started
+				Intro.applyReveal(set, t)
 				cam.CFrame = Intro.cameraAt(t)
 				rainFollow(set, cam)
-				Intro.applyReveal(set, t)
 
 				if not subtitled and t >= SUBTITLE_AT then
 					subtitled = true
 					TweenService:Create(sub, TweenInfo.new(0.35),
 						{ TextTransparency = 0 }):Play()
+				end
+				if subtitled and not cleared and t >= SUBTITLE_OUT then
+					cleared = true
+					TweenService:Create(sub, TweenInfo.new(0.5),
+						{ TextTransparency = 1 }):Play()
 				end
 				if not fading and t >= RUNTIME - FADE_OUT then
 					fading = true
@@ -1292,9 +1475,9 @@ function Intro.init(ctx)
 		applyLook(previewLighting)
 		cam.FieldOfView = FOV
 		cam.CameraType = Enum.CameraType.Scriptable
+		Intro.applyReveal(previewSet, t or 0)
 		cam.CFrame = Intro.cameraAt(t or 0)
 		rainFollow(previewSet, cam)
-		Intro.applyReveal(previewSet, t or 0)
 		if ctx.gui then
 			ctx.gui.Enabled = false
 		end

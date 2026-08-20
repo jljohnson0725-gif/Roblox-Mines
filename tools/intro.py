@@ -15,15 +15,23 @@ SHOTS = [
     (3.4,  "the wait",  (-4.0, 4.5, -5.5), "him",     "Push in on silence. Nothing happens. That is the point."),
     (6.0,  "the turn",  ( 7.5, 2.4, -2.0), "between", "Camera swings round him -- the move that reveals her."),
     (7.4,  "reveal",    ( 5.2, 2.8, -4.2), "her",     "Over his shoulder. She stands at full height, he does not."),
-    (10.0, "settle",    ( 4.0, 2.4, -2.4), "her",     "The reveal shot keeps drifting in while she speaks."),
+    (9.2,  "settle",    ( 4.0, 2.4, -2.4), "her",     "The reveal shot keeps drifting in while she speaks."),
+    (11.2, "back to him",( 3.0, 1.40,  6.8), "hisface", "Leaves her, drops in front of him. Her part is over."),
+    (14.0, "the sit",    ( 2.4, 1.12,  6.2), "hisface", "He lifts his head. Held in silence before the fade."),
 ]
-END = 10.0
+END = 14.0
 
 HIM = (0.0, 0.0, 0.0)
 HER = (0.0, 0.0, 7.0)
 
 SUBTITLE_AT = 7.9
+SUBTITLE_OUT = 10.6
 FADE_IN, FADE_OUT = 0.4, 0.6
+
+#[[ Where his head ends up once the pose is solved -- the closing shot aims here.
+#   Kept in step with poseKneeling's neck target by hand; if that moves, this
+#   moves. ]]
+HIS_FACE = (0.0, 1.72, 2.96)
 
 
 def dist(a, b):
@@ -31,6 +39,8 @@ def dist(a, b):
 
 
 def target(kind):
+    if kind == "hisface":
+        return HIS_FACE
     if kind == "him":
         return (HIM[0], HIM[1] + 1.2, HIM[2])
     if kind == "her":
@@ -66,9 +76,20 @@ for i, (t, name, pos, look, why) in enumerate(SHOTS):
     print("         %s" % why)
 
 print()
-print("subtitle lands at %.1fs, leaving %.1fs to read it" % (SUBTITLE_AT, END - SUBTITLE_AT))
-if END - SUBTITLE_AT < 1.5:
+read_for = SUBTITLE_OUT - SUBTITLE_AT
+print("subtitle lands at %.1fs, on screen %.1fs" % (SUBTITLE_AT, read_for))
+if read_for < 1.5:
     print("  TOO LITTLE READING TIME"); bad += 1
+
+#[[ The beat after the line. She speaks, the camera leaves her, and he is alone
+#   with it -- that silence is the point of the shot, so it gets checked like
+#   any other timing. ]]
+alone = END - SHOTS[-2][0]
+print("held on his face, silent: %.1fs" % alone)
+if alone < 2.0:
+    print("  NOT LONG ENOUGH TO LAND -- the line needs somewhere to settle"); bad += 1
+if SUBTITLE_OUT > SHOTS[-2][0] + 0.4:
+    print("  SUBTITLE STILL UP after the camera has left her"); bad += 1
 print("silent stretch before the turn: %.1fs" % SHOTS[2][0])
 print("shots: %d cuts, %d camera moves" % (0, len(SHOTS) - 1))
 if SHOTS[2][0] < 2.5:
