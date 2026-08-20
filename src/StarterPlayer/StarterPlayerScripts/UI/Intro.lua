@@ -95,6 +95,48 @@ local THUNDER_ID = 139319051979882
 local THUNDER_AT = 15.0
 local THUNDER_VOLUME = 0.9
 
+--[[
+	THE EPILOGUE: him at his computer, afterwards.
+
+	Without it the cutscene ended and the tycoon appeared on the same frame -- a
+	cut from a rainstorm at night to a bright green street. This makes it one
+	chain instead of two events: she leaves, he goes looking for why, and what he
+	finds is the game's entire loop. It also earns the tone change, because you
+	cannot go from a break-up in the rain to a brainrot tycoon without a joke in
+	between.
+
+	Staged at his OWN DESK -- the same DeskTemplate that stands in the apartment,
+	with the monitor rebuilt to the offsets HomeService uses -- so the last thing
+	before the game is the room the game starts in.
+
+	A hundred studs under the rain set: far enough that neither scene can light
+	the other, close enough to stay in the same corner of the world.
+]]
+local DESK_ORIGIN = Vector3.new(0, -1000, 0)
+local WEB_TITLE = "HOW TO LOOKSMAX AND BECOME A TRUE CHAD"
+local WEB_LINES = {
+	"Step 1.  Get rich. Nothing else works until this one does.",
+	"Step 2.  Buy brainrots. They print money while you sleep.",
+	"Step 3.  Mew. Bone smash. Ascend.",
+	"Step 4.  She comes back. (results may vary)",
+}
+
+--[[ Seated. Hips and knees near square, shoulders forward over a keyboard. The
+     camera is behind him for most of this, so the read is the SHAPE -- slumped,
+     close to the screen, up too late. ]]
+local SIT_POSE = {
+	Waist         = CFrame.Angles(math.rad(8), 0, 0),
+	Neck          = CFrame.Angles(math.rad(6), 0, 0),
+	LeftHip       = CFrame.Angles(math.rad(-76), 0, math.rad(-3)),
+	RightHip      = CFrame.Angles(math.rad(-76), 0, math.rad(3)),
+	LeftKnee      = CFrame.Angles(math.rad(74), 0, 0),
+	RightKnee     = CFrame.Angles(math.rad(74), 0, 0),
+	LeftShoulder  = CFrame.Angles(math.rad(-34), 0, math.rad(8)),
+	RightShoulder = CFrame.Angles(math.rad(-34), 0, math.rad(-8)),
+	LeftElbow     = CFrame.Angles(math.rad(-58), 0, 0),
+	RightElbow    = CFrame.Angles(math.rad(-58), 0, 0),
+}
+
 local SUBTITLE_AT = 1.2
 --[[ The line clears BEFORE the last beat, so the closing shot is silent. Her
      words are done; what is left is him. ]]
@@ -234,7 +276,10 @@ local FACE_BRIGHTNESS = 3.6
 --[[ His front light for the closing shot, brought up as the camera arrives.
      Off until then for the same reason hers is: lit early it puts a glow across
      the set and gives the reveal away. ]]
-local HIS_BRIGHTNESS = 3.4
+--[[ Pulled down from 3.4: the close-up is the only shot where the light is
+     within three studs of a face, so the same number that reads as "lit" in a
+     wide shot reads as a torch in this one. ]]
+local HIS_BRIGHTNESS = 2.1
 local LIFT_FROM, LIFT_TO = 15.2, 16.6
 
 --[[ Filled in by buildSet: his head, and where it is, so the closing shot aims
@@ -999,7 +1044,7 @@ local function buildSet(player)
 	     black box this scene used to be played in -- at the old 1.7 he read as a
 	     silhouette against cloud, which is a nice frame and not the one asked
 	     for. ]]
-	his.Range = 17
+	his.Range = 20
 	his.Color = Color3.fromRGB(255, 244, 232)
 	his.Shadows = false
 	his.Parent = hisAt
@@ -1216,6 +1261,265 @@ function Intro.applyReveal(set, t)
 		local pos, aim = solve(t)
 		dof.FocusDistance = (aim - pos).Magnitude
 	end
+end
+
+
+
+
+--[[
+	His desk, his chair, his monitor, and him in it.
+
+	The monitor is rebuilt at the SAME OFFSETS HomeService uses off DeskTop --
+	foot, stem, bezel, screen -- because this has to be recognisably the computer
+	that is standing in the apartment when the game starts, not a prop that
+	resembles one. In DeskTop's frame X is across the desk's width and Z along
+	its length, so a screen facing the chair is thin in X and wide in Z; the
+	sizes look transposed and are not.
+]]
+local function buildDeskSet(player)
+	local set = Instance.new("Model")
+	set.Name = "IntroDesk"
+	set.Parent = workspace
+
+	local floor = block(set, "Floor", Vector3.new(90, 2, 90),
+		CFrame.new(DESK_ORIGIN - Vector3.new(0, 1, 0)),
+		Color3.fromRGB(26, 24, 30), Enum.Material.SmoothPlastic)
+	floor.Reflectance = 0.03
+
+	--[[ A room, because a desk floating in a void reads as a menu. Only the
+	     three walls the camera can ever see. ]]
+	for _, face in ipairs({
+		{ Vector3.new(90, 34, 2), Vector3.new(0, 17, 22) },
+		{ Vector3.new(2, 34, 46), Vector3.new(-24, 17, 0) },
+		{ Vector3.new(2, 34, 46), Vector3.new(24, 17, 0) },
+	}) do
+		block(set, "Wall", face[1], CFrame.new(DESK_ORIGIN + face[2]),
+			Color3.fromRGB(22, 21, 26), Enum.Material.SmoothPlastic)
+	end
+
+	local template = game:GetService("ReplicatedStorage"):FindFirstChild("DeskTemplate")
+	local desk, deskTop
+	if template then
+		desk = template:Clone()
+		desk.Name = "Desk"
+		for _, d in ipairs(desk:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = false
+				d.CanQuery = false
+			end
+		end
+		--[[ Stood on the floor by BOUNDING BOX; a pivot is not a geometry centre
+		     and placing this by one buried it five studs down once already. ]]
+		local cf, size = desk:GetBoundingBox()
+		desk:PivotTo(desk:GetPivot() + Vector3.new(
+			DESK_ORIGIN.X - cf.Position.X,
+			DESK_ORIGIN.Y - (cf.Position.Y - size.Y / 2),
+			DESK_ORIGIN.Z - cf.Position.Z))
+		desk.Parent = set
+		deskTop = desk:FindFirstChild("DeskTop", true)
+	end
+
+	--[[ Without the desk template there is no scene worth showing, so the
+	     epilogue is skipped rather than faked. ]]
+	if not deskTop then
+		set:Destroy()
+		return nil
+	end
+
+	local function fitting(name, size, offset, color)
+		return block(set, name, size, deskTop.CFrame * CFrame.new(offset), color,
+			Enum.Material.SmoothPlastic)
+	end
+	local surface = 0.2
+	fitting("MonitorFoot", Vector3.new(1.4, 0.25, 3.0),
+		Vector3.new(1.2, surface + 0.125, 0), Color3.fromRGB(28, 28, 32))
+	fitting("MonitorStem", Vector3.new(0.4, 1.8, 0.5),
+		Vector3.new(1.2, surface + 1.15, 0), Color3.fromRGB(28, 28, 32))
+	fitting("MonitorBezel", Vector3.new(0.32, 4.2, 6.8),
+		Vector3.new(1.2, surface + 4.1, 0), Color3.fromRGB(20, 20, 24))
+
+	local screen = fitting("MonitorScreen", Vector3.new(0.12, 3.5, 6.1),
+		Vector3.new(1.02, surface + 4.1, 0), Color3.fromRGB(236, 238, 244))
+	screen.Material = Enum.Material.Neon
+
+	--[[ The page. Face Left is -X, the chair side, which is the side he is
+	     sitting on and the side the camera comes in from. ]]
+	local face = Instance.new("SurfaceGui")
+	face.Name = "Page"
+	face.Face = Enum.NormalId.Left
+	face.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	face.PixelsPerStud = 64
+	face.LightInfluence = 0
+	face.Parent = screen
+
+	local page = Instance.new("Frame")
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundColor3 = Color3.fromRGB(244, 245, 250)
+	page.BorderSizePixel = 0
+	page.Parent = face
+
+	local chrome = Instance.new("Frame")
+	chrome.Size = UDim2.new(1, 0, 0, 34)
+	chrome.BackgroundColor3 = Color3.fromRGB(222, 224, 232)
+	chrome.BorderSizePixel = 0
+	chrome.Parent = page
+
+	local url = Instance.new("TextLabel")
+	url.BackgroundTransparency = 1
+	url.Position = UDim2.fromOffset(14, 0)
+	url.Size = UDim2.new(1, -28, 1, 0)
+	url.Font = Enum.Font.Gotham
+	url.TextSize = 15
+	url.TextXAlignment = Enum.TextXAlignment.Left
+	url.TextColor3 = Color3.fromRGB(96, 100, 112)
+	url.Text = "looksmaxxing.wiki/true-chad"
+	url.Parent = chrome
+
+	local title = Instance.new("TextLabel")
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.fromOffset(26, 52)
+	title.Size = UDim2.new(1, -52, 0, 62)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 30
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextWrapped = true
+	title.TextColor3 = Color3.fromRGB(18, 18, 24)
+	title.Text = WEB_TITLE
+	title.Parent = page
+
+	for i, line in ipairs(WEB_LINES) do
+		local row = Instance.new("TextLabel")
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.fromOffset(26, 128 + (i - 1) * 30)
+		row.Size = UDim2.new(1, -52, 0, 26)
+		row.Font = Enum.Font.Gotham
+		row.TextSize = 17
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextColor3 = Color3.fromRGB(52, 54, 64)
+		row.Text = line
+		row.Parent = page
+	end
+
+	--[[ The screen is the only light in the room, which is the whole picture:
+	     a dark flat and one lit face. ]]
+	local glow = Instance.new("PointLight")
+	glow.Brightness = 2.6
+	glow.Range = 26
+	glow.Color = Color3.fromRGB(226, 234, 255)
+	glow.Shadows = false
+	glow.Parent = screen
+
+	--[[ Chair and occupant, on the -X side of the desk facing the screen. ]]
+	local seatAt = deskTop.CFrame * CFrame.new(-4.4, surface - 1.6, 0)
+	block(set, "ChairSeat", Vector3.new(2.6, 0.4, 2.6), seatAt,
+		Color3.fromRGB(32, 32, 38), Enum.Material.SmoothPlastic)
+	block(set, "ChairBack", Vector3.new(0.4, 3.2, 2.6),
+		seatAt * CFrame.new(-1.1, 1.6, 0),
+		Color3.fromRGB(32, 32, 38), Enum.Material.SmoothPlastic)
+
+	local him = cloneAvatar(player, DESK_ORIGIN)
+	if him then
+		local root = him:FindFirstChild("HumanoidRootPart")
+		if root then
+			--[[ Turned to face the screen, then folded into the chair. The
+			     accessories are re-seated afterwards because posing moves parts
+			     and anchored parts ignore the welds holding hats on. ]]
+			root.CFrame = CFrame.lookAt(seatAt.Position + Vector3.new(0, 2.6, 0),
+				screen.Position)
+			poseRig(him, root, SIT_POSE)
+			seatAccessories(him)
+		end
+		him.Parent = set
+	end
+
+	return set, screen
+end
+
+
+--[[
+	The epilogue as it plays: behind him, then in on what he is reading, then
+	black.
+
+	ITS OWN BLACK LAYER. The main cutscene's ScreenGui is destroyed by restore(),
+	and restore() is also what hands back the camera, the walk speed and the
+	game's audio. Holding this on a separate layer is what lets the world be
+	given back UNDERNEATH a black screen and then revealed by a fade, rather than
+	cutting from a rainstorm straight into a bright green street.
+]]
+local function playEpilogue(player, saved, out)
+	local set, screen = buildDeskSet(player)
+	out.set = set
+	if not set then
+		return nil, nil
+	end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "IntroEpilogue"
+	gui.IgnoreGuiInset = true
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 1200
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local black = Instance.new("Frame")
+	black.BackgroundColor3 = Color3.new(0, 0, 0)
+	black.BorderSizePixel = 0
+	black.Size = UDim2.fromScale(1, 1)
+	black.BackgroundTransparency = 0
+	black.Parent = gui
+	out.gui = gui
+	out.black = black
+
+	--[[ A room lit by a monitor. Ambient near zero so the screen is genuinely
+	     the only source, which is what makes the push-in read. ]]
+	Lighting.ClockTime = 0
+	Lighting.Brightness = 0
+	Lighting.Ambient = Color3.fromRGB(16, 16, 20)
+	Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 14)
+	Lighting.FogEnd = 220
+
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.FieldOfView = 46
+
+	--[[ Both keyframes in the SCREEN's own frame, so they hold wherever the desk
+	     template happens to put it. Local -X is the chair side: out in front of
+	     the monitor, which is where he and the camera both are. ]]
+	--[[ POSITIONS, not CFrames. lookAt takes Vector3s, and handing it the CFrame
+	     these offsets produce throws -- which it did, and because the black
+	     screen was already up by then it left the player staring at nothing with
+	     the game running behind it. ]]
+	local from = (screen.CFrame * CFrame.new(-11.5, 1.9, 1.2)).Position
+	local to = (screen.CFrame * CFrame.new(-5.0, 0.15, 0)).Position
+	local aimFrom = screen.Position + Vector3.new(0, -0.6, 0)
+	local aimTo = screen.Position
+
+	cam.CFrame = CFrame.lookAt(from, aimFrom)
+	TweenService:Create(black, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play()
+
+	local PUSH = 5.6
+	local started = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = math.clamp((os.clock() - started) / PUSH, 0, 1)
+		local e = smooth(k)
+		cam.CameraType = Enum.CameraType.Scriptable
+		cam.CFrame = CFrame.lookAt(from:Lerp(to, e), aimFrom:Lerp(aimTo, e))
+	end)
+
+	task.wait(PUSH + 0.7)
+	TweenService:Create(black, TweenInfo.new(0.9), { BackgroundTransparency = 0 }):Play()
+	task.wait(1.1)
+	conn:Disconnect()
+	set:Destroy()
+	out.set = nil
+
+	--[[ Lighting goes back to whatever it was before the whole cold open, so the
+	     tycoon is revealed under its own daylight rather than this room's. ]]
+	if saved then
+		restoreLighting(saved)
+	end
+	return gui, black
 end
 
 function Intro.init(ctx)
@@ -1495,7 +1799,86 @@ function Intro.init(ctx)
 		if not ok then
 			warn("[Intro] cutscene failed, restoring control: " .. tostring(err))
 		end
+
+		--[[
+			THE HANDOVER, and why it is shaped like this.
+
+			The cutscene used to end and the tycoon appear on the same frame,
+			which is a cut from a rainstorm at night to a bright green street.
+			Now the epilogue holds its own black over the top, the world is given
+			back UNDERNEATH it -- camera, walk speed, lighting, audio -- and only
+			then does the black lift.
+
+			Guarded, because it is the last thing between the player and their
+			game: if any of it throws, restore() still runs in the line below.
+		]]
+		--[[ Everything the epilogue creates is tracked OUTSIDE the pcall, because
+		     it puts a black screen up before it does anything risky. A throw
+		     after that point once left the player looking at black with the game
+		     running behind it, which is worse than no epilogue at all. ]]
+		--[[
+			HAND THE SCENE OVER BEFORE THE EPILOGUE, not after.
+
+			restore() runs below, and it is what disconnects the render loop --
+			so on the first attempt the main loop was still live all through the
+			epilogue, re-asserting the rain-set camera and the rain-set lighting
+			every frame. The desk was built correctly and never seen; the camera
+			measured ninety-eight studs from a monitor it was supposed to be five
+			from.
+
+			The cutscene's ScreenGui is DISABLED rather than destroyed, because
+			its black fade would otherwise sit opaque underneath the epilogue --
+			and because the three sounds are parented to it. Disabling stops it
+			drawing; Sounds are not GuiObjects, so the rain and the music play on
+			into the epilogue and stop with everything else at restore().
+		]]
+		if conn then
+			conn:Disconnect()
+			conn = nil
+		end
+		if screen then
+			screen.Enabled = false
+		end
+		if set then
+			set:Destroy()
+			set = nil
+		end
+
+		local out = {}
+		if ok then
+			local shown, err2 = pcall(function()
+				playEpilogue(player, savedLighting, out)
+			end)
+			if not shown then
+				warn("[Intro] epilogue failed, dropping it: " .. tostring(err2))
+				if out.set then
+					out.set:Destroy()
+					out.set = nil
+				end
+				if out.gui then
+					out.gui:Destroy()
+					out.gui = nil
+				end
+				if savedLighting then
+					restoreLighting(savedLighting)
+				end
+			end
+		end
+		local epilogueGui, epilogueBlack = out.gui, out.black
+
 		restore()
+
+		if epilogueGui then
+			--[[ Fades to the tycoon rather than cutting to it. Slow enough to
+			     read as dawn arriving, short enough not to be a loading screen. ]]
+			if epilogueBlack then
+				TweenService:Create(epilogueBlack, TweenInfo.new(1.1),
+					{ BackgroundTransparency = 1 }):Play()
+			end
+			task.delay(1.3, function()
+				epilogueGui:Destroy()
+			end)
+		end
 	end
 
 	--[[
