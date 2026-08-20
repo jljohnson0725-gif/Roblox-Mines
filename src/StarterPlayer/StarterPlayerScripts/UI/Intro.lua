@@ -44,12 +44,34 @@ local ORIGIN = Vector3.new(0, -900, 0)
 local HIM = ORIGIN
 local HER = ORIGIN + Vector3.new(0, 0, 7)
 
-local LINE = "You're ugly and broke, we're done."
-local SUBTITLE_AT = 7.9
+--[[
+	WHAT SHE SAYS, and why it is an apology rather than a dismissal.
+
+	The first version was one line -- "You're ugly and broke, we're done" -- and
+	it landed as contempt. That gives the player someone to resent, and the whole
+	game after this is about winning her back, which only works if losing her is
+	a loss. So she is sorry. She takes the blame first, cannot get through the
+	middle of it, says the cruel part almost by accident, and apologises again.
+
+	The cruel line still does the work of setting up the economy: ugly and broke
+	are the two numbers the player spends the rest of the game raising. It just
+	arrives as something she is ashamed of rather than something she enjoys.
+
+	Timed as speech, not as text. The stammer gets its own beat and a gap after
+	it, because a pause you can hear is the difference between someone being
+	cruel and someone struggling.
+]]
+local LINES = {
+	{ t = 1.2,  hold = 2.6, text = "It's not you. It's me." },
+	{ t = 6.4,  hold = 1.3, text = "I just…" },
+	{ t = 8.7,  hold = 4.4, text = "I just can't be with someone ugly and broke like you…" },
+	{ t = 14.1, hold = 2.6, text = "I'm sorry. Goodbye." },
+}
+local SUBTITLE_AT = 1.2
 --[[ The line clears BEFORE the last beat, so the closing shot is silent. Her
      words are done; what is left is him. ]]
-local SUBTITLE_OUT = 10.6
-local RUNTIME = 14.0
+local SUBTITLE_OUT = 16.7
+local RUNTIME = 20.0
 local FADE_IN, FADE_OUT = 0.4, 0.6
 local BAR = 0.11
 
@@ -66,37 +88,23 @@ local BAR = 0.11
 	which is also the shot that says she is standing over him.
 ]]
 local SHOTS = {
-	{ t = 0.0,  pos = Vector3.new(-8.0, 10.0, -11.0), look = "him" },
-	{ t = 3.4,  pos = Vector3.new(-5.0, 6.2, -7.5),  look = "him" },
-	{ t = 6.0,  pos = Vector3.new(8.0, 4.2, -2.5),  look = "between" },
-	{ t = 7.4,  pos = Vector3.new(5.6, 4.6, -4.6),  look = "her" },
-	{ t = 9.2,  pos = Vector3.new(4.4, 4.4, -2.8),  look = "her" },
-	--[[ AND THEN BACK TO HIM. Cutting to black on her last syllable made the
-	     line the end of the scene; it is not, it is the start of his. The camera
-	     leaves her, comes round in front and sits at his eyeline for nearly three
-	     seconds with nothing said.
+	--[[ OPEN ON HER, AND ONLY HER. The camera sits between the two of them
+	     looking back at her, so he is behind the lens entirely -- the audience
+	     hears "it's not you, it's me" before they know who she is saying it to.
+	     Ninety-five degrees off the line to him, comfortably outside the frame. ]]
+	{ t = 0.0,  pos = Vector3.new(3.2, 4.7, 3.4),  look = "her" },
+	{ t = 3.6,  pos = Vector3.new(4.6, 4.8, 1.4),  look = "her" },
 
-	     ABOVE HIS EYELINE, not below it. The first version sat a stud under his
-	     face looking up, which frames the face beautifully and puts the horizon
-	     below the bottom of the screen -- so the ground went, and she is behind
-	     the lens anyway, and what was left was a dim figure against a lit sky.
-	     Reported, accurately, as "everything disappears".
+	--[[ Then it pulls back past him and the situation arrives: two people
+	     standing in the rain, one of them being left. ]]
+	{ t = 6.0,  pos = Vector3.new(7.4, 4.6, -3.0), look = "between" },
+	{ t = 8.4,  pos = Vector3.new(5.6, 4.6, -4.6), look = "her" },
+	{ t = 12.4, pos = Vector3.new(4.4, 4.4, -2.8), look = "her" },
 
-	     Nothing was disappearing: instrumenting the live run frame by frame,
-	     the set is intact and his head sits dead centre of the viewport for the
-	     whole beat. It was composition, not a bug. Looking slightly DOWN keeps
-	     the wet ground under him and his whole body in shot. ]]
-	--[[ RELATIVE TO HIS HEAD, not to the set origin. As fixed world offsets
-	     these two worked for exactly one avatar: the pose is solved from
-	     whatever proportions the player has, so his head lands anywhere from
-	     about z 2.9 to z 3.9, and a camera pinned to z 6.8 was a comfortable
-	     three studs in front of one body and standing inside HER on another.
-	     That is what "the camera turns round and there is nothing there" was. ]]
-	--[[ THE CLOSE-UP, off his head so it fits any avatar. He faces her, so the
-	     lens sits BETWEEN them looking back at him -- which puts her behind the
-	     camera and leaves him alone in the last shot. ]]
-	{ t = 11.2, pos = Vector3.new(1.7, 0.15, 4.6), look = "hisface", rel = "hisface" },
-	{ t = 14.0, pos = Vector3.new(1.3, 0.05, 3.4), look = "hisface", rel = "hisface" },
+	--[[ And it leaves her on "I'm sorry", so the goodbye plays over his face
+	     rather than hers. She is already gone by the time it lands. ]]
+	{ t = 15.0, pos = Vector3.new(1.7, 0.15, 4.6), look = "hisface", rel = "hisface" },
+	{ t = 20.0, pos = Vector3.new(1.3, 0.05, 3.4), look = "hisface", rel = "hisface" },
 }
 
 local AIM = {
@@ -192,14 +200,14 @@ local RAIN_AHEAD = 6
 	FACE_BRIGHTNESS is her front light's full value; before REVEAL_FROM it is off
 	entirely and she is lit by the backlight alone.
 ]]
-local REVEAL_FROM, REVEAL_TO = 6.1, 7.3
-local FACE_BRIGHTNESS = 2.0
+local REVEAL_FROM, REVEAL_TO = 0.0, 0.5
+local FACE_BRIGHTNESS = 3.6
 
 --[[ His front light for the closing shot, brought up as the camera arrives.
      Off until then for the same reason hers is: lit early it puts a glow across
      the set and gives the reveal away. ]]
 local HIS_BRIGHTNESS = 3.4
-local LIFT_FROM, LIFT_TO = 11.0, 12.4
+local LIFT_FROM, LIFT_TO = 15.2, 16.6
 
 --[[ Filled in by buildSet: his head, and where it is, so the closing shot aims
      at the real thing whatever the player's proportions are. ]]
@@ -336,26 +344,33 @@ end
 	that she is upright in a frame where he is not.
 ]]
 --[[
-	HER STANCE. Arms folded, hip out, chin down at the man on the floor.
+	HER STANCE. Apologetic, not dismissive.
 
-	An avatar arrives in an A-pose, which is a pose for fitting clothes to and
-	reads as a mannequin standing in the rain. She has one line and about two and
-	a half seconds on screen, so the body has to say the thing before the
-	subtitle does: folded arms and a cocked hip is closed, done, already left.
+	The first version had her arms folded, hip out, chin down at him -- closed,
+	done, already left. It read exactly as intended and that turned out to be
+	the wrong intention: the entire game after this is about earning her back,
+	which only works if the player wants her back. Contempt gives them someone
+	to resent instead.
+
+	So the arms come down and forward, hands meeting in front of her, which is
+	what people do when they are about to say something they have rehearsed. The
+	hip straightens, the weight evens out, and the head drops -- looking at the
+	ground rather than down at him. Same rig, same three seconds; she is sorry
+	now instead of finished.
 
 	Angles are in the JOINT's own space, so they suit whatever proportions the
 	supplied avatar happens to have -- nothing here is a stud offset.
 ]]
 local HER_POSE = {
-	Waist         = CFrame.Angles(math.rad(-2), math.rad(10), math.rad(5)),
-	Neck          = CFrame.Angles(math.rad(14), math.rad(-8), 0),
-	LeftShoulder  = CFrame.Angles(math.rad(-22), 0, math.rad(13)),
-	RightShoulder = CFrame.Angles(math.rad(-26), 0, math.rad(-13)),
-	LeftElbow     = CFrame.Angles(math.rad(-88), 0, 0),
-	RightElbow    = CFrame.Angles(math.rad(-95), 0, 0),
-	LeftHip       = CFrame.Angles(math.rad(3), math.rad(7), math.rad(-4)),
-	RightHip      = CFrame.Angles(math.rad(-6), math.rad(-5), math.rad(7)),
-	RightKnee     = CFrame.Angles(math.rad(-16), 0, 0),
+	Waist         = CFrame.Angles(math.rad(4), math.rad(3), math.rad(1)),
+	Neck          = CFrame.Angles(math.rad(17), math.rad(-5), 0),
+	LeftShoulder  = CFrame.Angles(math.rad(-11), 0, math.rad(7)),
+	RightShoulder = CFrame.Angles(math.rad(-13), 0, math.rad(-7)),
+	LeftElbow     = CFrame.Angles(math.rad(-46), 0, 0),
+	RightElbow    = CFrame.Angles(math.rad(-50), 0, 0),
+	LeftHip       = CFrame.Angles(math.rad(1), math.rad(3), math.rad(-1)),
+	RightHip      = CFrame.Angles(math.rad(-2), math.rad(-2), math.rad(2)),
+	RightKnee     = CFrame.Angles(math.rad(-6), 0, 0),
 }
 
 --[[
@@ -856,7 +871,10 @@ local function buildSet(player)
 	faceAt.CanQuery = false
 	faceAt.Transparency = 1
 	faceAt.Size = Vector3.new(1, 1, 1)
-	faceAt.CFrame = CFrame.new(HER + Vector3.new(6, 7, -11))
+	--[[ Close in, because she OPENS the scene now rather than arriving in the
+	     middle of it. At fourteen studs out she was a shape; the first shot of
+	     the game is her face saying it is not his fault. ]]
+	faceAt.CFrame = CFrame.new(HER + Vector3.new(4.2, 5.0, -5.4))
 	faceAt.Parent = set
 
 	--[[ WARM, and the only warm light in the scene. The first version was the
@@ -864,8 +882,8 @@ local function buildSet(player)
 	     another piece of the wet set rather than as a person in it. Everything
 	     else here is night; she is the one thing lit like a face. ]]
 	local face = Instance.new("PointLight")
-	face.Brightness = 2.0
-	face.Range = 42
+	face.Brightness = 3.6
+	face.Range = 24
 	face.Color = Color3.fromRGB(255, 240, 224)
 	face.Shadows = false
 	face.Parent = faceAt
@@ -1300,7 +1318,7 @@ function Intro.init(ctx)
 			sub.TextStrokeTransparency = 0.35
 			sub.TextTransparency = 1
 			sub.TextWrapped = true
-			sub.Text = LINE
+			sub.Text = ""
 			sub.ZIndex = 9
 			sub.Parent = screen
 
@@ -1315,7 +1333,7 @@ function Intro.init(ctx)
 			TweenService:Create(fade, TweenInfo.new(FADE_IN), { BackgroundTransparency = 1 }):Play()
 
 			local started = os.clock()
-			local subtitled, cleared, fading = false, false, false
+			local showing, fading = 0, false
 			local lastGrade = -1
 
 			conn = RunService.RenderStepped:Connect(function()
@@ -1360,15 +1378,33 @@ function Intro.init(ctx)
 					applyLook(savedLighting)
 				end
 
-				if not subtitled and t >= SUBTITLE_AT then
-					subtitled = true
-					TweenService:Create(sub, TweenInfo.new(0.35),
-						{ TextTransparency = 0 }):Play()
+				--[[
+					One line at a time, driven off t rather than queued with
+					waits. Scrubbing preview to any moment then shows the line
+					that actually belongs to it, and a dropped frame cannot
+					desynchronise speech from picture.
+
+					The gaps between entries are deliberate silence -- she is
+					not talking for most of this.
+				]]
+				local want = 0
+				for i, line in ipairs(LINES) do
+					if t >= line.t and t < line.t + line.hold then
+						want = i
+						break
+					end
 				end
-				if subtitled and not cleared and t >= SUBTITLE_OUT then
-					cleared = true
-					TweenService:Create(sub, TweenInfo.new(0.5),
-						{ TextTransparency = 1 }):Play()
+				if want ~= showing then
+					showing = want
+					if want == 0 then
+						TweenService:Create(sub, TweenInfo.new(0.45),
+							{ TextTransparency = 1 }):Play()
+					else
+						sub.Text = LINES[want].text
+						sub.TextTransparency = 1
+						TweenService:Create(sub, TweenInfo.new(0.3),
+							{ TextTransparency = 0 }):Play()
+					end
 				end
 				if not fading and t >= RUNTIME - FADE_OUT then
 					fading = true

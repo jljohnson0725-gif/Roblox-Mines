@@ -11,15 +11,23 @@ Run it after changing any timing in UI/Intro.lua and keep the two in step.
 
 # t, name, camera position (relative to the set origin), what it looks at, why
 SHOTS = [
-    (0.0,  "cold open", (-8.0, 10.0, -11.0), "him",     "High and behind. He is small, the rain is huge."),
-    (3.4,  "the wait",  (-5.0, 6.2, -7.5), "him",     "Push in on silence. Nothing happens. That is the point."),
-    (6.0,  "the turn",  ( 8.0, 4.2, -2.5), "between", "Camera swings round him -- the move that reveals her."),
-    (7.4,  "reveal",    ( 5.6, 4.6, -4.6), "her",     "Over his shoulder. She stands at full height, he does not."),
-    (9.2,  "settle",    ( 4.4, 4.4, -2.8), "her",     "The reveal shot keeps drifting in while she speaks."),
-    (11.2, "back to him",( 3.0, 1.40,  6.8), "hisface", "Leaves her, drops in front of him. Her part is over."),
-    (14.0, "the sit",    ( 2.4, 1.12,  6.2), "hisface", "He lifts his head. Held in silence before the fade."),
+    (0.0,  "her alone", ( 3.2, 4.7,  3.4), "her",     "Only her. He is behind the lens; nobody knows who she is talking to."),
+    (3.6,  "the drift", ( 4.6, 4.8,  1.4), "her",     "Barely moves. She is working up to it."),
+    (6.0,  "pull back", ( 7.4, 4.6, -3.0), "between", "Past him, and the situation arrives: two people, one being left."),
+    (8.4,  "two shot",  ( 5.6, 4.6, -4.6), "her",     "Over his shoulder for the line that sets up the whole economy."),
+    (12.4, "settle",    ( 4.4, 4.4, -2.8), "her",     "Holds while she finishes."),
+    (15.0, "to him",    ( 1.7, 4.55, 4.6), "hisface", "Leaves her on 'I'm sorry' -- the goodbye plays over his face."),
+    (20.0, "the sit",   ( 1.3, 4.45, 3.4), "hisface", "Held in silence before the fade."),
 ]
-END = 14.0
+END = 20.0
+
+#[[ t, seconds on screen, text. Kept in step with LINES in UI/Intro by hand. ]]
+DIALOGUE = [
+    (1.2,  2.6, "It's not you. It's me."),
+    (6.4,  1.3, "I just..."),
+    (8.7,  4.4, "I just can't be with someone ugly and broke like you..."),
+    (14.1, 2.6, "I'm sorry. Goodbye."),
+]
 
 HIM = (0.0, 0.0, 0.0)
 HER = (0.0, 0.0, 7.0)
@@ -31,7 +39,7 @@ FADE_IN, FADE_OUT = 0.4, 0.6
 #[[ Where his head ends up once the pose is solved -- the closing shot aims here.
 #   Kept in step with poseKneeling's neck target by hand; if that moves, this
 #   moves. ]]
-HIS_FACE = (0.0, 4.40, 0.0)
+HIS_FACE = (0.0, 5.80, 0.0)
 
 
 def dist(a, b):
@@ -76,24 +84,33 @@ for i, (t, name, pos, look, why) in enumerate(SHOTS):
     print("         %s" % why)
 
 print()
-read_for = SUBTITLE_OUT - SUBTITLE_AT
-print("subtitle lands at %.1fs, on screen %.1fs" % (SUBTITLE_AT, read_for))
-if read_for < 1.5:
-    print("  TOO LITTLE READING TIME"); bad += 1
+#[[ Reading speed. Roughly fifteen characters a second is a comfortable
+#   subtitle; below twelve it is a race. ]]
+for t, hold, text in DIALOGUE:
+    rate = len(text) / hold
+    flag = "ok"
+    if rate > 15:
+        flag = "TOO FAST TO READ (%.0f chars/s)" % rate
+        bad += 1
+    print("  %4.1fs  %4.1fs  %-52s %s" % (t, hold, '"%s"' % text, flag))
 
-#[[ The beat after the line. She speaks, the camera leaves her, and he is alone
-#   with it -- that silence is the point of the shot, so it gets checked like
-#   any other timing. ]]
-alone = END - SHOTS[-2][0]
-print("held on his face, silent: %.1fs" % alone)
-if alone < 2.0:
-    print("  NOT LONG ENOUGH TO LAND -- the line needs somewhere to settle"); bad += 1
-if SUBTITLE_OUT > SHOTS[-2][0] + 0.4:
-    print("  SUBTITLE STILL UP after the camera has left her"); bad += 1
-print("silent stretch before the turn: %.1fs" % SHOTS[2][0])
+#[[ She should not be talking for most of it. The silences are the performance. ]]
+speaking = sum(h for _, h, _ in DIALOGUE)
+print()
+print("she speaks for %.1fs of %.1fs (%.0f%%)" % (speaking, END, 100 * speaking / END))
+if speaking / END > 0.55:
+    print("  TOO TALKY -- the pauses are doing the work here"); bad += 1
+
+last_t, last_hold, _ = DIALOGUE[-1]
+alone = END - (last_t + last_hold)
+print("silent on his face after her last word: %.1fs" % alone)
+if alone < 1.5:
+    print("  NOT LONG ENOUGH -- the goodbye needs somewhere to land"); bad += 1
+
+print("before she is seen with him: %.1fs" % SHOTS[2][0])
 print("shots: %d cuts, %d camera moves" % (0, len(SHOTS) - 1))
 if SHOTS[2][0] < 2.5:
-    print("  SILENCE TOO SHORT -- the reveal needs something to land against"); bad += 1
+    print("  TOO SOON -- she needs a moment alone first"); bad += 1
 
 print()
 print("all shots hold up" if bad == 0 else "%d problem(s)" % bad)
