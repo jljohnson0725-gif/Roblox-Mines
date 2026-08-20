@@ -113,6 +113,18 @@ local THUNDER_VOLUME = 0.9
 	the other, close enough to stay in the same corner of the world.
 ]]
 local DESK_ORIGIN = Vector3.new(0, -1000, 0)
+
+--[[ Where the lens starts and ends, in the SCREEN's own frame. Shared with the
+     room builder, because a room that does not contain the camera is a room the
+     camera films the outside of. ]]
+local DESK_CAM_FROM = Vector3.new(-11.5, 1.9, 1.2)
+local DESK_CAM_TO = Vector3.new(-5.0, 0.15, 0)
+
+--[[ His apartment's own colours, tier one -- the flat he is sitting in when the
+     game starts. Taken from Rebirth's Studio tier rather than picked by eye, so
+     the two rooms cannot drift apart. ]]
+local FLAT_WALL = Color3.fromRGB(140, 135, 127)
+local FLAT_FLOOR = Color3.fromRGB(96, 93, 90)
 local WEB_TITLE = "HOW TO LOOKSMAX AND BECOME A TRUE CHAD"
 local WEB_LINES = {
 	"Step 1.  Get rich. Nothing else works until this one does.",
@@ -1281,22 +1293,6 @@ local function buildDeskSet(player)
 	set.Name = "IntroDesk"
 	set.Parent = workspace
 
-	local floor = block(set, "Floor", Vector3.new(90, 2, 90),
-		CFrame.new(DESK_ORIGIN - Vector3.new(0, 1, 0)),
-		Color3.fromRGB(26, 24, 30), Enum.Material.SmoothPlastic)
-	floor.Reflectance = 0.03
-
-	--[[ A room, because a desk floating in a void reads as a menu. Only the
-	     three walls the camera can ever see. ]]
-	for _, face in ipairs({
-		{ Vector3.new(90, 34, 2), Vector3.new(0, 17, 22) },
-		{ Vector3.new(2, 34, 46), Vector3.new(-24, 17, 0) },
-		{ Vector3.new(2, 34, 46), Vector3.new(24, 17, 0) },
-	}) do
-		block(set, "Wall", face[1], CFrame.new(DESK_ORIGIN + face[2]),
-			Color3.fromRGB(22, 21, 26), Enum.Material.SmoothPlastic)
-	end
-
 	local template = game:GetService("ReplicatedStorage"):FindFirstChild("DeskTemplate")
 	local desk, deskTop
 	if template then
@@ -1445,8 +1441,12 @@ local function buildDeskSet(player)
 	--[[ The screen is the only light in the room, which is the whole picture:
 	     a dark flat and one lit face. ]]
 	local glow = Instance.new("PointLight")
-	glow.Brightness = 2.6
-	glow.Range = 26
+	--[[ Range pulled in well inside the room. At 26 it reached every wall
+	     equally and the whole flat came back one flat tone, which reads as a
+	     void rather than a room; at 15 the near corner is lit and the far one
+	     falls away, which is what a screen in a dark flat actually does. ]]
+	glow.Brightness = 2.4
+	glow.Range = 15
 	glow.Color = Color3.fromRGB(226, 234, 255)
 	glow.Shadows = false
 	glow.Parent = screen
@@ -1472,6 +1472,63 @@ local function buildDeskSet(player)
 			seatAccessories(him)
 		end
 		him.Parent = set
+	end
+
+	--[[
+		THE ROOM, BUILT LAST AND SIZED TO WHAT IS IN IT.
+
+		The first version laid a floor and three walls before anything was
+		placed, at a guessed ninety studs -- so the camera sat outside them and
+		the shot had open sky down one side and along the top. A room has to
+		contain the camera as well as the furniture.
+
+		So the extents are measured: the desk, the chair, him, and both ends of
+		the camera move, expanded by a margin and closed on all six sides. Wall
+		and floor colours come from Rebirth's first tier, which is the flat he
+		actually lives in -- lit by nothing but a monitor, it reads as being
+		home with the lights off.
+	]]
+	local camFrom = (screen.CFrame * CFrame.new(DESK_CAM_FROM)).Position
+	local camTo = (screen.CFrame * CFrame.new(DESK_CAM_TO)).Position
+
+	local lo, hi = camFrom:Min(camTo), camFrom:Max(camTo)
+	for _, m in ipairs(set:GetChildren()) do
+		local centre, size
+		if m:IsA("Model") then
+			local cf, sz = m:GetBoundingBox()
+			centre, size = cf.Position, sz
+		elseif m:IsA("BasePart") then
+			centre, size = m.Position, m.Size
+		end
+		if centre then
+			lo = lo:Min(centre - size / 2)
+			hi = hi:Max(centre + size / 2)
+		end
+	end
+
+	local M = 4.5
+	local floorY = DESK_ORIGIN.Y
+	local ceilY = math.max(hi.Y, floorY + 12) + 3.5
+	local x1, x2 = lo.X - M, hi.X + M
+	local z1, z2 = lo.Z - M, hi.Z + M
+	local w, d = x2 - x1, z2 - z1
+	local h = ceilY - floorY
+	local midX, midZ = (x1 + x2) / 2, (z1 + z2) / 2
+
+	local floor = block(set, "Floor", Vector3.new(w + 4, 2, d + 4),
+		CFrame.new(midX, floorY - 1, midZ), FLAT_FLOOR, Enum.Material.SmoothPlastic)
+	floor.Reflectance = 0.02
+
+	block(set, "Ceiling", Vector3.new(w + 4, 2, d + 4),
+		CFrame.new(midX, ceilY + 1, midZ), FLAT_WALL, Enum.Material.SmoothPlastic)
+	for _, face in ipairs({
+		{ Vector3.new(2, h, d + 4), Vector3.new(x1 - 1, floorY + h / 2, midZ) },
+		{ Vector3.new(2, h, d + 4), Vector3.new(x2 + 1, floorY + h / 2, midZ) },
+		{ Vector3.new(w + 4, h, 2), Vector3.new(midX, floorY + h / 2, z1 - 1) },
+		{ Vector3.new(w + 4, h, 2), Vector3.new(midX, floorY + h / 2, z2 + 1) },
+	}) do
+		block(set, "Wall", face[1], CFrame.new(face[2]), FLAT_WALL,
+			Enum.Material.SmoothPlastic)
 	end
 
 	return set, screen
@@ -1530,8 +1587,8 @@ local function playEpilogue(player, saved, out)
 	     these offsets produce throws -- which it did, and because the black
 	     screen was already up by then it left the player staring at nothing with
 	     the game running behind it. ]]
-	local from = (screen.CFrame * CFrame.new(-11.5, 1.9, 1.2)).Position
-	local to = (screen.CFrame * CFrame.new(-5.0, 0.15, 0)).Position
+	local from = (screen.CFrame * CFrame.new(DESK_CAM_FROM)).Position
+	local to = (screen.CFrame * CFrame.new(DESK_CAM_TO)).Position
 	local aimFrom = screen.Position + Vector3.new(0, -0.6, 0)
 	local aimTo = screen.Position
 
