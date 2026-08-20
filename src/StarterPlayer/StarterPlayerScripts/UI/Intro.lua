@@ -67,6 +67,12 @@ local LINES = {
 	{ t = 8.7,  hold = 4.4, text = "I just can't be with someone ugly and broke like you…" },
 	{ t = 14.1, hold = 2.6, text = "I'm sorry. Goodbye." },
 }
+--[[ Her voice has a colour, so a line can be attributed without a name tag in
+     front of it. Every line here is hers; the per-line override exists because
+     the moment anyone else speaks -- him, or a caption -- white is the obvious
+     contrast and the rule stays readable. ]]
+local HER_COLOR = Color3.fromRGB(255, 156, 196)
+
 local SUBTITLE_AT = 1.2
 --[[ The line clears BEFORE the last beat, so the closing shot is silent. Her
      words are done; what is left is him. ]]
@@ -1313,7 +1319,7 @@ function Intro.init(ctx)
 			sub.AnchorPoint = Vector2.new(0.5, 1)
 			sub.Font = Enum.Font.GothamMedium
 			sub.TextSize = 26
-			sub.TextColor3 = Color3.fromRGB(244, 244, 248)
+			sub.TextColor3 = HER_COLOR
 			sub.TextStrokeColor3 = Color3.new(0, 0, 0)
 			sub.TextStrokeTransparency = 0.35
 			sub.TextTransparency = 1
@@ -1401,6 +1407,7 @@ function Intro.init(ctx)
 							{ TextTransparency = 1 }):Play()
 					else
 						sub.Text = LINES[want].text
+						sub.TextColor3 = LINES[want].color or HER_COLOR
 						sub.TextTransparency = 1
 						TweenService:Create(sub, TweenInfo.new(0.3),
 							{ TextTransparency = 0 }):Play()
