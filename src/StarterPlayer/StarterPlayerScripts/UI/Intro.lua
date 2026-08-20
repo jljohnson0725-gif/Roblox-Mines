@@ -76,18 +76,24 @@ local SHOTS = {
 	     leaves her, comes round in front and sits at his eyeline for nearly three
 	     seconds with nothing said.
 
-	     In FRONT of him and low, which only became possible once his head was
-	     turned the right way round -- it had been facing back under his own chest,
-	     so every angle that should have found his face found an upper arm. She is
-	     behind the lens for this shot; he is on his own. ]]
+	     ABOVE HIS EYELINE, not below it. The first version sat a stud under his
+	     face looking up, which frames the face beautifully and puts the horizon
+	     below the bottom of the screen -- so the ground went, and she is behind
+	     the lens anyway, and what was left was a dim figure against a lit sky.
+	     Reported, accurately, as "everything disappears".
+
+	     Nothing was disappearing: instrumenting the live run frame by frame,
+	     the set is intact and his head sits dead centre of the viewport for the
+	     whole beat. It was composition, not a bug. Looking slightly DOWN keeps
+	     the wet ground under him and his whole body in shot. ]]
 	--[[ RELATIVE TO HIS HEAD, not to the set origin. As fixed world offsets
 	     these two worked for exactly one avatar: the pose is solved from
 	     whatever proportions the player has, so his head lands anywhere from
 	     about z 2.9 to z 3.9, and a camera pinned to z 6.8 was a comfortable
 	     three studs in front of one body and standing inside HER on another.
 	     That is what "the camera turns round and there is nothing there" was. ]]
-	{ t = 11.2, pos = Vector3.new(2.6, -0.35, 3.4), look = "hisface", rel = "hisface" },
-	{ t = 14.0, pos = Vector3.new(2.1, -0.55, 2.8), look = "hisface", rel = "hisface" },
+	{ t = 11.2, pos = Vector3.new(3.1, 1.05, 5.0), look = "hisface", rel = "hisface" },
+	{ t = 14.0, pos = Vector3.new(2.6, 0.75, 4.3), look = "hisface", rel = "hisface" },
 }
 
 local AIM = {
@@ -206,9 +212,14 @@ local LIFT_FROM, LIFT_TO = 11.4, 12.9
      same neck it was hung off. ]]
 local himNeck, himHang, himAhead, himHead
 
+--[[ Every Lighting property anyone else writes, not just the ones this scene
+     sets. UI/Sky's altitude blend also drives exposure and the colour shifts;
+     leaving those out meant the cutscene could hand back a Lighting it had
+     never fully captured. ]]
 local LIGHTING_KEYS = {
 	"ClockTime", "Brightness", "Ambient", "OutdoorAmbient",
 	"FogStart", "FogEnd", "FogColor",
+	"ExposureCompensation", "ColorShift_Top", "ColorShift_Bottom",
 }
 
 --[[
@@ -1390,6 +1401,11 @@ function Intro.init(ctx)
 		     the trade. ]]
 		waitForAvatar(player, 8)
 
+		--[[ Claims Lighting for the duration. UI/Sky's per-frame altitude blend
+		     stands down on this, which is the difference between the night look
+		     holding for ten seconds and being wiped mid-shot. ]]
+		player:SetAttribute("CutscenePlaying", true)
+
 		local cam = workspace.CurrentCamera
 		local savedType = cam.CameraType
 		local savedFov = cam.FieldOfView
@@ -1426,6 +1442,7 @@ function Intro.init(ctx)
 			if ctx.gui then
 				ctx.gui.Enabled = true
 			end
+			player:SetAttribute("CutscenePlaying", false)
 			running = false
 		end
 
@@ -1557,6 +1574,7 @@ function Intro.init(ctx)
 
 	local function preview(t)
 		waitForAvatar(player, 8)
+		player:SetAttribute("CutscenePlaying", true)
 		local cam = workspace.CurrentCamera
 		if previewSet then
 			previewSet:Destroy()
@@ -1586,6 +1604,7 @@ function Intro.init(ctx)
 			restoreLighting(previewLighting)
 			previewLighting = nil
 		end
+		player:SetAttribute("CutscenePlaying", false)
 		local cam = workspace.CurrentCamera
 		if previewFov then
 			cam.FieldOfView = previewFov

@@ -152,9 +152,36 @@ function Sky.init(ctx)
 		end
 	end)
 
+	--[[
+		THE CUTSCENE OWNS LIGHTING WHILE IT RUNS.
+
+		This pass and the intro were both writing Lighting, and this one wins
+		because it runs every frame. Whenever the altitude blend was still
+		converging -- which it is for a second or two after any spawn, and again
+		any time the player's height changes -- apply() below would overwrite the
+		intro's night with the map's daylight mid-shot: sky, fog, exposure,
+		atmosphere, grade and bloom, several of which the intro does not even
+		save. From the player's seat the whole scene simply vanished partway
+		through, which is exactly how it was reported.
+
+		Neither module knows about the other; they agree on one attribute.
+	]]
+	local suppressed = false
+
 	RunService.Heartbeat:Connect(function(dt)
 		if not ground then
 			return
+		end
+		if player:GetAttribute("CutscenePlaying") then
+			suppressed = true
+			return
+		end
+		if suppressed then
+			--[[ The intro has put Lighting back the way it found it; re-assert
+			     the altitude blend once so the sky is not left at ground level
+			     for a player who was up an island when it started. ]]
+			suppressed = false
+			apply(ground, blend)
 		end
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
