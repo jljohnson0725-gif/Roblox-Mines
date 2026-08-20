@@ -25,6 +25,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Sounds = require(Shared.Sounds)
@@ -120,6 +121,36 @@ function Audio.mute(on)
 	if Audio.groups.Master then
 		Audio.groups.Master.Volume = on and 0 or 1
 	end
+end
+
+--[[
+	Bring the mixer back later, and gently.
+
+	The cold open mutes this bus for its whole run, and snapping it back the
+	instant the cutscene ends drops the tycoon's music on top of the last frame
+	of a break-up. So it waits, and then fades rather than cutting -- the player
+	gets a stretch of quiet to be in the room before the game starts playing at
+	them.
+
+	Cancels any fade already scheduled, so two cold opens in a row cannot leave
+	two tweens racing to set the same volume.
+]]
+local pendingFade
+function Audio.restoreAfter(delay, fade)
+	local master = Audio.groups.Master
+	if not master then
+		return
+	end
+	local token = {}
+	pendingFade = token
+	master.Volume = 0
+	task.delay(delay or 0, function()
+		if pendingFade ~= token then
+			return
+		end
+		TweenService:Create(master, TweenInfo.new(fade or 0,
+			Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { Volume = 1 }):Play()
+	end)
 end
 
 function Audio.init(ctx)

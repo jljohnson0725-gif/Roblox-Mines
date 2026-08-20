@@ -292,6 +292,13 @@ local FACE_BRIGHTNESS = 3.6
      within three studs of a face, so the same number that reads as "lit" in a
      wide shot reads as a torch in this one. ]]
 local HIS_BRIGHTNESS = 2.1
+
+--[[ How long the flat stays quiet after the cold open before the tycoon's music
+     comes back, and how long it takes to arrive. Measured from the moment the
+     black actually lifts, not from restore() -- those are a second and a bit
+     apart, and the player only counts from what they can see. ]]
+local MUSIC_DELAY, MUSIC_FADE = 10, 3
+local EPILOGUE_TAIL = 1.3
 local LIFT_FROM, LIFT_TO = 15.2, 16.6
 
 --[[ Filled in by buildSet: his head, and where it is, so the closing shot aims
@@ -1727,7 +1734,15 @@ function Intro.init(ctx)
 			if ctx.gui and not deferGui then
 				ctx.gui.Enabled = true
 			end
-			if ctx.audio and ctx.audio.mute then
+			--[[ Scheduled HERE rather than alongside the HUD, because restore()
+			     is the one thing guaranteed to run: put it on the epilogue's
+			     completion and a failure anywhere leaves the game silent for
+			     good. The tail compensates for restore() landing before the
+			     black lifts. ]]
+			if ctx.audio and ctx.audio.restoreAfter then
+				ctx.audio.restoreAfter(
+					(deferGui and EPILOGUE_TAIL or 0) + MUSIC_DELAY, MUSIC_FADE)
+			elseif ctx.audio and ctx.audio.mute then
 				ctx.audio.mute(false)
 			end
 			player:SetAttribute("CutscenePlaying", false)
