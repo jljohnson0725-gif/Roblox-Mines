@@ -42,6 +42,25 @@ local PAD = 10 -- breathing room around the highlighted control
 ]]
 local STEPS = {
 	{
+		key = "meet",
+		--[[ The only step that points at something in the WORLD rather than at a
+		     button. He is the first thing the game asks for now: the cold open
+		     ends on a man alone, and the first instruction being "go and talk to
+		     someone" is worth more than "press M". ]]
+		world = function()
+			local ok, friend = pcall(function()
+				return require(script.Parent.Friend).npc
+			end)
+			return ok and friend or nil
+		end,
+		find = function() return nil end,
+		title = "Talk to your neighbour",
+		body = "He is outside your front door. Walk over and press E.",
+		done = function()
+			return Players.LocalPlayer:GetAttribute("MetNeighbour") == true
+		end,
+	},
+	{
 		key = "open",
 		find = function(gui)
 			return gui:FindFirstChild("minesButton", true)
@@ -283,19 +302,52 @@ function Tutorial.init(ctx)
 			return
 		end
 
-		local target = step.find(gui)
-		--[[ No target means the thing to point at is not on screen yet -- the
-		     panel between opening and rendering, say. Hide rather than frame a
-		     rect at the origin, which is where a missing GuiObject reports. ]]
-		if not target or target.AbsoluteSize.X < 1 then
-			root.Visible = false
-			setGating(false)
-			return
+		--[[
+			A step points at a BUTTON or at something in the world.
+
+			World steps project the model to the viewport and frame that, so the
+			highlight lands on the neighbour himself. Behind the camera or off
+			screen he reports a negative depth, which would otherwise draw a box
+			in the wrong place with total confidence.
+		]]
+		local rect
+		if step.world then
+			local model = step.world()
+			if model and model.Parent then
+				local cam = workspace.CurrentCamera
+				local box = model:GetPivot().Position
+				local sp = cam:WorldToViewportPoint(box)
+				if sp.Z > 0 then
+					local half = 62
+					rect = {
+						Position = Vector2.new(sp.X - half, sp.Y - half * 1.6),
+						Size = Vector2.new(half * 2, half * 3.2),
+					}
+				end
+			end
+			if not rect then
+				--[[ Not on screen: keep the card up, because the instruction is
+				     "go and find him" and hiding it would leave the player with
+				     nothing to go on. Frame nothing. ]]
+				rect = { Position = Vector2.new(-4000, -4000), Size = Vector2.new(1, 1) }
+			end
+		else
+			local target = step.find(gui)
+			--[[ No target means the thing to point at is not on screen yet --
+			     the panel between opening and rendering, say. Hide rather than
+			     frame a rect at the origin, which is where a missing GuiObject
+			     reports. ]]
+			if not target or target.AbsoluteSize.X < 1 then
+				root.Visible = false
+				setGating(false)
+				return
+			end
+			rect = { Position = target.AbsolutePosition, Size = target.AbsoluteSize }
 		end
 
 		root.Visible = true
-		setGating(true)
-		frame({ Position = target.AbsolutePosition, Size = target.AbsoluteSize })
+		setGating(not step.world)
+		frame(rect)
 
 		if shown ~= step.key then
 			shown = step.key

@@ -1597,6 +1597,7 @@ function Intro.init(ctx)
 		local savedJump = hum and hum.JumpPower or 50
 
 		local set, screen, conn, thunder
+		local deferGui = false
 		local struck = false
 
 		local function restore()
@@ -1620,7 +1621,13 @@ function Intro.init(ctx)
 			if hrp then
 				hrp.Anchored = false
 			end
-			if ctx.gui then
+			--[[ NOT while an epilogue is still holding black over the screen.
+			     restore() runs before that fade, so switching the HUD on here
+			     put the tutorial card, the Mines button and the rest on screen
+			     underneath a black that was about to lift -- and they were
+			     already there, at full opacity, the instant it did. The epilogue
+			     turns them on when it is finished instead. ]]
+			if ctx.gui and not deferGui then
 				ctx.gui.Enabled = true
 			end
 			if ctx.audio and ctx.audio.mute then
@@ -1885,6 +1892,10 @@ function Intro.init(ctx)
 			set = nil
 		end
 
+		--[[ Claimed before restore() runs, so the HUD stays off until the fade
+		     out is done. ]]
+		deferGui = ok
+
 		local out = {}
 		if ok then
 			local shown, err2 = pcall(function()
@@ -1892,6 +1903,7 @@ function Intro.init(ctx)
 			end)
 			if not shown then
 				warn("[Intro] epilogue failed, dropping it: " .. tostring(err2))
+				deferGui = false
 				if out.set then
 					out.set:Destroy()
 					out.set = nil
@@ -1909,6 +1921,14 @@ function Intro.init(ctx)
 
 		restore()
 
+		if not epilogueGui then
+			--[[ No epilogue means nothing is going to turn the HUD on later. ]]
+			deferGui = false
+			if ctx.gui then
+				ctx.gui.Enabled = true
+			end
+		end
+
 		if epilogueGui then
 			--[[ Fades to the tycoon rather than cutting to it. Slow enough to
 			     read as dawn arriving, short enough not to be a loading screen. ]]
@@ -1916,7 +1936,14 @@ function Intro.init(ctx)
 				TweenService:Create(epilogueBlack, TweenInfo.new(1.1),
 					{ BackgroundTransparency = 1 }):Play()
 			end
+			--[[ The HUD comes back only once the black is actually gone, which
+			     is the whole point of deferring it. Nothing else switches it on:
+			     restore() deliberately skipped it, so if this never runs the
+			     player has no interface at all. ]]
 			task.delay(1.3, function()
+				if ctx.gui then
+					ctx.gui.Enabled = true
+				end
 				epilogueGui:Destroy()
 			end)
 		end

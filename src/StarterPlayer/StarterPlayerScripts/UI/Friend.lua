@@ -242,6 +242,13 @@ function Friend.init(ctx)
 		progress[current.id] = index
 		if index >= #current.lines then
 			seen[current.id] = true
+			--[[ Recorded on the PLAYER so the tutorial can ask whether this
+			     conversation happened without either module knowing about the
+			     other. Set when the topic is FINISHED, not when it opens, so
+			     walking up and walking away again does not count. ]]
+			if current.id == "welcome" then
+				game.Players.LocalPlayer:SetAttribute("MetNeighbour", true)
+			end
 			card.Visible = false
 			current = nil
 		else
@@ -333,6 +340,9 @@ function Friend.init(ctx)
 		end
 		stand(at - out)
 		npc.Parent = workspace
+		--[[ Published so anything that needs to point at him -- the tutorial --
+		     can find him without reaching into this module. ]]
+		Friend.npc = npc
 
 		--[[
 			HE TURNS TO LOOK AT YOU, rather than being aimed once at a guess.
