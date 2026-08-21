@@ -272,36 +272,50 @@ function Tutorial.init(ctx)
 		if step.world then
 			local model = step.world()
 			if model and model.Parent then
+				--[[
+					THE MODEL'S BOUNDING BOX, PROJECTED -- not a fixed box on its
+					pivot.
+
+					The first version put a 124x198 rectangle centred on
+					GetPivot(). A character's pivot sits at its FEET, so half the
+					box hung below the ground and he rode along the top edge of
+					it; and being a fixed pixel size it was the same rectangle
+					whether he was four studs away or forty.
+
+					Eight corners projected and bounded gives a box that actually
+					contains him and shrinks with distance. Any corner behind the
+					lens makes the whole projection meaningless -- points behind
+					the camera come back mirrored -- so that counts as off
+					screen rather than being clamped.
+				]]
 				local cam = workspace.CurrentCamera
-				local sp = cam:WorldToViewportPoint(model:GetPivot().Position)
+				local cf, size = model:GetBoundingBox()
+				local minX, minY = math.huge, math.huge
+				local maxX, maxY = -math.huge, -math.huge
+				local behind = false
+				for dx = -1, 1, 2 do
+					for dy = -1, 1, 2 do
+						for dz = -1, 1, 2 do
+							local corner = cf * CFrame.new(
+								dx * size.X / 2, dy * size.Y / 2, dz * size.Z / 2)
+							local sp = cam:WorldToViewportPoint(corner.Position)
+							if sp.Z <= 0 then
+								behind = true
+							else
+								minX, maxX = math.min(minX, sp.X), math.max(maxX, sp.X)
+								minY, maxY = math.min(minY, sp.Y), math.max(maxY, sp.Y)
+							end
+						end
+					end
+				end
 				local view = cam.ViewportSize
-				--[[ IN FRONT is not the same as IN FRAME. Depth alone still
-				     reports a point twenty thousand pixels off to the right as
-				     visible, so the bounds are checked too. ]]
-				if sp.Z > 0 and sp.X > 0 and sp.X < view.X
-					and sp.Y > 0 and sp.Y < view.Y then
-					local half = 62
+				if not behind and maxX > 0 and minX < view.X
+					and maxY > 0 and minY < view.Y then
 					rect = {
-						Position = Vector2.new(sp.X - half, sp.Y - half * 1.6),
-						Size = Vector2.new(half * 2, half * 3.2),
+						Position = Vector2.new(minX, minY),
+						Size = Vector2.new(maxX - minX, maxY - minY),
 					}
 				end
-			end
-			if not rect then
-				--[[ Not on screen: keep the card, drop the highlight. The
-				     instruction is "go and find him", so hiding the card would
-				     leave the player with nothing to go on -- but dimming the
-				     screen around a hole they cannot see is worse than no dim. ]]
-				root.Visible = true
-				setGating(false)
-				highlight(false)
-				if shown ~= step.key then
-					shown = step.key
-					eyebrow.Text = ("STEP %d OF %d"):format(step.index, #STEPS)
-					title.Text = step.title
-					body.Text = step.body
-				end
-				return
 			end
 		else
 			local target = step.find(gui)
