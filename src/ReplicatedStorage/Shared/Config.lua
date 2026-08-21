@@ -42,6 +42,27 @@ Config.DropChanceBase = 0.06
 Config.DropChancePerMine = 0.04
 Config.DropChanceCap = 0.90
 
+--- Mine count also sets a FLOOR under drop QUALITY, in depth units (the same
+--- units log2(multiplier) is in, so 1.0 == one doubling of the multiplier).
+---
+--- Mines used to change only how OFTEN a drop came, never how good it was: a
+--- 24-mine board rained the same commons as a 1-mine board, just faster, which
+--- made the risk dial feel decorative from the player's side.
+---
+--- A FLOOR rather than a bonus, and that is the whole trick. Added to depth it
+--- would compound with a deep run and take Secrets at 256x from 7.5% to 30% --
+--- four times the top end, from a change meant to help the first few clicks. As
+--- a floor it lifts shallow reveals and does nothing once the multiplier has
+--- passed it, so the deep economy is untouched at every mine count.
+---
+--- It lands where the reveals actually are. High mine counts rarely survive
+--- past a few tiles, so nearly all their drops are shallow -- exactly what the
+--- floor covers. Low counts go deep and are carried by the multiplier instead.
+---
+--- 0.16/mine puts 12 mines at a floor of 1.92, which is a 20% chance a drop is
+--- Rare or better against 10% today. Re-run tools/balance.py after touching it.
+Config.DropQualityPerMine = 0.16
+
 -- ── Plot ────────────────────────────────────────────────────────────────────
 -- Slot economy, sized to the imported map: each base there has exactly 8 slot
 -- pedestals, and PlotService clamps to the real geometry regardless of MaxSlots.

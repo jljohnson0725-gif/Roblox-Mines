@@ -242,7 +242,7 @@ function MinesService.revealTile(player, index)
 			profile.forceDrops -= 1
 			drop = forced
 		else
-			drop = DropTable.roll(round.multiplier, rng, mods)
+			drop = DropTable.roll(round.multiplier, rng, mods, round.mines)
 		end
 		if drop then
 			drop.income = Economy.incomeOf(drop.charId, drop.variantId)

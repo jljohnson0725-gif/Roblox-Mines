@@ -20,8 +20,20 @@
 	Variants roll independently on the same curve but flatter, so deep runs
 	don't double-dip into an absurd top end.
 
-	The second axis is drop CHANCE, which scales with mine count -- see the note
-	in Config. Quality comes from depth, frequency comes from danger.
+	Mine count is the second axis and it moves BOTH:
+
+	  - frequency, as a straight scale on drop chance
+	  - quality, as a FLOOR under the depth used for the tier roll
+
+	The floor is the important half. Mines used to change only how often a drop
+	arrived, so a 24-mine board rained the same commons as a 1-mine board just
+	faster, and the risk dial read as decorative. A floor lifts shallow reveals
+	and stops mattering once the multiplier passes it, which is why it does not
+	compound: adding it instead would take Secrets at 256x from 7.5% to 30%.
+
+	It also lands where the reveals are. A 24-mine board rarely survives past a
+	few tiles, so almost all of its drops are shallow -- exactly the range the
+	floor covers -- while a 1-mine board goes deep and is carried by depth.
 ]]
 
 local Shared = script.Parent
@@ -66,6 +78,14 @@ local function weightedPick(order, source, depth, rng, opts)
 	local effectiveDepth = depth * ((opts and opts.depthMul) or 1)
 		+ ((opts and opts.depthBonus) or 0)
 
+	--[[ Mine count sets a MINIMUM depth rather than adding to it, so a dangerous
+	     board lifts shallow reveals without compounding into a deep run's top
+	     end. See the note in Config. ]]
+	local floor = (opts and opts.floor) or 0
+	if effectiveDepth < floor then
+		effectiveDepth = floor
+	end
+
 	for i, name in ipairs(order) do
 		local def = source[name]
 		local base = def.weight + ((opts and opts.add and opts.add[name]) or 0)
@@ -89,14 +109,19 @@ local function weightedPick(order, source, depth, rng, opts)
 end
 
 --[[ Split an event modifier bag into the two per-axis option tables. ]]
-local function axisOpts(mods)
+local function axisOpts(mods, mines)
+	--[[ The floor applies to the TIER axis only. Variants roll on their own
+	     flatter curve precisely so a good run does not pay out twice; letting
+	     mines lift both would be the same double-dip by another route. ]]
+	local floor = Config.DropQualityPerMine * (mines or 0)
 	if not mods then
-		return nil, nil
+		return { floor = floor }, nil
 	end
 	return {
 		mul = mods.tierMul,
 		depthMul = mods.depthMul,
 		depthBonus = mods.depthBonus,
+		floor = floor,
 	}, {
 		mul = mods.variantMul,
 		add = mods.variantAdd,
@@ -109,9 +134,9 @@ end
 	Roll one brainrot for a tile reveal at the given multiplier.
 	Returns { charId = string, variantId = string }.
 ]]
-function DropTable.roll(multiplier, rng, mods)
+function DropTable.roll(multiplier, rng, mods, mines)
 	local depth = depthOf(multiplier)
-	local tierOpts, variantOpts = axisOpts(mods)
+	local tierOpts, variantOpts = axisOpts(mods, mines)
 
 	-- Rollable, not Order: the Secret tier is wheel-only and must never appear
 	-- from a tile reveal, at any multiplier or under any event.

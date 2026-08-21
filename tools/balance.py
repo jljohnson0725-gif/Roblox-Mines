@@ -58,6 +58,10 @@ HOUSE_EDGE = 0.03
 TILES = 25
 MINE_OPTIONS = [1, 3, 5, 8, 12, 16, 20, 24]
 DROP_BASE, DROP_PER_MINE, DROP_CAP = 0.06, 0.04, 0.90
+#[[ Mine count floors the depth used for the TIER roll -- quality, not just
+#   frequency. Modelled here because the dominance check below is the whole
+#   reason this file exists, and a floor that lifts high mine counts moves it. ]]
+DROP_QUALITY_PER_MINE = 0.16
 
 
 def drop_chance(mines):
@@ -103,7 +107,7 @@ def section(title):
 
 
 def tier_odds_table():
-    section("TIER ODDS BY MULTIPLIER  (quality comes from depth)")
+    section("TIER ODDS BY MULTIPLIER  (depth only -- mines floor this, see dominance)")
     print(f"{'mult':>9} {'L':>5} " + " ".join(f"{n[:9]:>9}" for n, _, _, _ in TIERS))
     for m in [1, 2, 4, 8, 16, 64, 256, 1024]:
         L = depth(m)
@@ -146,7 +150,9 @@ def dominance_table():
             val = nd = 0.0
             for j in range(1, k + 1):
                 L = depth(multiplier(mines, j))
-                val += chance * expected_value(TIERS, L) * expected_value(VARIANTS, L)
+                #[[ the floor applies to tiers only, as in DropTable ]]
+                tier_L = max(L, DROP_QUALITY_PER_MINE * mines)
+                val += chance * expected_value(TIERS, tier_L) * expected_value(VARIANTS, L)
                 nd += chance
             pk = p_survive(mines, k)
             if best is None or val * pk > best[1]:
@@ -158,7 +164,7 @@ def dominance_table():
         print(f"{mines:>5} {chance:>7.0%} {k:>6} {pk:>9.5f} {val:>10.2f} {nd:>9.3f}  {val / peak:>5.2f}")
 
     spread = peak / min(r[3] for r in rows)
-    verdict = "OK" if spread < 1.6 else "TOO WIDE -- retune DropChancePerMine"
+    verdict = "OK" if spread < 1.6 else "TOO WIDE -- retune DropChancePerMine/DropQualityPerMine"
     print(f"\n  spread (best/worst) = {spread:.2f}x   [{verdict}]")
     print("  Note: EV is flat by design but VARIANCE is not -- low mine counts")
     print("  drip small drops, high mine counts pay rarely and enormously.")
