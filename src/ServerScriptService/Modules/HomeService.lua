@@ -865,6 +865,100 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	end
 
 	--[[
+		THE OLD GROUND-FLOOR BASE, OUTSIDE THE ROOM.
+
+		The apartment is built over one corner of the plot the map ships, and
+		everything the plot had outside that corner is still standing: the
+		checkerboard tiling running out past the walls, and the pad platforms the
+		slots used to sit on before they were moved indoors. From the street it
+		reads as the base this replaced, half demolished.
+
+		Measured rather than assumed. Of the eight 16x16 platforms, four sit
+		inside the room with a slot on them and four are orphans -- nearest slot
+		eleven studs away -- and 65 of the 194 floor tiles fall outside the walls.
+		Only the orphans go.
+
+		HIDDEN, NOT DELETED, like everything else here: collision stays so a
+		player wandering the plot still has ground under them, and a base can be
+		re-dressed by putting the transparency back.
+	]]
+	--[[
+		THE ROOM'S FOOTPRINT, PUBLISHED.
+
+		PlotService tiles the plot AFTER this runs, and it destroys and rebuilds
+		the whole TileFloor when it does -- so hiding stray tiles from here is
+		undone a moment later by a module that has never heard of the apartment.
+		Tried exactly that first: the pads stripped and stayed stripped, the 65
+		tiles came straight back.
+
+		So the bounds go on the base as attributes and PlotService skips
+		anything outside them. Attributes rather than a require, because the
+		dependency only runs one way and should stay that way.
+	]]
+	base:SetAttribute("RoomX", floorSlab.Position.X)
+	base:SetAttribute("RoomZ", floorSlab.Position.Z)
+	base:SetAttribute("RoomHalfX", floorSlab.Size.X / 2 + 2)
+	base:SetAttribute("RoomHalfZ", floorSlab.Size.Z / 2 + 2)
+
+	local strippedPads = 0
+	local outX = floorSlab.Size.X / 2 + 2
+	local outZ = floorSlab.Size.Z / 2 + 2
+	local function outsideRoom(pos)
+		return math.abs(pos.X - floorSlab.Position.X) > outX
+			or math.abs(pos.Z - floorSlab.Position.Z) > outZ
+	end
+
+	--[[
+		AND THE MAP'S OWN COLLECT PAD, which is the big green square out front.
+
+		PlotService documents it as deliberately unused: it sits at z -151 while
+		the old laser door was at z -157, which put it outside your own security
+		door. Collection happens at the per-slot strips, and the ring at the desk
+		has its own invisible CollectZone inside the room. So the green slab in
+		the street is signage for a mechanic that does not exist.
+
+		Only the map's own -- matched as a DIRECT CHILD of the base and only when
+		it falls outside the room, so the interior one built above is never in
+		scope no matter that they share a name.
+	]]
+	local mapZone = base:FindFirstChild("CollectZone")
+	if mapZone and mapZone:IsA("BasePart") and outsideRoom(mapZone.Position) then
+		local at = mapZone.Position
+		mapZone.Transparency = 1
+		strippedPads += 1
+		--[[ The plinth under it goes too, or the pad leaves a grey rectangle
+		     exactly its own size behind. ]]
+		for _, d in ipairs(base:GetChildren()) do
+			if d:IsA("BasePart") and d ~= mapZone and d.Transparency < 0.99
+				and math.abs(d.Position.Y - at.Y) < 3
+				and math.abs(d.Position.X - at.X) < 8
+				and math.abs(d.Position.Z - at.Z) < 8
+			then
+				d.Transparency = 1
+				strippedPads += 1
+			end
+		end
+	end
+
+	--[[ A pad platform is a ~16x16 slab of the plot's own dressing. One with a
+	     slot standing on it is in use; one without is what the slot left behind
+	     when it moved inside. ]]
+	for _, child in ipairs(base:GetChildren()) do
+		if child:IsA("Model") and child ~= home and child.Name ~= "PlacedBrainrots" then
+			local cf, size = child:GetBoundingBox()
+			if math.abs(size.X - 16) < 3 and math.abs(size.Z - 16) < 3
+				and outsideRoom(cf.Position) then
+				for _, d in ipairs(child:GetDescendants()) do
+					if d:IsA("BasePart") and d.Transparency < 0.99 then
+						d.Transparency = 1
+						strippedPads += 1
+					end
+				end
+			end
+		end
+	end
+
+	--[[
 		A RUNNER DOWN THE AISLE.
 
 		Laid between the two slot rows and stopped SHORT OF THE COLLECT PAD rather
@@ -1117,9 +1211,10 @@ local TRIM = Color3.fromRGB(88, 84, 78)
 	HomeService.applyTier(base, 0)
 
 	converted[base] = true
-	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d shopfront parts removed, %d shell, %d re-solidified, %d slots, facing %s")
+	print(("[HomeService] %s: room %.0f x %.0f x %d at (%.0f, %.0f) | %d map parts hidden, %d facade parts hollowed, %d front segments, %d lights, %d windows, %d cleared from the doorway, %d shopfront parts removed, %d shell, %d re-solidified, %d slots, %d stray pad parts stripped, facing %s")
 		:format(base.Name, room.halfX * 2, room.halfZ * 2, 18, room.centre.X, room.centre.Z,
 			hidden, hollowed, doored, lit, windows, cleared, deglazed, unshelled, resolid, moved,
+			strippedPads,
 			(facing.X ~= 0) and (facing.X > 0 and "+X" or "-X") or (facing.Z > 0 and "+Z" or "-Z")))
 	return true
 end

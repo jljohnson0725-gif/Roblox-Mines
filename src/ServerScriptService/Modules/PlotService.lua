@@ -266,12 +266,33 @@ local function tilePlot(base, slotParts)
 	local stepsZ = math.floor((floor.Size.Z / 2 - TILE) / TILE)
 	local made = 0
 
+	--[[
+		NOT OUTSIDE THE APARTMENT.
+
+		HomeService builds a room over one corner of the plot and publishes its
+		footprint on the base. Tiling the whole plot regardless left a
+		checkerboard running out past the walls -- the floor of the base the
+		apartment replaced, still lying there in the street.
+
+		Only skipped when the attributes exist, so a plot with no home on it --
+		or a base built before this ran -- still tiles end to end as before.
+	]]
+	local roomX = base:GetAttribute("RoomX")
+	local roomZ = base:GetAttribute("RoomZ")
+	local halfX = base:GetAttribute("RoomHalfX")
+	local halfZ = base:GetAttribute("RoomHalfZ")
+	local bounded = roomX ~= nil and halfX ~= nil
+
 	for ix = -stepsX, stepsX do
 		for iz = -stepsZ, stepsZ do
 			local centre = Vector3.new(
 				floor.Position.X + ix * TILE, top + 0.08, floor.Position.Z + iz * TILE)
 
 			local blocked = false
+			if bounded and (math.abs(centre.X - roomX) > halfX
+				or math.abs(centre.Z - roomZ) > halfZ) then
+				blocked = true
+			end
 			for _, part in ipairs(slotParts) do
 				local d = part.Position - centre
 				if math.abs(d.X) < (part.Size.X + TILE) / 2 + TILE_MARGIN
