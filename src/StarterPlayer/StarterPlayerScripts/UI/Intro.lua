@@ -297,7 +297,7 @@ local HIS_BRIGHTNESS = 2.1
      comes back, and how long it takes to arrive. Measured from the moment the
      black actually lifts, not from restore() -- those are a second and a bit
      apart, and the player only counts from what they can see. ]]
-local MUSIC_DELAY, MUSIC_FADE = 10, 3
+local MUSIC_DELAY, MUSIC_FADE = 4, 3
 local EPILOGUE_TAIL = 1.3
 local LIFT_FROM, LIFT_TO = 15.2, 16.6
 
