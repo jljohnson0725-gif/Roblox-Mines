@@ -27,7 +27,6 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
-local Cutscene = require(script.Parent.Cutscene)
 
 local Tutorial = {}
 
@@ -88,88 +87,9 @@ local STEPS = {
 	},
 }
 
---[[
-	The opening shots, against anchors the world builds itself around rather
-	than coordinates typed in by hand: the Mines console at the west end of the
-	street, and the player. Move the landmark and the cutscene follows it.
-]]
-local function opening(character)
-	local root = character:FindFirstChild("HumanoidRootPart")
-	--[[ The model's pivot, not a named part inside it. The first version looked
-	     for a "Console" child, which MinesLandmark does not build -- it makes
-	     Seg, Shaft and SignAnchor -- so the lookup returned nil and quietly
-	     dropped the only shot the cutscene exists for. A pivot cannot be
-	     misspelled. ]]
-	--[[ The BASE of the landmark, not its pivot. The pivot is the centre of a
-	     34-stud-tall structure and sits 46 studs up, so aiming above it looked
-	     clean over the top of the thing it was supposed to show -- and framed
-	     the building standing behind it instead. GetBoundingBox gives the
-	     height to subtract; a pivot on its own never tells you how tall
-	     something is. ]]
-	local mines = workspace:FindFirstChild("MinesLandmark")
-	local landmark
-	if mines then
-		local centre, size = mines:GetBoundingBox()
-		landmark = centre.Position - Vector3.new(0, size.Y / 2, 0)
-	end
-	local here = root and root.Position or Vector3.new(0, 6, 0)
-
-	local shots = {
-		{ focus = here, offset = Vector3.new(-30, 46, 52), aim = Vector3.new(0, 6, 0),
-			hold = 1.4 },
-	}
-	if landmark then
-		table.insert(shots, { focus = landmark, offset = Vector3.new(26, 14, 40),
-			aim = Vector3.new(0, 14, 0), move = 2.8, hold = 1.7 })
-	end
-	table.insert(shots, { focus = here, offset = Vector3.new(0, 7, 15),
-		aim = Vector3.new(0, 4, 0), move = 1.8, hold = 0.6 })
-	return shots
-end
-
 function Tutorial.init(ctx)
 	local player = Players.LocalPlayer
 	local gui = ctx.gui
-	Cutscene.init(ctx)
-
-	--[[ Once per session, and only for someone who has not finished the loop.
-	     A module-local flag rather than a state field: replaying it because a
-	     Sync arrived is worse than never showing it. ]]
-	local opened = false
-	task.spawn(function()
-		repeat task.wait(0.3) until ctx.state.onboarding
-		if ctx.state.onboarding.done or opened then
-			return
-		end
-		opened = true
-		local character = player.Character or player.CharacterAdded:Wait()
-		character:WaitForChild("HumanoidRootPart")
-
-		--[[
-			AFTER THE COLD OPEN, not on top of it.
-
-			This used to fire 1.2 seconds after the character loaded, which is
-			the same moment the intro starts. Two cutscenes then fought over one
-			camera -- and because this one sets Scriptable, the intro captured
-			THAT as the state to restore, handed it back at the end, and left the
-			player looking at empty sky unable to move.
-
-			Bounded, so a cold open that never finishes cannot cost the player
-			this as well.
-		]]
-		local deadline = os.clock() + 45
-		while os.clock() < deadline do
-			local busy = player:GetAttribute("CutscenePlaying")
-				or player.PlayerGui:FindFirstChild("IntroEpilogue")
-				or player.PlayerGui:FindFirstChild("ColdOpenCover")
-			if not busy then
-				break
-			end
-			task.wait(0.25)
-		end
-		task.wait(1.2)
-		Cutscene.play(opening(character), "Skip intro")
-	end)
 
 	local root = Instance.new("Frame")
 	root.Name = "Tutorial"
@@ -306,19 +226,6 @@ function Tutorial.init(ctx)
 	RunService.RenderStepped:Connect(function()
 		local state = ctx.state
 
-		--[[
-			Stand down while a cutscene is running. Two overlays owning the
-			screen at once is bad on its own -- the spotlight drew over the
-			letterbox and told the player to press a button they could not see
-			-- but the real damage was the gate: the shades swallow input, and
-			the cutscene treats input as a skip, so the intro was being
-			dismissed by its own tutorial before the second shot arrived.
-		]]
-		if Cutscene.isPlaying() then
-			root.Visible = false
-			setGating(false)
-			return
-		end
 
 		--[[ Never for a returning player. `done` latches server-side once the
 		     whole loop has worked once, so this cannot reappear. ]]
