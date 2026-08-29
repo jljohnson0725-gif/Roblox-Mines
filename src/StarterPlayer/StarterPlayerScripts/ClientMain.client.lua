@@ -61,9 +61,12 @@ local InventoryUI = require(UI.InventoryUI)
 local UpgradeUI = require(UI.UpgradeUI)
 local IndexUI = require(UI.IndexUI)
 local WheelUI = require(UI.WheelUI)
+local PlinkoUI = require(UI.PlinkoUI)
 local CodesUI = require(UI.CodesUI)
 local Coach = require(UI.Coach)
+local Beacon = require(UI.Beacon)
 local Friend = require(UI.Friend)
+local Cutscene = require(UI.Cutscene)
 local Intro = require(UI.Intro)
 local Flight = require(UI.Flight)
 local Tutorial = require(UI.Tutorial)
@@ -71,8 +74,12 @@ local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
 local Audio = require(UI.Audio)
 local SealTracker = require(UI.SealTracker)
+local Braziers = require(UI.Braziers)
 local SummonUI = require(UI.SummonUI)
 local RaceUI = require(UI.RaceUI)
+local DuelUI = require(UI.DuelUI)
+local Punch = require(UI.Punch)
+local Dash = require(UI.Dash)
 
 -- ── gui root ────────────────────────────────────────────────────────────────
 
@@ -96,6 +103,11 @@ local state = {
 	stats = {},
 	upgrades = {},
 	jetpack = false, -- owned once, then forever; gates the F key
+	whistle = false, -- owned once; puts the RIDE button on the rail
+	boosts = {}, -- [itemId] = seconds left WHEN IT ARRIVED; see boostsAt below
+	plinkoStake = nil, -- the Plinko dial; nil means the minimum
+	wheelStake = nil,
+	boostsAt = nil, -- os.clock() when those countdowns were last heard
 	event = nil, -- global event clock, filled by RequestState / EventState
 	-- Named as the profile names them, so Shared/Seals reads either one.
 	fragments = {}, -- [sealId] = how many toward that island's seal
@@ -128,13 +140,19 @@ local ctx = {
 		SpinWheel = Net.get("SpinWheel"),
 		WheelStake = Net.get("WheelStake"),
 		RedeemCode = Net.get("RedeemCode"),
-		BuyJetpack = Net.get("BuyJetpack"),
+		BuyItem = Net.get("BuyItem"),
+		DropBall = Net.get("DropBall"),
 		DoRebirth = Net.get("DoRebirth"),
 		SetFlying = Net.get("SetFlying"),
 		SummonMount = Net.get("SummonMount"),
+		AskSummon = Net.get("AskSummon"),
+		FinishTour = Net.get("FinishTour"),
 		EnterRace = Net.get("EnterRace"),
 		RaceOdds = Net.get("RaceOdds"),
 		BuyRaceSpeed = Net.get("BuyRaceSpeed"),
+		DuelRespond = Net.get("DuelRespond"),
+		DuelWager = Net.get("DuelWager"),
+		DuelBet = Net.get("DuelBet"),
 		RequestState = Net.get("RequestState"),
 	},
 	onState = function(fn)
@@ -160,11 +178,22 @@ local inventoryUI = InventoryUI.init(ctx)
 local upgradeUI = UpgradeUI.init(ctx)
 local indexUI = IndexUI.init(ctx)
 local wheelUI = WheelUI.init(ctx)
+local plinkoUI = PlinkoUI.init(ctx)
 local codesUI = CodesUI.init(ctx)
 local rebirthUI = RebirthUI.init(ctx)
 local summonUI = SummonUI.init(ctx)
 local raceUI = RaceUI.init(ctx)
+Punch.init(ctx)
+Dash.init(ctx)
+local duelUI = DuelUI.init(ctx)
 Coach.init(ctx)
+--[[ After Coach, not before: it reads ctx.coach, which Coach publishes
+     during its own init. Built here so the marker exists before the first
+     state push decides what it should be pointing at. ]]
+local beacon = Beacon.init(ctx)
+--[[ Before Friend: the guided tour drives this rig, and its functions only
+     exist once init has run. ]]
+Cutscene.init(ctx)
 Friend.init(ctx)
 local intro = Intro.init(ctx)
 
@@ -200,6 +229,9 @@ Tutorial.init(ctx)
 Flight.init(ctx)
 -- Lights this client from its own altitude: bright street, sunset islands.
 Sky.init(ctx)
+--[[ After Fx: the saddle celebration goes through ctx.fx, which Fx.init
+     publishes. ]]
+Braziers.init(ctx)
 -- Buses first, so anything that makes a noise after this can be routed.
 Audio.init(ctx)
 --[[ Handed to ctx AFTER init, because mute() needs the buses to exist -- called
@@ -269,6 +301,7 @@ task.spawn(function()
 		if hidden ~= last then
 			last = hidden
 			hud.setMoneyVisible(not hidden)
+			beacon.setChromeHidden(hidden)
 		end
 		task.wait(0.1)
 	end
@@ -277,7 +310,9 @@ end)
 -- kept so opening a panel hides the counter on the same frame rather than up to
 -- a tenth of a second later; the watcher above is what guarantees correctness
 local function syncChrome()
-	hud.setMoneyVisible(not chromeHidden())
+	local hidden = chromeHidden()
+	hud.setMoneyVisible(not hidden)
+	beacon.setChromeHidden(hidden)
 end
 
 
@@ -348,6 +383,47 @@ hud.onIndex = function()
 	syncChrome()
 end
 
+--[[
+	The RIDE button, which only exists once the whistle is bought.
+
+	IT ASKS THE SERVER FIRST. Owning the whistle is not the whole rule -- the
+	Plinko seal still gates the island, and you need a brainrot to ride -- and
+	those live on the profile, not in client state. Opening the chooser and
+	letting the summon fail afterwards would put the player through a decision
+	that was never going to be honoured, so the refusal arrives before the panel
+	does. MountService.canSummon is the single list both sides read.
+]]
+hud.onSummon = function()
+	if summonUI.isVisible() then
+		Sounds.play("uiClose")
+		summonUI.setVisible(false)
+		syncChrome()
+		return
+	end
+
+	local ok, verdict = pcall(function()
+		return ctx.remotes.AskSummon:InvokeServer()
+	end)
+	if not ok then
+		warn("[ClientMain] AskSummon failed: " .. tostring(verdict))
+		hud.notify("Something went wrong — try again.", "bad")
+		return
+	end
+	if not verdict or not verdict.ok then
+		hud.notify(verdict and verdict.err or "Can't summon right now.", "info")
+		return
+	end
+
+	minesUI.setVisible(false)
+	inventoryUI.setVisible(false)
+	upgradeUI.setVisible(false)
+	indexUI.setVisible(false)
+	wheelUI.setVisible(false)
+	Sounds.play("uiOpen")
+	summonUI.setVisible(true)
+	syncChrome()
+end
+
 -- ── server events ───────────────────────────────────────────────────────────
 
 Net.get("Sync").OnClientEvent:Connect(function(payload)
@@ -356,6 +432,14 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
 	end
 	for key, value in pairs(payload) do
 		state[key] = value
+	end
+	--[[ Boost timers arrive as REMAINING seconds, so the client has to remember
+	     when it heard them to count down from there. Stamped at the merge
+	     because this is the only place that knows whether THIS payload carried
+	     them -- the per-second money tick fires the same listeners, and
+	     restamping on those would freeze every timer at its opening value. ]]
+	if payload.boosts then
+		state.boostsAt = os.clock()
 	end
 	fireState()
 end)
@@ -420,6 +504,14 @@ end)
 --[[ The wheel pulls its stake fresh on open rather than reading cached state:
      it is about to take everything, so the number on screen has to be the
      server's, not one the client happens to be holding. ]]
+--[[ Deliberately NOT in chromeHidden(): this panel is small, sits in the far
+     corner and exists to be used WHILE the board is visible. Adding it to that
+     set would blank the money counter every time somebody set a stake. ]]
+Net.get("OpenPlinko").OnClientEvent:Connect(function()
+	Sounds.play("uiOpen")
+	plinkoUI.setVisible(true)
+end)
+
 Net.get("OpenWheel").OnClientEvent:Connect(function()
 	minesUI.setVisible(false)
 	inventoryUI.setVisible(false)

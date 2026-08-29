@@ -30,6 +30,29 @@ local Theme = require(script.Parent.Theme)
 
 local WheelUI = {}
 
+--[[
+	The stake dial's stops.
+
+	GEOMETRIC, NOT LINEAR. The range spans four hundredfold -- 1.5M to 600M --
+	and even steps would need hundreds of presses to cross it. Twelve stops
+	rising by about 1.66x each cover it in eleven, and every stop is rounded to
+	two significant figures so the readout is never $17,320,508.
+
+	Built from the Config values rather than typed out, so retuning the minimum
+	or the cap moves the whole ladder with them.
+]]
+local function ladder()
+	local lo, hi = Config.WheelMinStake, Config.WheelSecretCapStake
+	local stops, n = {}, 12
+	for i = 1, n do
+		local v = lo * (hi / lo) ^ ((i - 1) / (n - 1))
+		local mag = 10 ^ math.floor(math.log10(v) - 1)
+		stops[i] = math.clamp(math.floor(v / mag + 0.5) * mag, lo, hi)
+	end
+	stops[1], stops[n] = lo, hi
+	return stops
+end
+
 local PANEL_W, PANEL_H = 460, 486
 local PAD = 18
 local HOLD = 1.2 -- seconds
@@ -43,13 +66,17 @@ local TONE = {
 local BLURB = {
 	secret = "a Secret brainrot",
 	retry = "spin again, free",
-	cash = Format.money(Config.WheelCashPrize) .. " back",
-	nothing = "you lose it all",
+	cash = "half your stake back",
+	nothing = "you lose the stake",
 }
 
 function WheelUI.init(ctx)
 	local ui = {}
 	local stake, busy = nil, false
+	--[[ The dial: an index into the ladder, clamped every render to what the
+	     player can actually afford. ]]
+	local STOPS = ladder()
+	local index = 1
 
 	local root = Theme.frame({
 		parent = ctx.gui,
@@ -119,7 +146,10 @@ function WheelUI.init(ctx)
 	Theme.padding(oddsBox, 12)
 	Theme.list(oddsBox, 6)
 
-	local effective, retryChance = Wheel.effectiveOdds()
+	--[[ The percentages move with the dial now, so each row's number is kept and
+	     refreshed in render() rather than baked at build time. Config.WheelOdds
+	     is still the row ORDER and the labels -- only the numbers are live. ]]
+	local oddsRows = {}
 	for _, outcome in ipairs(Config.WheelOdds) do
 		local row = Theme.frame({
 			parent = oddsBox,
@@ -146,10 +176,9 @@ function WheelUI.init(ctx)
 		})
 		--[[ Retry shows its raw share because it IS a re-roll; everything else
 		     shows the renormalised chance, which is what actually happens. ]]
-		local shown = outcome.id == "retry" and retryChance or effective[outcome.id]
-		Theme.label({
+		oddsRows[outcome.id] = Theme.label({
 			parent = row,
-			text = ("%.1f%%"):format(shown * 100),
+			text = "",
 			font = Theme.font.bold,
 			textSize = 14,
 			color = TONE[outcome.id],
@@ -174,7 +203,7 @@ function WheelUI.init(ctx)
 
 	Theme.label({
 		parent = stakeBox,
-		text = "YOU ARE WAGERING",
+		text = "YOUR STAKE",
 		font = Theme.font.black,
 		textSize = 12,
 		color = Theme.color.bad,
@@ -190,15 +219,33 @@ function WheelUI.init(ctx)
 		size = UDim2.new(1, 0, 0, 30),
 		position = UDim2.fromOffset(0, 20),
 	})
-	local stakeRots = Theme.label({
+	--[[ The number the dial exists for. Bigger than the odds strip above it
+	     because this is the one that changes as you turn it. ]]
+	local chanceLabel = Theme.label({
 		parent = stakeBox,
-		name = "StakeRots",
+		name = "Chance",
 		text = "",
-		font = Theme.font.medium,
+		font = Theme.font.bold,
 		textSize = 14,
-		color = Theme.color.dim,
-		size = UDim2.new(1, 0, 0, 20),
+		color = Theme.color.gold,
+		size = UDim2.new(1, -104, 0, 20),
 		position = UDim2.fromOffset(0, 52),
+	})
+
+	local down = Theme.button({
+		parent = stakeBox, name = "Down", text = "−",
+		textSize = 20, color = Theme.color.raised,
+		size = UDim2.fromOffset(44, 34),
+		position = UDim2.new(1, -50, 0, 18),
+		radius = 8,
+	})
+	local up = Theme.button({
+		parent = stakeBox, name = "Up", text = "+",
+		textSize = 20, color = Theme.color.raised,
+		size = UDim2.fromOffset(44, 34),
+		position = UDim2.new(1, 0, 0, 18),
+		anchor = Vector2.new(1, 0),
+		radius = 8,
 	})
 	local stakeWarn = Theme.label({
 		parent = stakeBox,
@@ -244,32 +291,92 @@ function WheelUI.init(ctx)
 		position = UDim2.new(0, PAD, 1, -PAD - 74),
 	})
 
+	--[[ The highest stop this player can afford. The dial is clamped to it so
+	     the button never offers a spin the server would refuse. ]]
+	local function affordableTop()
+		local top = 1
+		for i, value in ipairs(STOPS) do
+			if stake and value <= stake.money then
+				top = i
+			end
+		end
+		return top
+	end
+
+	local function current()
+		return STOPS[math.clamp(index, 1, #STOPS)]
+	end
+
 	local function render()
 		if not stake then
 			return
 		end
-		stakeMoney.Text = Format.money(stake.money)
-		stakeRots.Text = ("and every brainrot you own — %d of them, %s")
-			:format(stake.brainrots, Format.rate(stake.income))
+		local top = affordableTop()
+		index = math.clamp(index, 1, top)
+		local value = current()
+
+		stakeMoney.Text = Format.money(value)
+
+		--[[ Quoted from the shared model rather than recomputed here, so the
+		     panel cannot promise odds the server does not roll. ]]
+		local odds, retryChance = Wheel.effectiveOdds(value)
+		chanceLabel.Text = ("%s chance of a Secret"):format(Format.percent(odds.secret or 0))
+
+		for id, label in pairs(oddsRows) do
+			--[[ Retry shows its RAW share because it is a re-roll rather than a
+			     result; the others show the renormalised chance, which is what
+			     actually happens to you. ]]
+			local shown = id == "retry" and retryChance or (odds[id] or 0)
+			label.Text = Format.percent(shown)
+		end
+
+		down.Active = index > 1
+		up.Active = index < top
+		Theme.recolor(down, index > 1 and Theme.color.raised or Theme.color.panel)
+		Theme.recolor(up, index < top and Theme.color.raised or Theme.color.panel)
 
 		if not stake.eligible then
-			stakeWarn.Text = ("You need %s to play. The wheel takes everything or nothing.")
-				:format(Format.money(stake.minimum))
+			stakeWarn.Text = ("You need %s to play."):format(Format.money(stake.minimum))
 			stakeWarn.TextColor3 = Theme.color.bad
 			commit.Active = false
 			Theme.recolor(commit, Theme.color.raised)
 			commit.Text = "NOT ENOUGH — " .. Format.money(stake.minimum) .. " NEEDED"
 		else
-			stakeWarn.Text = "Your pads, upgrades and Index all survive. The cash and the brainrots do not."
+			--[[ Said plainly, because it USED to take them and a returning
+			     player will assume it still does. ]]
+			stakeWarn.Text = ("Money only. Your %d brainrot%s, pads, upgrades and Index are all safe.")
+				:format(stake.brainrots, stake.brainrots == 1 and "" or "s")
 			stakeWarn.TextColor3 = Theme.color.faint
 			commit.Active = not busy
 			Theme.recolor(commit, busy and Theme.color.raised or Theme.color.bad)
-			commit.Text = busy and "SPINNING…" or "HOLD TO WAGER EVERYTHING"
+			commit.Text = busy and "SPINNING…" or ("HOLD TO STAKE " .. Format.money(value))
 		end
 	end
 
+	local function step(by)
+		index = math.clamp(index + by, 1, affordableTop())
+		render()
+	end
+	down.MouseButton1Click:Connect(function()
+		if down.Active then step(-1) end
+	end)
+	up.MouseButton1Click:Connect(function()
+		if up.Active then step(1) end
+	end)
+
 	function ui.setStake(next)
 		stake = next
+		--[[ Reopen on the stake they last used. The server remembers it on the
+		     profile, so this survives a rejoin. ]]
+		local saved = ctx.state.wheelStake
+		if saved then
+			for i, value in ipairs(STOPS) do
+				if value == saved then
+					index = i
+					break
+				end
+			end
+		end
 		render()
 	end
 
@@ -298,7 +405,7 @@ function WheelUI.init(ctx)
 					result.Text = ""
 
 					local ok, payload = pcall(function()
-						return ctx.remotes.SpinWheel:InvokeServer()
+						return ctx.remotes.SpinWheel:InvokeServer(current())
 					end)
 					busy = false
 					cancelHold()

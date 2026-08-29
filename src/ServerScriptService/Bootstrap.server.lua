@@ -22,11 +22,16 @@ local PlotService = require(Modules.PlotService)
 local MinesLandmark = require(Modules.MinesLandmark)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
+local ItemService = require(Modules.ItemService)
 local WheelService = require(Modules.WheelService)
 local CodeService = require(Modules.CodeService)
 local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
+--[[ Required for its side effect and nothing else: MountService registers
+     SummonMount and AskSummon at module scope, and has no start() to call now
+     that the perch it used to build is gone. Dropping this line would take the
+     ride to the racing island with it. ]]
 local MountService = require(Modules.MountService)
 local RaceService = require(Modules.RaceService)
 local HomeService = require(Modules.HomeService)
@@ -34,6 +39,8 @@ local FriendService = require(Modules.FriendService)
 local IntroService = require(Modules.IntroService)
 local RebirthService = require(Modules.RebirthService)
 local MinesService = require(Modules.MinesService)
+local CombatService = require(Modules.CombatService)
+local DuelService = require(Modules.DuelService)
 
 -- ── Startup ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +79,9 @@ ShopService.start()
 MinesLandmark.build()
 MinesLandmark.startEventSync()
 UpgradeService.start()
+--[[ After UpgradeService: it re-applies walk speed when a boost lapses, and
+     calls into it to do so. ]]
+ItemService.start()
 
 -- The wheel is the only source of Secrets. Its site was cleared above.
 WheelService.start()
@@ -89,13 +99,17 @@ IslandService.start()
 -- The machine stands on ground the islands just made, so it goes after them.
 PlinkoService.start()
 
--- The perch reads the racing island's accent and landing spot, so it needs the
--- island declared -- though not built, since it only ever flies you TO it.
-MountService.start()
-
 -- Rules only; the track and panel come next. Decides outcomes and pays them.
 RaceService.start()
 RebirthService.start()
+
+--[[ Combat before duels, and the order is load-bearing rather than tidy:
+     DuelService.start installs its callbacks ONTO CombatService, so combat has
+     to be listening before anything can retaliate into an offer. DuelService
+     also builds the arena, which is why nothing before this point needs to
+     know the arena exists. ]]
+CombatService.start()
+DuelService.start()
 
 Net.get("RequestState").OnServerInvoke = function(player)
 	local snapshot = PlayerState.snapshot(player)

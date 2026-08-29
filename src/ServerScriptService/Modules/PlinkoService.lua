@@ -73,21 +73,66 @@ local rng = Random.new(os.clock() * 1e6 % 2 ^ 31)
 
 -- ── board geometry ──────────────────────────────────────────────────────────
 
---[[ 5.2, up from 4. Sixteen rows made the board 71 studs tall against 39 wide
-     -- a tower, where a Plinko board should be wider than it is high. The row
-     count is fixed by the odds, so the fix is to widen the bins and tighten the
-     rows rather than to drop rows. ]]
-local W = 5.2
---[[ Tightened from 5 so sixteen rows fit a board you can stand next to. The
-     row count is set by the odds we want, not by the space -- see
-     Shared/Plinko -- so the spacing is what gives. ]]
-local SPACING = 2.6
---[[ Purely a visual choice now. It used to have to fit between two pegs; the
-     ball passes through them, so the only question is whether you can follow
-     it. At 1.5 against a 39-stud board it was a speck you lost track of. ]]
-local BALL = 2.8
-local PEG = 0.9
-local DEPTH = 4 -- how thick the board is; the ball is boxed into this slice
+--[[
+	W IS THE BIN PITCH AND THEREFORE THE PEG PITCH, and it was 5.2 to stop
+	sixteen rows reading as a tower: 71 tall against 39 wide.
+
+	4.2 solves that from the other end. Widening the bins fixed the ratio by
+	growing the part that was already too big; narrowing them fixes it by
+	shrinking it, which costs nothing -- a pocket only has to catch a 2.8 ball,
+	and 4.2 less a 0.6 divider still leaves 3.6.
+
+	It also lands the peg pitch on the reference machine's, which measures
+	3.96 across 133 pegs. Ours is now 4.2 at the same board proportion (74 by
+	68, against its 71 by 67), which is the whole reason for the number.
+]]
+local W = 4.2
+--[[ Up from 2.6, and it is the narrower bins that pay for it: the board can
+     afford to be taller now without going back to being a tower. The row count
+     is set by the odds we want, not by the space -- see Shared/Plinko -- so
+     the spacing is the only free variable in the ratio. ]]
+local SPACING = 3.2
+--[[
+	THE BALL HAS TO BEAT THE PEGS, and that is a ratio, not a size.
+
+	At 2.8 against a 0.9 pin the ball was unmistakably the moving thing. At 2.8
+	against a 2.6 stud it was the same size as the scenery and merged with
+	whatever peg it was passing, which is the one thing this part is not
+	allowed to do.
+
+	1.4 AGAINST A 4.2 PITCH -- a third of the pitch covered, two thirds air.
+	The pegs went to 2.6 to copy the reference machine, which runs about three
+	quarters covered, and at that density the field reads as a wall with holes
+	rather than as a grid of pins: 55% of the pitch was peg. A third is still
+	far chunkier than the 0.9 pin this started as (17%), and the ball is now
+	well over twice a peg's width, so it stays the thing your eye follows.
+]]
+local BALL = 3.2
+local PEG = 1.4
+--[[ Seven, and the two occupants are why. A 3.2 ball and a 2.0 peg need 5.2
+     studs of interior between the backboard's face and the glass, and DEPTH
+     is what buys it -- at 6 they had 5.2 to share and touched exactly. ]]
+local DEPTH = 7 -- how thick the board is; the ball is boxed into this slice
+
+--[[
+	THE BALL RIDES IN FRONT OF THE PEGS, not through them.
+
+	Both sat on the board's centre plane, which was invisible while a peg was
+	0.9 across and a thin bar crossing the ball now and then. At 2.6 it is not:
+	a ball that vanishes inside a stud and comes out the far side reads as a
+	rendering fault, and the pegs had to get fat for the board to look like the
+	machine it is copying.
+
+	So the pegs are mounted ON the backboard and stop short, and the ball is
+	held one stud proud of their tips. Worth noting what this makes impossible
+	rather than merely switched off: the wedging that forced CanCollide = false
+	in the first place cannot happen when the two never share a depth. The
+	interior runs -2.5 (back face) to 2.7 (glass), and the two occupants of it
+	are laid out to touch neither each other nor the panels.
+]]
+local PEG_LEN = 2.0
+local PEG_Z = -DEPTH / 2 + 0.5 + PEG_LEN / 2 -- flush to the backboard's face
+local BALL_Z = 1.0 -- clear of the peg tips behind and the glass in front
 
 local HALF = W * (Plinko.BINS / 2) -- 18 for a 9-bin board
 local FIELD = (Plinko.ROWS - 1) * SPACING
@@ -95,12 +140,12 @@ local ENTRY = 9 -- drop height above the first peg
 local BINS_H = 11 -- bin pocket depth
 
 local COL = {
-	frame = Color3.fromRGB(72, 82, 112),
-	back = Color3.fromRGB(40, 46, 68),
-	peg = Color3.fromRGB(226, 232, 246),
+	frame = Color3.fromRGB(58, 72, 96),
+	back = Color3.fromRGB(30, 42, 58),
+	peg = Color3.fromRGB(244, 246, 250),
 	ball = Color3.fromRGB(255, 206, 64),
-	divider = Color3.fromRGB(96, 106, 138),
-	gold = Color3.fromRGB(255, 198, 72),
+	divider = Color3.fromRGB(78, 92, 120),
+	gold = Color3.fromRGB(242, 188, 64),
 }
 
 --[[ Bin tints: hot at the edges, cold up the middle, so the payout curve is
@@ -136,31 +181,45 @@ end
 --[[ Everything is placed in BOARD SPACE and transformed once, so the whole
      machine can be turned to face the arrival path without touching a single
      coordinate below. ]]
+--[[
+	THE MACHINE CURRENTLY BEING BUILT.
+
+	Every coordinate below is written in board space and transformed once
+	through this, which is what lets a machine be dropped anywhere and turned
+	to face anything without touching a single number in the geometry.
+
+	It is module state rather than a parameter for one reason: `at` is called
+	about thirty times through the build and threading a board through all of
+	them would be noise. buildMachine sets it, builds, and captures it into the
+	machine's record -- and the build is SYNCHRONOUS, so there is never a
+	second machine part-built against a stale board. Nothing outside the build
+	may read this; the runtime path takes its board off the machine record.
+]]
 local board -- CFrame: X across, Y up, Z out of the face
 
 local function at(x, y, z)
 	return board * CFrame.new(x, y, z or 0)
 end
 
-function PlinkoService.build(island)
-	local existing = Workspace:FindFirstChild("Plinko")
-	if existing then
-		existing:Destroy()
-	end
+--[[
+	One machine, at a given spot, facing a given way.
 
+	Returns a record -- board, console, bins, and the three heights the falling
+	ball is steered by. Those used to live on PlinkoService itself, which was
+	fine while there was exactly one machine and became a bug the moment there
+	were four: every ball would have been steered by whichever machine was
+	built last.
+]]
+local function buildMachine(index, base, facing, parent)
 	local root = Instance.new("Model")
-	root.Name = "Plinko"
-	root.Parent = Workspace
+	root.Name = "Machine" .. index
+	root.Parent = parent
 
-	--[[ Stood at the middle of the island's clearing, face turned toward the
-	     rim you arrive over, so the board is side-on as you land rather than
-	     edge-on. ]]
 	--[[ Nine, not four. At four the frame met the clearing right where the
 	     ground rises, so the machine read as sinking into the dirt rather than
 	     standing on it. It sits on a plinth now, which is what gives the eye
 	     the line between object and ground that was missing. ]]
-	local base = island.center + Vector3.new(0, 9, 0)
-	board = CFrame.new(base) * CFrame.Angles(0, math.rad(180), 0)
+	board = CFrame.new(base + Vector3.new(0, 9, 0)) * CFrame.Angles(0, facing, 0)
 		* CFrame.new(0, BINS_H + FIELD / 2, 0)
 
 	local total = ENTRY + FIELD + BINS_H
@@ -250,38 +309,46 @@ function PlinkoService.build(island)
 	end
 
 	--[[
-		FULL-WIDTH STAGGERED ROWS, not a triangle.
+		A TRIANGLE, WHICH IT WAS NOT ALLOWED TO BE UNTIL NOW.
 
-		The first build was a textbook Galton board -- row r carrying r pegs in
-		a widening triangle -- and measuring it found two thirds of balls in the
-		two edge bins, an 849% return. The triangle leaves the outer columns
-		bare: below the widest row there was a 4.7-stud chute down each side
-		with nothing in it, and the 12x fragment bins sat directly under those
-		chutes. Any outward drift was a clean fall into the jackpot.
+		This was a full-width rectangular grid, and the comment here used to
+		argue hard for it: the original triangle measured two thirds of balls in
+		the two edge bins and an 849% return, because the outer columns were
+		bare and a drifting ball fell down a clean chute straight into the
+		jackpot.
 
-		Real Plinko machines are a full rectangular grid offset half a step per
-		row, which is what this is now. Every column has pegs in it, so there is
-		nowhere to fall through uninterrupted, and the walls bound the walk
-		instead of feeding it.
+		THAT REASON DIED WITH THE PHYSICS-DECIDED ERA. Nothing about the layout
+		can move the odds any more -- the bin comes from Plinko.roll, sixteen
+		coin flips made before the ball exists, and the ball is steered toward
+		the column those flips chose. Pegs are now clatter and guidance, not a
+		decision, so the shape is free to be the shape everyone recognises.
+
+		AND THE TRIANGLE ACTUALLY FITS THE ROLL. After r rows a ball is at most
+		r half-steps from centre, which is r*W/2; a row of r+2 pegs spans
+		(r+1)*W/2 either side. So the field is always exactly wide enough to
+		hold every path the roll can produce -- it can never be steered into a
+		gap that isn't there. Row 16 carries 18 pegs, which is the 17 bins plus
+		the pair that bound them.
 	]]
 	local topPeg = total / 2 - ENTRY
 	for r = 1, Plinko.ROWS do
-		local wide = r % 2 == 1
-		local count = wide and Plinko.BINS or Plinko.BINS - 1
+		local count = r + 2
 		for i = 1, count do
-			local x = wide and (i - (Plinko.BINS + 1) / 2) * W
-				or (i - Plinko.BINS / 2) * W
+			local x = (i - (count + 1) / 2) * W
 			local peg = part({
 				name = "Peg",
 				--[[ For a Cylinder, Size.X is the LENGTH along the axis and Y/Z
 				     are the diameter -- pass them the other way round and you
-				     get a stub. This was (PEG, PEG, DEPTH) and measured as a
-				     0.9 cube: a peg too shallow to reliably touch a ball
-				     crossing a four-stud channel. ]]
-				size = Vector3.new(DEPTH - 0.4, PEG, PEG),
-				cframe = at(x, topPeg - (r - 1) * SPACING),
+				     get a stub. ]]
+				size = Vector3.new(PEG_LEN, PEG, PEG),
+				cframe = at(x, topPeg - (r - 1) * SPACING, PEG_Z),
 				color = COL.peg,
-				material = Enum.Material.Neon,
+				--[[ Plastic, not Neon. Neon was right for a 0.9 pin picked out
+				     against a dark board; a hundred and sixty-eight 2.6 studs
+				     of it is a wall of white light with no shape to it. The
+				     reference machine is 288 plastic parts and reads as
+				     moulded, which is what the size needs to stay legible. ]]
+				material = Enum.Material.SmoothPlastic,
 			}, root)
 			peg.Shape = Enum.PartType.Cylinder
 			-- turn the axis to lie across the board's depth
@@ -305,7 +372,11 @@ function PlinkoService.build(island)
 			cframe = at(x, binTop - BINS_H + 1.06), color = binColor(j),
 			material = Enum.Material.Neon }, root)
 		if j < Plinko.BINS then
-			part({ name = "Divider", size = Vector3.new(0.6, BINS_H, DEPTH - 0.4),
+			--[[ 0.45, not 0.6. The pocket has to swallow a 3.2 ball, and a
+			     4.2 pitch less a 0.6 divider left 3.6 -- clearance measured in
+			     millimetres, on the one part of the fall where the ball is
+			     collidable and a landing on a divider top is a stuck ball. ]]
+			part({ name = "Divider", size = Vector3.new(0.45, BINS_H, DEPTH - 0.4),
 				cframe = at(x + W / 2, binTop - BINS_H / 2), color = COL.divider }, root)
 		end
 
@@ -351,15 +422,35 @@ function PlinkoService.build(island)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Price"
 	gui.Size = UDim2.fromOffset(114, 16)
-	--[[ BELOW the console, not above it. Above put it level with the bin
-	     plates and it drew straight across the payout numbers -- the same
-	     collision the PLINKO billboard had, moved down a few studs and
-	     repeated, because I fixed the sign without checking what else the
-	     console sits beside. ]]
-	gui.StudsOffsetWorldSpace = Vector3.new(0, -2.6, 0)
+	--[[
+		ADORNED TO ITS OWN ANCHOR, in front of the plinth.
+
+		STILL BELOW THE MACHINE, never above it. Above puts it level with the
+		bin plates and it draws straight across the payout numbers -- the same
+		collision the old floating PLINKO sign had. Low is not the problem.
+
+		It hung 2.6 studs under the console, which put it INSIDE the plinth:
+		the two courses are sized off DEPTH (DEPTH + 9 for the base), so the
+		label sat about two studs behind the front face and rendered as
+		whichever letters cleared it -- "ball", out of "from $450K a ball".
+		Widening the cabinet did not cause that, it only made it obvious.
+
+		AlwaysOnTop was the first fix and the wrong one: it stopped the label
+		drawing at all rather than drawing it over the plinth. So the label is
+		moved instead of re-ordered, onto an invisible anchor placed in BOARD
+		space -- which, unlike StudsOffsetWorldSpace, stays correct if the
+		machine is ever turned to face somewhere else.
+	]]
+	--[[ DEPTH/2 + 6 clears the plinth base's front face, at DEPTH/2 + 4.5, by
+	     a stud and a half. 4.6 cleared it by 0.1, which is not clearance -- it
+	     is the same coincidence this label already fell foul of once. ]]
+	local anchor = part({ name = "PriceAnchor", size = Vector3.new(0.2, 0.2, 0.2),
+		cframe = at(0, -total / 2 - 5.4, DEPTH / 2 + 6), color = COL.frame,
+		transparency = 1, collide = false }, root)
+
 	gui.MaxDistance = 150
-	gui.Adornee = console
-	gui.Parent = console
+	gui.Adornee = anchor
+	gui.Parent = anchor
 
 	local sub = Instance.new("TextLabel")
 	sub.Size = UDim2.fromScale(1, 1)
@@ -368,7 +459,7 @@ function PlinkoService.build(island)
 	sub.TextScaled = true
 	sub.TextColor3 = COL.gold
 	sub.TextStrokeTransparency = 0.4
-	sub.Text = Format.money(Config.PlinkoDropCost) .. " a ball"
+	sub.Text = "from " .. Format.money(Config.PlinkoDropCost) .. " a ball"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
 	subCap.MaxTextSize = 9
@@ -376,22 +467,88 @@ function PlinkoService.build(island)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "DropPrompt"
-	prompt.ActionText = "Drop a ball"
+	prompt.ActionText = "Play Plinko"
 	prompt.ObjectText = "Plinko"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 16
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = console
+	--[[ The prompt OPENS THE PANEL now rather than dropping. It used to drop
+	     straight away, which was right when a ball had one price; with a stake
+	     to choose, a prompt that spends money the instant you press E is a way
+	     to lose twenty times the minimum by accident. ]]
 	prompt.Triggered:Connect(function(player)
-		PlinkoService.drop(player)
+		Net.get("OpenPlinko"):FireClient(player)
 	end)
 
-	PlinkoService.console = console
-	PlinkoService.topY = topPeg + ENTRY - 2
-	-- the Y of the first peg row, so a falling ball can be told which row it
-	-- is passing and therefore which column it should be drifting toward
-	PlinkoService.topPegY = board:PointToWorldSpace(Vector3.new(0, topPeg, 0)).Y
-	PlinkoService.binY = binTop - BINS_H
+	return {
+		root = root,
+		board = board,
+		console = console,
+		bins = PlinkoService.bins,
+		topY = topPeg + ENTRY - 2,
+		-- the Y of the first peg row, so a falling ball can be told which row
+		-- it is passing and therefore which column it should be drifting toward
+		topPegY = board:PointToWorldSpace(Vector3.new(0, topPeg, 0)).Y,
+		binY = binTop - BINS_H,
+	}
+end
+
+--[[
+	FOUR MACHINES, EVENLY SPACED, ALL FACING THE MIDDLE.
+
+	On a ring rather than in a row: a row has a best seat and a worst one, and
+	the island is a disc. Facing inward means the plaza between them is where
+	you stand to watch, and every board is legible from it.
+
+	The ring radius is set against the board's own width. Four machines at 90
+	degrees sit RING * sqrt(2) apart, so at 105 that is 148 studs between
+	neighbours against a 74-stud board -- a full board's width of air on either
+	side, which is what stops them reading as one long wall.
+]]
+local COUNT = 4
+local RING = 105
+
+function PlinkoService.build(island)
+	local existing = Workspace:FindFirstChild("Plinko")
+	if existing then
+		existing:Destroy()
+	end
+
+	local root = Instance.new("Model")
+	root.Name = "Plinko"
+	root.Parent = Workspace
+
+	PlinkoService.machines = {}
+	for index = 1, COUNT do
+		local angle = (index - 1) / COUNT * math.pi * 2
+		local spot = island.center
+			+ Vector3.new(math.cos(angle) * RING, 0, math.sin(angle) * RING)
+		--[[
+			TURNED TO FACE THE CENTRE, and the yaw is solved rather than
+			guessed -- the first attempt was `angle + pi/2 + pi`, which pointed
+			two of the four the wrong way and looked plausible from one camera
+			angle.
+
+			The face is the board's +Z, NOT its LookVector: the header calls it
+			"Z out of the face" and LookVector is -Z. So the face normal of
+			CFrame.Angles(0, t, 0) is (sin t, 0, cos t), and pointing it at the
+			middle from an angle a means solving
+
+			    sin t = -cos a,  cos t = -sin a   ->   t = -(pi/2 + a)
+
+			Checks out at both ends: a = 0 gives a face normal of (-1, 0, 0)
+			from (+R, 0, 0), and a = pi/2 gives (0, 0, -1) from (0, 0, +R).
+		]]
+		local machine = buildMachine(index, spot, -(math.pi / 2 + angle), root)
+		machine.index = index
+		table.insert(PlinkoService.machines, machine)
+	end
+
+	--[[ Kept for anything that still wants "the" machine -- the coach's
+	     waypoint, and the tour. The first is as good as any and they are all
+	     the same distance from the middle. ]]
+	PlinkoService.console = PlinkoService.machines[1].console
 	return root
 end
 
@@ -420,20 +577,44 @@ local inFlight = {}
 ]]
 local MAX_IN_FLIGHT = 25
 
-function PlinkoService.isNear(player)
-	local console = PlinkoService.console
-	if not console then
-		return false
-	end
+--[[
+	The machine this player is standing at, or nil.
+
+	NEAREST, not first-in-range, because the four are only 148 studs apart and
+	PlinkoRange is 26 -- close enough that a player between two of them would
+	otherwise drop on whichever happened to be earlier in the list, and watch
+	their ball fall down the machine they were not looking at.
+]]
+local function nearestMachine(player)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then
-		return false
+		return nil
 	end
-	return (root.Position - console.Position).Magnitude <= Config.PlinkoRange
+	local best, bestDistance = nil, Config.PlinkoRange
+	for _, machine in ipairs(PlinkoService.machines or {}) do
+		local distance = (root.Position - machine.console.Position).Magnitude
+		if distance <= bestDistance then
+			best, bestDistance = machine, distance
+		end
+	end
+	return best
 end
 
-function PlinkoService.drop(player)
+function PlinkoService.isNear(player)
+	return nearestMachine(player) ~= nil
+end
+
+--[[ What this player is allowed to stake, and what they asked for clamped
+     into it. Shared with the client through the DropBall reply so the panel and
+     the server can never disagree about the limits. ]]
+function PlinkoService.stakeRange(profile)
+	local low = Config.PlinkoDropCost
+	local high = low * Config.PlinkoMaxStakeMultiple
+	return low, high
+end
+
+function PlinkoService.drop(player, stake)
 	local profile = DataService.get(player)
 	if not profile then
 		return { ok = false, err = "Still loading, one sec." }
@@ -441,8 +622,12 @@ function PlinkoService.drop(player)
 	if (inFlight[player.UserId] or 0) >= MAX_IN_FLIGHT then
 		return { ok = false, err = "That is a lot of balls. Let some land." }
 	end
-	if not PlinkoService.isNear(player) then
-		return { ok = false, err = "Head to the Plinko machine." }
+	--[[ Resolved ONCE, here, and carried through the whole drop. Asking again
+	     later would let a player who walked between two machines mid-fall have
+	     their ball steered by one board and paid out by another. ]]
+	local machine = nearestMachine(player)
+	if not machine then
+		return { ok = false, err = "Head to a Plinko machine." }
 	end
 	--[[ The seal gate. Plinko declares no `requires`, being the chapter you
 	     start in, so this always passes today -- it is here so the second
@@ -451,14 +636,24 @@ function PlinkoService.drop(player)
 	local allowed, needs = Seals.canEnter(profile, Islands.get("plinko"))
 	if not allowed then
 		local gate = Islands.get(needs)
-		return { ok = false, err = ("Needs the %s seal."):format(
+		return { ok = false, err = ("Needs the %s saddle."):format(
 			(gate and gate.name) or needs) }
 	end
-	if profile.money < Config.PlinkoDropCost then
-		return { ok = false, err = "Need " .. Format.money(Config.PlinkoDropCost) .. "." }
+	--[[ THE STAKE IS AN INPUT, so it is floored, clamped and re-read rather
+	     than trusted. A client asking to stake a negative amount would
+	     otherwise be paid a negative multiple of it, which is a deposit. ]]
+	local low, high = PlinkoService.stakeRange(profile)
+	stake = math.floor(tonumber(stake) or low)
+	stake = math.clamp(stake, low, high)
+
+	if profile.money < stake then
+		return { ok = false, err = "Need " .. Format.money(stake) .. "." }
 	end
 
-	profile.money -= Config.PlinkoDropCost
+	profile.money -= stake
+	--[[ Remembered so the next drop opens on the same number. Someone dropping
+	     twenty balls should set their stake once. ]]
+	profile.plinkoStake = stake
 	PlayerState.push(player)
 	inFlight[player.UserId] = (inFlight[player.UserId] or 0) + 1
 
@@ -497,8 +692,13 @@ function PlinkoService.drop(player)
 	--[[ A hair off centre. Dropped exactly onto the apex peg the ball balances
 	     there, and a machine that occasionally freezes on the first peg is
 	     worse than one that is a fraction less symmetric. ]]
-	ball.CFrame = at(math.random(-40, 40) / 200, PlinkoService.topY)
-	ball.Parent = Workspace:FindFirstChild("Plinko")
+	ball.CFrame = machine.board
+		* CFrame.new(math.random(-40, 40) / 200, machine.topY, BALL_Z)
+	--[[ Parented to ITS OWN machine, not to the Plinko model. Four machines
+	     dropping into one folder would make "how many balls are on this board"
+	     unanswerable, and a machine that is ever rebuilt would take everyone
+	     else's balls with it. ]]
+	ball.Parent = machine.root
 	ball:SetNetworkOwner(nil) -- the server rolls the dice, not the bettor
 
 	--[[
@@ -514,7 +714,7 @@ function PlinkoService.drop(player)
 		into each column instead of snapping to it.
 	]]
 	--[[
-		THE PEGS ARE SCENERY, and the ball passes through them.
+		THE PEGS ARE SCENERY, and the ball passes IN FRONT of them.
 
 		It collided with them at first, and wedged every single time: a ball
 		whose sideways motion is steered has no energy of its own to get off a
@@ -529,13 +729,23 @@ function PlinkoService.drop(player)
 		falls freely, is steered across, and is given a small hop each time it
 		crosses a row -- which reads as the clatter down the board it used to
 		get from collisions, without any way to get stuck.
+
+		The depth split (see PEG_Z / BALL_Z) came later, for the look, and it
+		makes this structural rather than merely switched off: the two no longer
+		share a plane, so there is nothing here to wedge on even if the flag
+		were wrong. The flag stays anyway -- it is what keeps the ball off the
+		side rails and the glass while the steering is throwing it about.
 	]]
 	ball.CanCollide = false
 
-	local right = board.RightVector
-	local plane = board.LookVector
-	local planeAt = board.Position:Dot(plane)
-	local topY = PlinkoService.topPegY
+	local right = machine.board.RightVector
+	local plane = machine.board.LookVector
+	--[[ The ball's plane, not the board's centre. These were the same number
+	     while the ball sat at z = 0; now that it rides in front of the pegs,
+	     holding it to the board's middle would drag it straight back into
+	     them. ]]
+	local planeAt = machine.board:PointToWorldSpace(Vector3.new(0, 0, BALL_Z)):Dot(plane)
+	local topY = machine.topPegY
 	-- world Y where the peg field ends and the bin pockets begin
 	local binTop = topY - FIELD - 2
 	local lastRow = 0
@@ -566,7 +776,7 @@ function PlinkoService.drop(player)
 			ball.AssemblyLinearVelocity = Vector3.new(velocity.X, 14, velocity.Z)
 		end
 
-		local localPos = board:PointToObjectSpace(ball.Position)
+		local localPos = machine.board:PointToObjectSpace(ball.Position)
 		local drift = targets[row] - localPos.X
 		local velocity = ball.AssemblyLinearVelocity
 		local want = math.clamp(drift * 5, -16, 16)
@@ -600,7 +810,7 @@ function PlinkoService.drop(player)
 		     steering puts the ball there -- but the roll is what the odds were
 		     computed from, so a ball nudged by a player or wedged on a peg
 		     cannot change what it was worth. ]]
-		PlinkoService.settle(player, bin)
+		PlinkoService.settle(player, bin, stake)
 		task.delay(0.8, function()
 			if ball.Parent then
 				ball:Destroy()
@@ -611,7 +821,11 @@ function PlinkoService.drop(player)
 	return { ok = true }
 end
 
-function PlinkoService.settle(player, index)
+--[[ `stake` travels with the ball rather than being re-read from the profile.
+     Up to MAX_IN_FLIGHT balls can be falling at once and the dial can be moved
+     between drops, so the profile's current stake is not necessarily the one
+     THIS ball was bought with. ]]
+function PlinkoService.settle(player, index, stake)
 	inFlight[player.UserId] = math.max((inFlight[player.UserId] or 1) - 1, 0)
 	local profile = DataService.get(player)
 	if not profile then
@@ -619,7 +833,7 @@ function PlinkoService.settle(player, index)
 	end
 
 	local bin = Plinko.Bins[index]
-	local won = math.floor(Config.PlinkoDropCost * bin.pay)
+	local won = math.floor((stake or Config.PlinkoDropCost) * bin.pay)
 	profile.money += won
 
 	local island = Islands.get("plinko")
@@ -635,9 +849,9 @@ function PlinkoService.settle(player, index)
 		if justSealed then
 			message = ("%s  —  %s SEAL COMPLETE"):format(message, island.name:upper())
 		elseif Seals.held(profile, island.seal) then
-			message = ("%s  (seal already held)"):format(message)
+			message = ("%s  (saddle already forged)"):format(message)
 		else
-			message = ("%s  +1 seal fragment (%d/%d)"):format(message, held, need)
+			message = ("%s  +1 saddle piece (%d/%d)"):format(message, held, need)
 		end
 	end
 
@@ -654,8 +868,8 @@ function PlinkoService.start()
 	end
 	PlinkoService.build(island)
 
-	Net.get("DropBall").OnServerInvoke = function(player)
-		return PlinkoService.drop(player)
+	Net.get("DropBall").OnServerInvoke = function(player, stake)
+		return PlinkoService.drop(player, stake)
 	end
 
 	Players.PlayerRemoving:Connect(function(player)

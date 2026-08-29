@@ -942,6 +942,42 @@ end
 	Runs on the tick rather than Touched alone: Touched fires on entry but not
 	while you stand still, so you'd watch the pile grow under your feet.
 ]]
+--[[ Bank every pile from anywhere -- what the Vault Sweep item buys.
+
+     Deliberately the same ending as tickCollect below: money, the onboarding
+     latch, a re-render and a push. The DIFFERENCE is the whole product, and it
+     is only the missing proximity test -- so this stays next to the thing it
+     mirrors, where the two can be read against each other. Returns what it
+     banked, so the caller can refuse to charge for sweeping an empty base. ]]
+function PlotService.sweep(player)
+	local plot = byUserId[player.UserId]
+	local profile = DataService.get(player)
+	if not plot or not profile or not profile.pending then
+		return 0
+	end
+
+	local claimed = 0
+	for index = 1, Config.MaxSlots do
+		local amount = profile.pending[index] or 0
+		if amount >= 1 then
+			profile.pending[index] = 0
+			claimed += amount
+		end
+	end
+	if claimed < 1 then
+		return 0
+	end
+
+	profile.money += math.floor(claimed)
+	if profile.onboarding then
+		profile.onboarding.collected = true
+	end
+
+	PlotService.renderPiles(player)
+	PlayerState.push(player)
+	return math.floor(claimed)
+end
+
 function PlotService.tickCollect(player)
 	local plot = byUserId[player.UserId]
 	local profile = DataService.get(player)

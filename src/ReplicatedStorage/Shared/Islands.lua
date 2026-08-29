@@ -43,8 +43,52 @@ Islands.List = {
 		name = "Plinko",
 		blurb = "Drop the ball. Watch it decide.",
 
-		center = Vector3.new(-165, 220, -50),
-		radius = 56, -- walkable ground; the mountain ring sits outside this
+		--[[ 550, up from 220. High enough that the climb is a journey rather than
+		     a hop off the roof, and still well under Config.FlightCeiling (900) so
+		     the jetpack remains the way up -- Racing at 1150 is the one above the
+		     ceiling, and that separation is what makes the mount the only way there. ]]
+		center = Vector3.new(-165, 550, -50),
+		--[[ Was 56, which made this read as a ledge with a machine on it rather
+		     than a destination -- and put the treeline right at the edge of the
+		     clearing, so the whole island was rim. At 110 it matches Racing's
+		     footprint: the two chapters are the same KIND of place, and the first
+		     one being a third the size said the opposite. ]]
+		radius = 220, -- walkable ground; the mountain ring sits outside this
+		--[[ THE CLEARING DOES NOT SCALE WITH THE ISLAND, and that is the whole
+		     trick of this number. The board is 99 studs wide whatever the island
+		     does, so the plaza wants to stay the size that fits a board -- about
+		     106, the same few studs of margin the nine-bin machine had.
+		
+		     0.24 of 220 IS 105.6: the identical plaza it had at radius 110 and
+		     clearing 0.48. Everything the island gained went into the rim, which
+		     goes from 51 studs to 161. That is what makes the machine stop looking
+		     oversized -- not shrinking it, but giving it somewhere to stand.
+		
+		     Racing wants 0.82 because a racetrack IS its island. Plinko is one
+		     machine standing in a clearing, and now there is a great deal of
+		     island around the clearing. ]]
+		--[[ 0.66, up from 0.24. There are four machines now, on a ring 105
+		     studs out, and the plaza has to hold all of them: a board is 74
+		     wide, so its outer corner reaches 105 + 37 = 142. At 0.62 the plaza
+		     was 136 and every machine hung six studs off the dirt onto the
+		     grass. 0.66 of 220 is 145, which clears it. ]]
+		clearing = 0.66,
+
+		--[[
+			SMOOTH. No terraces, no outcrops, no trees, no mushrooms, no
+			scattered debris, and no surface facets -- just the disc and the
+			plaza.
+
+			The relief was built for an island with one machine standing in a
+			clearing, where the rim was scenery you looked past. With four
+			machines on a ring the whole top surface is the venue, and rock and
+			trees in the middle of it are things to walk around rather than
+			things to look at.
+
+			A flag rather than a check on the id, so the next island that wants
+			to be a floor says so itself.
+		]]
+		smooth = true,
 		game = "plinko",
 
 		--[[ What playing here drops. Fragments rather than the whole seal, so a

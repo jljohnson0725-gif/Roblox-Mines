@@ -306,6 +306,41 @@ function Fx.init(ctx)
 		)
 	end
 
+	--[[
+		THE SAME SPECTACLE, FOR SOMETHING THAT IS NOT A DROP.
+
+		fx.drop above is the shake/flash/confetti/lighting/banner sequence, and
+		it was welded to a brainrot: it takes a `drop`, looks up a Rarity tier
+		and reads the tier's colour and name. The saddle is the biggest moment in
+		the first chapter and is none of those things -- no charId, no tier, no
+		income -- so it either got a toast that scrolls away in 2.5 seconds or
+		this had to come apart.
+
+		Extracted rather than copied. A second implementation of the same
+		sequence is how the drop celebration ended up announced three different
+		ways before, which the comment in fx.drop already records.
+	]]
+	function fx.celebrate(opts)
+		local spec = opts.spec or Sounds.spectacleFor("Mythic")
+		local color = opts.color or Theme.color.gold
+
+		--[[ A NAMED CUE, not a raw id. Sounds.Library owns volume, speed and
+		     which bus it lands on; a bare id here would be a sound nobody could
+		     find in the mix and nobody could re-balance. ]]
+		if opts.sound then
+			Sounds.play(opts.sound)
+		end
+
+		shake = math.max(shake, spec.shake)
+		doFlash(color, spec.flash, 0.3 + spec.level * 0.08)
+		doConfetti(spec.confetti, color)
+		doLighting(spec, color, spec.hold)
+		if spec.vignette then
+			doVignette(spec.hold)
+		end
+		doBanner(opts.headline or "", opts.name or "", opts.sub or "", color, spec)
+	end
+
 	--[[ Somebody ELSE hit a Mythic or Secret. Loud, but not screen-shaking. ]]
 	function fx.announce(payload)
 		local tier = Rarity.get(payload.tier)

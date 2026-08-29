@@ -13,6 +13,7 @@ local Net = require(Shared.Net)
 local Economy = require(Shared.Economy)
 local Config = require(Shared.Config)
 local Upgrades = require(Shared.Upgrades)
+local Items = require(Shared.Items)
 
 local DataService = require(script.Parent.DataService)
 
@@ -28,6 +29,19 @@ local function totalPending(profile)
 end
 
 PlayerState.totalPending = totalPending
+
+--[[ Expiries turned into countdowns, dropping anything already finished so the
+     client never has to reason about a zero. ]]
+local function boostsRemaining(profile)
+	local now, out = os.time(), {}
+	for id in pairs(profile.boosts or {}) do
+		local left = Items.remaining(profile, id, now)
+		if left > 0 then
+			out[id] = left
+		end
+	end
+	return out
+end
 
 --[[
 	Sync payloads are MERGED by the client, not replaced, so a frequent update
@@ -56,6 +70,14 @@ function PlayerState.snapshot(player)
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		onboarding = profile.onboarding, -- drives the first-session coach
 		jetpack = profile.jetpack == true, -- whether F does anything
+		whistle = profile.whistle == true, -- whether the ride button is there
+		plinkoStake = profile.plinkoStake, -- the dial, so the panel reopens on it
+		wheelStake = profile.wheelStake,
+		--[[ REMAINING SECONDS, not the expiry stored on the profile. The client
+		     counts down from what it was handed instead of comparing against its
+		     own os.time(), which is a clock the server has no reason to trust and
+		     no way to correct. See Shared/Items. ]]
+		boosts = boostsRemaining(profile),
 		rebirths = profile.rebirths or 0,
 		stats = profile.stats,
 		--[[ Named exactly as the profile names them, because Shared/Seals reads

@@ -30,33 +30,71 @@
 local Plinko = {}
 
 Plinko.ROWS = 16
-Plinko.BINS = 9
+--[[
+	SEVENTEEN BINS, WHICH IS ROWS + 1, AND THAT IS NOT A STYLE CHOICE.
+
+	It was nine, and nine is what forced the old payout table to top out at
+	4.7x. Sixteen coin flips of half a bin each spread over seventeen bins; on
+	a nine-wide board the tail is clipped and piles into the outer bins, which
+	put 3.6% in each edge. An edge you hit one drop in twenty-eight cannot pay
+	1000x -- at those odds the two edges alone would return 7200% of stake.
+
+	Widening the board to seventeen lets the distribution finish. The edges
+	become 0.0015% each, which is the real binomial, and a 1000x prize becomes
+	something you see about once in thirty-three thousand drops. That is what
+	makes the headline number payable at all.
+]]
+Plinko.BINS = 17
 
 --[[
-	Per bin, outward from the left edge. Chosen against the exact odds below,
-	not measured off a sample:
+	Per bin, outward from the left edge.
 
-		bin odds     3.6  6.7  12.4  17.5  19.6  17.5  12.4  6.7  3.6  (%)
-		middle three 54.6%     each edge 3.6%
-		return to player   84.0%
-		fragment chance    7.26% per drop (the two edge bins)
-		a seal (5 fragments) takes about 69 drops -- $31M staked, $4.97M net
+	THE SHAPE IS THE STANDARD HIGH-RISK LADDER -- 1000, 130, 26, 9, 4, 2 and
+	then a flat floor across the middle. Checked against the published table it
+	comes from: with a 0.2x floor this geometry returns 98.98%, against their
+	stated 99%, so the odds model below is sound.
 
-	69 drops is roughly ten minutes of dropping balls. Half that would make the
-	island a formality; double would make it a chore. And the staked figure is
-	the one to ignore: winnings are re-staked, so the machine only keeps its
-	edge, and $4.97M is what actually gates the island.
+	THE FLOOR IS 0.1x, NOT 0.2x, and that single number is the machine's whole
+	edge. The outer six pay 83.2% of stake between them before the middle pays
+	anything, so the floor is the only free parameter left:
+
+		floor 0.20x  ->  98.98% back to player   (a 1% edge; barely a sink)
+		floor 0.10x  ->  91.08% back to player   (an 8.9% edge)
+		floor 0.05x  ->  87.13% back to player   (a 12.9% edge)
+
+	0.1x keeps this a money sink rather than a break-even toy, while still
+	being a visible improvement on the 84% it returned before.
+
+	FRAGMENTS MOVED, AND THEY HAD TO. They used to come from the two edge bins,
+	which on the old nine-wide board were 3.6% each -- 7.26% a drop, a seal in
+	about 69. Those same bins are now 0.0015%, and leaving the award there
+	would have put the Plinko seal 163,840 drops away and quietly walled off
+	the racing island for good.
+
+	So the rule is now "any bin paying 4x or better", which is 7.68% a drop and
+	a seal in about 65. Near enough to the 69 it was that the progression is
+	untouched, and a rule a player can actually state.
 ]]
+local FLOOR = 0.1
+
 Plinko.Bins = {
-	{ pay = 4.7, fragment = true },
-	{ pay = 1.5, fragment = false },
-	{ pay = 0.7, fragment = false },
-	{ pay = 0.3, fragment = false },
-	{ pay = 0.1, fragment = false }, -- the middle, and the likeliest landing
-	{ pay = 0.3, fragment = false },
-	{ pay = 0.7, fragment = false },
-	{ pay = 1.5, fragment = false },
-	{ pay = 4.7, fragment = true },
+	{ pay = 1000, fragment = true },
+	{ pay = 130, fragment = true },
+	{ pay = 26, fragment = true },
+	{ pay = 9, fragment = true },
+	{ pay = 4, fragment = true },
+	{ pay = 2, fragment = false },
+	{ pay = FLOOR, fragment = false },
+	{ pay = FLOOR, fragment = false },
+	{ pay = FLOOR, fragment = false }, -- the middle, and the likeliest landing
+	{ pay = FLOOR, fragment = false },
+	{ pay = FLOOR, fragment = false },
+	{ pay = 2, fragment = false },
+	{ pay = 4, fragment = true },
+	{ pay = 9, fragment = true },
+	{ pay = 26, fragment = true },
+	{ pay = 130, fragment = true },
+	{ pay = 1000, fragment = true },
 }
 
 --[[

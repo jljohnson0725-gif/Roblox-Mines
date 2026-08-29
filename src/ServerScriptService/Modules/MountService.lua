@@ -2,6 +2,12 @@
 	MountService
 	Summon a brainrot and ride it to the racing island.
 
+	THERE IS NO PERCH ANY MORE. The ride used to be called from a pad on the
+	street, which meant the trip to the island began with a trip across town.
+	The Brainrot Whistle replaced it: bought once at the shop, it calls a mount
+	wherever you are standing, and the mount now spawns over the RIDER rather
+	than over a fixed spot. The seal still gates the island -- see canSummon.
+
 	THIS IS THE ONLY WAY UP. The racing island sits at y=1150 and the jetpack
 	stops at 900, so nothing here has to police access -- the geometry does it.
 	What this module owns is the trip.
@@ -48,35 +54,21 @@ local Islands = require(Shared.Islands)
 local Seals = require(Shared.Seals)
 local Economy = require(Shared.Economy)
 local Net = require(Shared.Net)
+local Animations = require(Shared.Animations)
 
 local MountService = {}
 
---[[ Beside the jetpack pad on purpose. That corner of the street is already
-     where you go to leave the ground, so the two ways up sit together and a
-     player who has found one has found the other. ]]
-local PERCH = Vector3.new(-70, 0.3, -14)
-
 local RIDE_SECONDS = 15
+
+--[[ [player] = { start, loop } AnimationTracks for the ride in progress.
+     Held here rather than on the character because the character can be
+     replaced under us by a respawn, and a track whose humanoid has gone is a
+     track nothing will ever stop. ]]
+local rideTracks = {}
 local MOUNT_SCALE = 1.8 -- big enough to sit on and read as a vehicle
 local TIMEOUT = RIDE_SECONDS + 8 -- the failsafe fires well after a healthy trip
 
 local riding = {} -- [player] = true, so one rider cannot start two flights
-
-local function part(props, parent)
-	local p = Instance.new("Part")
-	p.Anchored = true
-	p.CanCollide = props.collide ~= false
-	p.Size = props.size
-	p.CFrame = props.cframe
-	p.Color = props.color or Color3.fromRGB(120, 128, 160)
-	p.Material = props.material or Enum.Material.SmoothPlastic
-	p.Name = props.name or "Part"
-	if props.transparency then
-		p.Transparency = props.transparency
-	end
-	p.Parent = parent
-	return p
-end
 
 --[[ Which brainrot answers the call.
 
@@ -165,7 +157,7 @@ local function flightPath(from, to)
 	end
 	table.insert(points, to)
 
-	-- duplicated ends so the spline starts and finishes exactly on the perch
+	-- duplicated ends so the spline starts and finishes exactly on the pickup
 	-- and the landing rather than overshooting past them
 	table.insert(points, 1, points[1])
 	table.insert(points, points[#points])
@@ -191,103 +183,9 @@ end
      well as the direction. Both moving at once is what stops a long ride
      feeling like a long wait. ]]
 local function pace(t)
-	local eased = t * t * (3 - 2 * t) -- smoothstep: slow off the perch, slow in
+	local eased = t * t * (3 - 2 * t) -- smoothstep: slow off the ground, slow in
 	-- a gentle surge either side of halfway, worth about 8% of the route
 	return math.clamp(eased + math.sin(t * math.pi * 2) * 0.08, 0, 1)
-end
-
-function MountService.start()
-	local island = Islands.get("racing")
-	if not island then
-		warn("[MountService] no racing island; perch not built")
-		return
-	end
-
-	local existing = Workspace:FindFirstChild("RacePerch")
-	if existing then
-		existing:Destroy()
-	end
-
-	local root = Instance.new("Model")
-	root.Name = "RacePerch"
-	root.Parent = Workspace
-
-	part({
-		name = "Pad", size = Vector3.new(16, 1, 16),
-		cframe = CFrame.new(PERCH + Vector3.new(0, 0.5, 0)),
-		color = island.accent, material = Enum.Material.SmoothPlastic,
-	}, root)
-	local post = part({
-		name = "Roost", size = Vector3.new(2, 9, 2),
-		cframe = CFrame.new(PERCH + Vector3.new(0, 5, 0)),
-		color = Color3.fromRGB(96, 104, 132), material = Enum.Material.Metal,
-	}, root)
-
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(156, 46)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
-	gui.MaxDistance = 220
-	gui.Parent = post
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0.58, 0)
-	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBlack
-	title.TextScaled = true
-	title.TextColor3 = Color3.fromRGB(240, 240, 255)
-	title.TextStrokeTransparency = 0.3
-	title.Text = "RACE PERCH"
-	title.Parent = gui
-	local titleCap = Instance.new("UITextSizeConstraint")
-	titleCap.MaxTextSize = 20
-	titleCap.Parent = title
-
-	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, 0, 0.42, 0)
-	sub.Position = UDim2.new(0, 0, 0.58, 0)
-	sub.BackgroundTransparency = 1
-	sub.Font = Enum.Font.GothamMedium
-	sub.TextScaled = true
-	sub.TextColor3 = island.accent
-	sub.TextStrokeTransparency = 0.45
-	sub.Text = "summon a ride"
-	sub.Parent = gui
-	local subCap = Instance.new("UITextSizeConstraint")
-	subCap.MaxTextSize = 10
-	subCap.Parent = sub
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "SummonPrompt"
-	prompt.ActionText = "Summon"
-	prompt.ObjectText = "Race Perch"
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = post
-
-	--[[ The prompt no longer summons -- it ASKS. Choosing is the point: the
-	     brainrot is fashion, so having one picked for you removes the only
-	     decision the ride contains. ]]
-	prompt.Triggered:Connect(function(player)
-		local profile = DataService.get(player)
-		if not profile then
-			return
-		end
-		local ok, missing = Seals.canEnter(profile, Islands.get("racing"))
-		if not ok then
-			PlayerState.notify(player, ("The %s seal opens this. Keep playing Plinko.")
-				:format(missing or "?"))
-			return
-		end
-		if riding[player] then
-			return
-		end
-		Net.get("OpenSummon"):FireClient(player)
-	end)
-
-	MountService.prompt = prompt
-	MountService.root = root
 end
 
 --[[
@@ -311,6 +209,29 @@ local function finish(player, mount, landing, reason)
 
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+	--[[ Stopped before the sit is released, so the rider is never briefly
+	     standing on the island in a riding pose. Cleared unconditionally: this
+	     runs on every path out of a ride including the failures, and a looping
+	     track nobody stops plays forever. ]]
+	local tracks = rideTracks[player]
+	rideTracks[player] = nil
+	if tracks then
+		for _, track in pairs(tracks) do
+			pcall(function()
+				track:Stop(0.15)
+			end)
+		end
+		--[[ Only on a clean arrival. Playing a dismount over a ride that ended
+		     because the rider DIED would animate a corpse getting off. ]]
+		if reason == "arrived" and humanoid then
+			local off = Animations.load(humanoid, Animations.Ride.jumpOff)
+			if off then
+				off.Priority = Enum.AnimationPriority.Action
+				off:Play()
+			end
+		end
+	end
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if humanoid and humanoid.Sit then
 		humanoid.Sit = false
@@ -325,23 +246,54 @@ local function finish(player, mount, landing, reason)
 	end
 end
 
-function MountService.summon(player, uid)
+--[[
+	Every reason a summon can be refused, in one place.
+
+	Two callers need this and they must never disagree: the rail button asks
+	before opening the chooser, and the summon itself asks before flying anyone.
+	A button that opens a panel you are not allowed to use is the exact thing
+	the HUD's rail comment argues against, and the only way to avoid it is for
+	both to be reading the same list.
+
+	Returns ok, message.
+]]
+function MountService.canSummon(player)
+	local profile = DataService.get(player)
+	local island = Islands.get("racing")
+	if not profile or not island then
+		return false, "Still loading, one sec."
+	end
 	if riding[player] then
+		return false, "You're already on your way."
+	end
+	if profile.whistle ~= true then
+		return false, "You need the Brainrot Whistle — it's at the shop."
+	end
+
+	--[[ THE SEAL IS STILL THE GATE ON THE ISLAND. The whistle only buys the
+	     ability to call a ride from anywhere; it does not buy passage. Letting
+	     money skip this would put the Plinko run behind the seal up for sale,
+	     which is the one thing the seal exists to prevent. ]]
+	local ok, missing = Seals.canEnter(profile, island)
+	if not ok then
+		return false, ("You need the %s saddle to ride. Keep playing Plinko."):format(missing or "?")
+	end
+
+	if not MountService.racerFor(profile) then
+		return false, "You need a brainrot to summon."
+	end
+	return true
+end
+
+function MountService.summon(player, uid)
+	local allowed, why = MountService.canSummon(player)
+	if not allowed then
+		PlayerState.notify(player, why)
 		return
 	end
 
 	local island = Islands.get("racing")
 	local profile = DataService.get(player)
-	if not profile or not island then
-		return
-	end
-
-	local ok, missing = Seals.canEnter(profile, island)
-	if not ok then
-		PlayerState.notify(player, ("The %s seal opens this. Keep playing Plinko.")
-			:format(missing or "?"))
-		return
-	end
 
 	--[[ A chosen uid must be one you actually own -- the client passes it, so it
 	     is an input, not a fact. Falling back rather than refusing, because the
@@ -406,7 +358,14 @@ function MountService.summon(player, uid)
 
 	mount.PrimaryPart = seat
 	mount.Parent = Workspace
-	mount:PivotTo(CFrame.new(PERCH + Vector3.new(0, 8, 0)))
+	--[[ It arrives ABOVE THE RIDER, wherever they are standing. It used to
+	     appear over a fixed perch, because the perch was the only place you
+	     could call one from; the whistle is bought once and works anywhere, so
+	     there is no longer a spot to spawn it at. Eight studs up so it swings
+	     in overhead and picks you up, rather than materialising around you --
+	     and flightPath below reads its start off the saddle's actual position,
+	     so the whole route follows from this one line. ]]
+	mount:PivotTo(CFrame.new(hrp.Position + Vector3.new(0, 8, 0)))
 
 	--[[ Sound rides WITH the mount, so it is spatial for anyone watching you go
 	     and it dies exactly when the mount does -- no separate teardown to
@@ -439,6 +398,44 @@ function MountService.summon(player, uid)
 	PlayerState.notify(player, ("Summon %s?  —  going up.")
 		:format(Economy.displayName(item.charId, item.variantId)))
 	seat:Sit(humanoid)
+
+	--[[
+		THE RIDE POSE, over the top of the sit.
+
+		Sitting already locks the humanoid and points the camera; all this adds
+		is that the rider looks like they are holding on rather than sitting on
+		an invisible chair. It is played on the SERVER so that everyone watching
+		the mount go past sees it too -- a pose only the rider can see would
+		make the whole thing look broken from the street.
+
+		Every id may be empty -- see Shared/Animations -- and every step here
+		copes with that by doing nothing, because a missing animation must
+		degrade to today's behaviour and never to a stranded player.
+	]]
+	local tracks = {}
+	rideTracks[player] = tracks
+	local startTrack = Animations.load(humanoid, Animations.Ride.start)
+	local loopTrack = Animations.load(humanoid, Animations.Ride.loop)
+	if loopTrack then
+		loopTrack.Looped = true
+		loopTrack.Priority = Enum.AnimationPriority.Action
+		tracks.loop = loopTrack
+	end
+	if startTrack then
+		startTrack.Priority = Enum.AnimationPriority.Action
+		tracks.start = startTrack
+		startTrack:Play()
+		--[[ Chained on Stopped rather than started on a timer, for the reason
+		     the liftoff sound above gives: a timer is a second copy of the
+		     clip's length that goes stale the day the asset is swapped. ]]
+		startTrack.Stopped:Connect(function()
+			if rideTracks[player] == tracks and tracks.loop then
+				tracks.loop:Play()
+			end
+		end)
+	elseif loopTrack then
+		loopTrack:Play()
+	end
 
 	--[[ Fired now, not on arrival: the client needs the island streamed in
 	     before it gets there, or the rider lands in an empty sky. Wrapped
@@ -507,8 +504,23 @@ Net.get("SummonMount").OnServerInvoke = function(player, uid)
 	return { ok = true }
 end
 
+--[[ The rail button asks before it opens the chooser. This used to be the
+     perch's proximity prompt deciding the same thing; the perch is gone, so the
+     question moved to the only place left that can answer it. ]]
+Net.get("AskSummon").OnServerInvoke = function(player)
+	local ok, why = MountService.canSummon(player)
+	if ok then
+		return { ok = true }
+	end
+	return { ok = false, err = why }
+end
+
 Players.PlayerRemoving:Connect(function(player)
 	riding[player] = nil
+	--[[ Their character is already gone, so the tracks are unreachable and
+	     harmless -- this is here so the table does not grow by one entry per
+	     player who ever rides on a server that stays up for hours. ]]
+	rideTracks[player] = nil
 end)
 
 return MountService

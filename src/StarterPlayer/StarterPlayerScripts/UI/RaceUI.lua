@@ -109,7 +109,7 @@ function RaceUI.init(ctx)
 		     is easy to read as "win more money". It is not: you win more often
 		     and each win pays less. What actually improves is how often a
 		     fragment lands, and that is worth being explicit about. ]]
-		upgrade.Text = ("Speed %d → %d   ·   %s   ·   wins more often, seals sooner")
+		upgrade.Text = ("Speed %d → %d   ·   %s   ·   wins more often, saddles sooner")
 			:format(data.level, data.level + 1, Format.money(data.upgradeCost))
 		upgrade.BackgroundColor3 = (data.money >= data.upgradeCost)
 			and ACCENT or Theme.color.raised

@@ -1,15 +1,23 @@
 --[[
 	ShopService
-	The upgrade shop, back out in the street where it started.
+	The street shop -- items and upgrades over one counter.
 
 	It lived in the hub for a while. The hub is gone now, and it was already
 	clear before that a shared room made the shop a counter in the corner of
 	it -- the thing the move indoors was supposed to fix.
 
-	Deliberately a KIOSK, not a monument. The two structures this replaces were
-	bulky enough that the street felt crowded with only two of them on it; this
-	one is a counter, a canopy and a sign, and it sits off the centre line so it
-	never blocks the walk between the portals.
+	The shopfront is a market stall model, cloned from a template that
+	build_place.py injects into ReplicatedStorage. The hand-built kiosk that
+	stood here before it is gone -- not kept as a fallback, because two
+	shopfronts meant two things to keep in step and the one nobody looked at
+	would have been the one that drifted.
+
+	WHAT THE REST OF THE GAME NEEDS FROM THIS: a part named Counter, as a DIRECT
+	child of the UpgradeShop model. ClientMain closes the upgrade window when you
+	walk away from it and looks it up with a non-recursive FindFirstChild, so a
+	Counter buried inside the stall art would read as "no counter" -- which that
+	check treats as "never close". So the Counter is built first and separately,
+	before the art it stands in front of, and exists even when the art doesn't.
 
 	Owns its own proximity check, because the module that enforces a rule should
 	be the one that states it.
@@ -24,94 +32,71 @@ local Net = require(Shared.Net)
 
 local ShopService = {}
 
---[[ Open ground: 237 studs from the west portal, 351 from the east, and clear
-     of the centre walk at z = -66. Verified against the map before building. ]]
-local SITE = Vector3.new(-100, 0.3, -100)
+--[[ Placed by hand in Studio and read back out, rather than derived from
+     portal distances the way the old kiosk's site was. The stall is scenery
+     with a footprint and a facing, and where it looks right on the street is a
+     judgement the map makes better than arithmetic does.
+
+     This is the model's PIVOT, which for this template is its bounding-box
+     centre -- so the y is mid-height, not ground level. It sits about an eighth
+     of a stud into the ground on purpose; exactly flush shows a hairline of
+     daylight wherever the union under it disagrees with the baseplate. ]]
+local STALL_PIVOT = CFrame.new(-130.67, 9.93, -35.33)
 
 local GOLD = Color3.fromRGB(255, 190, 60)
-local STONE = Color3.fromRGB(64, 70, 96)
-local STONE_LIT = Color3.fromRGB(96, 106, 138)
 
-local function part(props, parent)
-	local p = Instance.new("Part")
-	p.Anchored = true
-	p.CanCollide = props.collide ~= false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Size = props.size
-	p.CFrame = CFrame.new(SITE + props.offset)
-	p.Color = props.color
-	p.Material = props.material or Enum.Material.SmoothPlastic
-	p.Transparency = props.transparency or 0
-	p.Name = props.name or "Part"
-	p.Parent = parent
-	return p
+--[[ The stall, plus the Counter proxy the rest of the game addresses it by.
+
+     Nothing in the art is shaped like a service counter, and naming one of the
+     crates Counter would break the moment the model changed. So the proxy is an
+     invisible part at the stall's mouth: it is what the sign hangs off, what the
+     prompt lives on, and what both distance checks measure to. It gets built
+     whether or not the art does, because without it there is no way to open the
+     shop at all. ]]
+local function buildShop(root)
+	local counter = Instance.new("Part")
+	counter.Name = "Counter"
+	counter.Anchored = true
+	counter.CanCollide = false
+	counter.CanQuery = false
+	counter.CanTouch = false
+	counter.Transparency = 1
+	counter.Size = Vector3.new(2, 2, 2)
+	counter.Parent = root
+
+	local template = ReplicatedStorage:FindFirstChild("UpgradeShopTemplate")
+	if not template then
+		--[[ No art, but still a shop. An invisible counter in the right place
+		     beats a street where nobody can spend their money. ]]
+		warn("[ShopService] no UpgradeShopTemplate -- run tools/build_place.py "
+			.. "with assets/upgradeshop.rbxmx present")
+		counter.CFrame = STALL_PIVOT
+		return counter
+	end
+
+	local stall = template:Clone()
+	stall.Name = "Stall"
+	stall.Parent = root
+	stall:PivotTo(STALL_PIVOT)
+
+	--[[ The stall model is built facing -Z: its signboard and its keeper both
+	     look that way. Read the facing off the pivot rather than assuming it, so
+	     turning the stall in Studio moves the prompt around with it. ]]
+	local _, size = stall:GetBoundingBox()
+	local front = STALL_PIVOT.LookVector
+	counter.CFrame = CFrame.new(STALL_PIVOT.Position
+		+ front * (size.Z / 2 - 1.5)
+		+ Vector3.new(0, 3 - size.Y / 2, 0))
+
+	--[[ Sign clears the roof, worked out from the stall the build actually
+	     placed rather than a number I measured once. ]]
+	local roof = STALL_PIVOT.Position.Y + size.Y / 2
+	counter:SetAttribute("SignLift", (roof + 2.2) - counter.Position.Y)
+	return counter
 end
 
-function ShopService.build()
-	local existing = Workspace:FindFirstChild("UpgradeShop")
-	if existing then
-		existing:Destroy()
-	end
-
-	local root = Instance.new("Model")
-	root.Name = "UpgradeShop"
-	root.Parent = Workspace
-
-	part({
-		name = "Deck",
-		size = Vector3.new(22, 0.6, 12),
-		offset = Vector3.new(0, 0.3, 0),
-		color = STONE,
-		material = Enum.Material.Slate,
-	}, root)
-
-	local counter = part({
-		name = "Counter",
-		size = Vector3.new(14, 3.2, 3),
-		offset = Vector3.new(0, 2.2, -2),
-		color = STONE_LIT,
-		material = Enum.Material.Metal,
-	}, root)
-
-	part({
-		name = "CounterGlow",
-		size = Vector3.new(13.4, 0.28, 2.6),
-		offset = Vector3.new(0, 3.9, -2),
-		color = GOLD,
-		material = Enum.Material.Neon,
-		collide = false,
-	}, root)
-
-	-- two posts and a canopy: enough to read as a shopfront from across the
-	-- street without becoming another landmark
-	for _, side in ipairs({ -1, 1 }) do
-		part({
-			name = "Post",
-			size = Vector3.new(0.8, 9, 0.8),
-			offset = Vector3.new(side * 9.5, 5, 0),
-			color = STONE_LIT,
-			material = Enum.Material.Metal,
-		}, root)
-	end
-	part({
-		name = "Canopy",
-		size = Vector3.new(21, 0.6, 12),
-		offset = Vector3.new(0, 9.6, 0),
-		color = STONE,
-		material = Enum.Material.Metal,
-	}, root)
-	part({
-		name = "CanopyTrim",
-		size = Vector3.new(21.6, 0.3, 12.6),
-		offset = Vector3.new(0, 9.1, 0),
-		color = GOLD,
-		material = Enum.Material.Neon,
-		collide = false,
-	}, root)
-
+--[[ The light, the billboard and the prompt that actually opens the shop. ]]
+local function dress(counter)
 	local lamp = Instance.new("PointLight")
 	lamp.Color = GOLD
 	lamp.Range = 34
@@ -121,7 +106,7 @@ function ShopService.build()
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Sign"
 	gui.Size = UDim2.fromOffset(132, 35)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, counter:GetAttribute("SignLift") or 3.4, 0)
 	gui.MaxDistance = 220
 	gui.Adornee = counter
 	-- On the COUNTER, not the model. A BillboardGui parented to a Model survives
@@ -135,7 +120,7 @@ function ShopService.build()
 	title.TextScaled = true
 	title.TextColor3 = Color3.fromRGB(236, 240, 255)
 	title.TextStrokeTransparency = 0.3
-	title.Text = "UPGRADES"
+	title.Text = "SHOP"
 	title.Parent = gui
 	local cap = Instance.new("UITextSizeConstraint")
 	cap.MaxTextSize = 16
@@ -149,7 +134,7 @@ function ShopService.build()
 	sub.TextScaled = true
 	sub.TextColor3 = GOLD
 	sub.TextStrokeTransparency = 0.45
-	sub.Text = "spend it to make it"
+	sub.Text = "items & upgrades"
 	sub.Parent = gui
 	local subCap = Instance.new("UITextSizeConstraint")
 	subCap.MaxTextSize = 8
@@ -157,8 +142,8 @@ function ShopService.build()
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "ShopPrompt"
-	prompt.ActionText = "Upgrades"
-	prompt.ObjectText = "Upgrade Shop"
+	prompt.ActionText = "Shop"
+	prompt.ObjectText = "Street Shop"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 14
 	prompt.RequiresLineOfSight = false
@@ -166,6 +151,20 @@ function ShopService.build()
 	prompt.Triggered:Connect(function(player)
 		Net.get("OpenUpgrades"):FireClient(player)
 	end)
+end
+
+function ShopService.build()
+	local existing = Workspace:FindFirstChild("UpgradeShop")
+	if existing then
+		existing:Destroy()
+	end
+
+	local root = Instance.new("Model")
+	root.Name = "UpgradeShop"
+	root.Parent = Workspace
+
+	local counter = buildShop(root)
+	dress(counter)
 
 	ShopService.counter = counter
 	return root

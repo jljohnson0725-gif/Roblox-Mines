@@ -109,11 +109,30 @@ local function weightedPick(order, source, depth, rng, opts)
 end
 
 --[[ Split an event modifier bag into the two per-axis option tables. ]]
-local function axisOpts(mods, mines)
+--[[ What a bet is worth as a minimum depth. Logarithmic so the whole range
+     from MinBet to a fortune maps onto a few units of depth, and capped so the
+     top of the table can never simply be bought. See Config. ]]
+local function betFloor(bet)
+	bet = tonumber(bet) or 0
+	if bet <= Config.MinBet then
+		return 0
+	end
+	return math.min(
+		math.log(bet / Config.MinBet, 2) * Config.DropQualityPerBet,
+		Config.DropQualityBetCap)
+end
+
+local function axisOpts(mods, mines, bet)
 	--[[ The floor applies to the TIER axis only. Variants roll on their own
 	     flatter curve precisely so a good run does not pay out twice; letting
-	     mines lift both would be the same double-dip by another route. ]]
-	local floor = Config.DropQualityPerMine * (mines or 0)
+	     mines or the bet lift both would be the same double-dip by another
+	     route.
+
+	     The LARGER of the two floors, not their sum. They are two statements of
+	     the same thing -- how much you are risking -- and adding them would let
+	     a big bet on a dangerous board stack two lifts that were each tuned to
+	     be the whole effect on their own. ]]
+	local floor = math.max(Config.DropQualityPerMine * (mines or 0), betFloor(bet))
 	if not mods then
 		return { floor = floor }, nil
 	end
@@ -134,9 +153,9 @@ end
 	Roll one brainrot for a tile reveal at the given multiplier.
 	Returns { charId = string, variantId = string }.
 ]]
-function DropTable.roll(multiplier, rng, mods, mines)
+function DropTable.roll(multiplier, rng, mods, mines, bet)
 	local depth = depthOf(multiplier)
-	local tierOpts, variantOpts = axisOpts(mods, mines)
+	local tierOpts, variantOpts = axisOpts(mods, mines, bet)
 
 	-- Rollable, not Order: the Secret tier is wheel-only and must never appear
 	-- from a tile reveal, at any multiplier or under any event.
@@ -170,10 +189,13 @@ end
 	Used by the UI so players can see the curve moving as they go deeper --
 	the tension only works if the improving odds are visible.
 ]]
-function DropTable.tierOdds(multiplier, mods)
+function DropTable.tierOdds(multiplier, mods, mines, bet)
 	local depth = depthOf(multiplier)
-	local tierOpts = axisOpts(mods)
-	local effectiveDepth = depth * ((tierOpts and tierOpts.depthMul) or 1)
+	local tierOpts = axisOpts(mods, mines, bet)
+	--[[ The floor applies here too, or the odds panel would quote a table the
+	     roll does not use the moment somebody raises their bet. ]]
+	local effectiveDepth = math.max(depth * ((tierOpts and tierOpts.depthMul) or 1),
+		(tierOpts and tierOpts.floor) or 0)
 	local total = 0
 	local raw = {}
 

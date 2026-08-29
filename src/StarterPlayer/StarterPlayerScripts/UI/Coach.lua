@@ -1,10 +1,16 @@
 --[[
 	Coach
-	The first five minutes.
+	The single next thing to do, from the first minute to the last island.
 
-	One card in the bottom-left corner, showing the single next thing to do. It
-	replaces a lone toast that fired once at spawn and was gone before anyone
-	read it.
+	One card in the bottom-left corner. It replaces a lone toast that fired once
+	at spawn and was gone before anyone read it.
+
+	IT USED TO STOP AFTER THE GROUND LOOP -- four steps, about five minutes, and
+	then silence forever. That silence was the whole problem: the sky islands,
+	the fragments and the seal that opens the second one were never mentioned
+	anywhere a player would look. The step list now runs the length of the game,
+	which costs nothing structurally because the card was never counting steps;
+	it shows the first one that isn't done and hides when none are left.
 
 	EVERY STEP IS DERIVED FROM REAL STATE, never from a script position. The
 	player is on "place it on a pad" because they own something unplaced, not
@@ -17,23 +23,96 @@
 	The pips are what tell them the later steps are already behind them, so they
 	light by whether each step is DONE rather than by position in the list.
 
-	It switches off once all four steps read done, which is also exactly when the
-	server latches `onboarding.done`: banked, placed, and a pile collected. Those
-	three facts ARE the tutorial, so there is nothing else to remember and a
-	returning player never sees the card.
+	It switches off once every step reads done -- which now means the player has
+	the whistle and the racing island is open to them, not merely that the
+	tutorial is behind them.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared.Format)
+local Islands = require(Shared.Islands)
+local Seals = require(Shared.Seals)
+local Items = require(Shared.Items)
 
 local Theme = require(script.Parent.Theme)
 
 local Coach = {}
 
 local W = 268
+
+--[[ Read from the definitions rather than written out, so a price change in
+     Shared/Items or a fragment count in Shared/Islands cannot leave this card
+     confidently telling the player a number that stopped being true. ]]
+local function costOf(id)
+	local def = Items.get(id)
+	return def and Format.money(def.cost) or "a fortune"
+end
+
+local PLINKO = Islands.get("plinko")
+local PLINKO_NEED = PLINKO and Seals.required(PLINKO) or 5
+
+--[[ ── WHERE EACH OBJECTIVE PHYSICALLY IS ──────────────────────────────────
+
+     UI/Beacon draws a marker on whatever these return, so a player who is not
+     reading the card still gets shown where to go. nil is a normal answer: some
+     steps are answered inside a panel and have nowhere to point.
+
+     RESOLVED EVERY FRAME, never cached. The shop is built after the client
+     starts, the player's base is not theirs until they claim one, and under
+     streaming any of it can leave and come back. A handle grabbed once is a
+     handle that goes stale the first time somebody rejoins.
+]]
+local function landmark()
+	local model = Workspace:FindFirstChild("MinesLandmark")
+	return model and model:GetPivot().Position or nil
+end
+
+local function shopCounter()
+	local shop = Workspace:FindFirstChild("UpgradeShop")
+	local counter = shop and shop:FindFirstChild("Counter")
+	return counter and counter.Position or nil
+end
+
+--[[ The player's OWN base, found by the owner attribute PlotService stamps on
+     it. Pointing at whichever base happens to be first would send half the
+     server to somebody else's front door. ]]
+local function myBase()
+	local bases = Workspace:FindFirstChild("Bases")
+	if not bases then
+		return nil
+	end
+	local me = Players.LocalPlayer.UserId
+	for _, base in ipairs(bases:GetChildren()) do
+		if base:GetAttribute("OwnerUserId") == me then
+			return base
+		end
+	end
+	return nil
+end
+
+local function myPads()
+	local base = myBase()
+	return base and base:GetPivot().Position or nil
+end
+
+local function myCollectZone()
+	local base = myBase()
+	local home = base and base:FindFirstChild("Home")
+	local interior = home and home:FindFirstChild("Interior")
+	local zone = interior and interior:FindFirstChild("CollectZone")
+	--[[ Falls back to the base itself: not every base has been converted to a
+	     room, and "go home" is still the right instruction when it hasn't. ]]
+	return zone and zone.Position or myPads()
+end
+
+local function plinkoIsland()
+	return PLINKO and PLINKO.center or nil
+end
 
 --[[
 	Ordered. The first step whose `done` is false is the one shown, so the
@@ -42,6 +121,8 @@ local W = 268
 local STEPS = {
 	{
 		key = "play",
+		where = landmark,
+		chapter = "GETTING STARTED",
 		title = "Play a round of Mines",
 		body = "Press M, set a bet, then reveal tiles. Green is safe.",
 		done = function(s)
@@ -50,6 +131,7 @@ local STEPS = {
 	},
 	{
 		key = "bank",
+		chapter = "GETTING STARTED",
 		title = "Cash out to keep it",
 		body = "A brainrot is only yours once you bank. Hit a mine and you lose it.",
 		done = function(s)
@@ -58,6 +140,8 @@ local STEPS = {
 	},
 	{
 		key = "place",
+		where = myPads,
+		chapter = "GETTING STARTED",
 		title = "Put it on a pad",
 		body = "Press C, pick your brainrot, choose a pad. It pays rent forever.",
 		done = function(s)
@@ -71,6 +155,8 @@ local STEPS = {
 	},
 	{
 		key = "collect",
+		where = myCollectZone,
+		chapter = "GETTING STARTED",
 		title = "Collect what it earned",
 		body = "Cash piles up on the strip by each pad. Walk over it to bank it.",
 		--[[
@@ -88,6 +174,98 @@ local STEPS = {
 		]]
 		done = function(s)
 			return (s.onboarding and s.onboarding.collected) == true
+		end,
+	},
+
+	{
+		key = "tour",
+		chapter = "GETTING STARTED",
+		--[[ The hinge of the whole opening. The ground loop ends here and the
+		     rest of the map begins, and before this step the player was simply
+		     turned loose at that point to find the shop, the wheel and the sky
+		     unaided. He shows them instead. ]]
+		title = "Talk to your neighbour again",
+		body = "Now you've been paid, he wants to show you around.",
+		--[[ Required lazily, inside the call. Coach is built before Friend, so a
+		     require at the top of the file would resolve the module before it
+		     had published `npc` -- and Tutorial reaches for it the same way for
+		     the same reason. ]]
+		where = function()
+			local ok, friend = pcall(function()
+				return require(script.Parent.Friend).npc
+			end)
+			local npc = ok and friend or nil
+			return npc and npc:GetPivot().Position or nil
+		end,
+		done = function(s)
+			return (s.onboarding and s.onboarding.toured) == true
+		end,
+	},
+
+	--[[ ── THE CHAPTERS ──────────────────────────────────────────────────────
+
+		Everything above is the ground loop and takes about five minutes.
+		Everything below is the rest of the game, and it lives here because
+		NOTHING ELSE IN THE UI EVER MENTIONS IT.
+
+		SealTracker looked like it covered this and does not: it hides itself
+		until you already hold a fragment, so it can tell you how close the seal
+		is but never that there is a seal to go and start. And the launch pad
+		that used to stand in the street -- sited off to one side of the Plinko
+		island precisely so that it pointed at it -- is gone now that the shop
+		sells the jetpack. Between them, a player who finished the tutorial was
+		told nothing whatsoever about the sky.
+
+		Same rule as the four above: every step is a question asked of real
+		state, so these survive a rejoin and cannot desync. They just answer it
+		over hours instead of minutes.
+	]]
+	{
+		key = "jetpack",
+		where = shopCounter,
+		chapter = "LEAVING THE GROUND",
+		title = "Buy a jetpack",
+		body = "The shop sells one for " .. costOf("jetpack")
+			.. ". It is the only way off the ground.",
+		done = function(s)
+			return s.jetpack == true
+		end,
+	},
+	{
+		key = "sky",
+		where = plinkoIsland,
+		chapter = "LEAVING THE GROUND",
+		title = "Fly up to the Plinko island",
+		body = "Press F and climb. It is the island hanging over the west of the map.",
+		--[[ "Has a fragment" rather than "has been there": arriving is not the
+		     point, playing is, and the first fragment is proof of both. ]]
+		done = function(s)
+			return Seals.count(s, "plinko") > 0 or Seals.held(s, "plinko")
+		end,
+	},
+	{
+		key = "seal",
+		where = plinkoIsland,
+		chapter = "THE PLINKO SEAL",
+		title = "Earn the Plinko saddle",
+		body = ("Every drop can award a saddle piece. %d of them make the saddle.")
+			:format(PLINKO_NEED),
+		done = function(s)
+			return Seals.held(s, "plinko")
+		end,
+	},
+	{
+		key = "whistle",
+		where = shopCounter,
+		chapter = "THE PLINKO SEAL",
+		title = "Buy the Brainrot Whistle",
+		body = "It calls a ride to Brainrot Racing — " .. costOf("whistle")
+			.. ". The saddle you just made is what lets you ride it.",
+		--[[ Ends on the purchase, not on the ride, because owning the whistle is
+		     the moment the RIDE button appears on the rail. The card goes away
+		     and the button takes over: one handoff, no overlap. ]]
+		done = function(s)
+			return s.whistle == true
 		end,
 	},
 }
@@ -173,7 +351,10 @@ function Coach.init(ctx)
 			parent = pips,
 			name = "Pip" .. i,
 			color = Theme.color.raised,
-			size = UDim2.fromOffset(26, 5),
+			--[[ Scaled, not a fixed 26px. Four steps fitted at that width and
+			     eight do not -- they overran the card by a pixel. A share of the
+			     row means the strip fits whatever the list grows to. ]]
+			size = UDim2.new(1 / #STEPS, -5, 0, 5),
 			order = i,
 			radius = 3,
 		})
@@ -217,6 +398,11 @@ function Coach.init(ctx)
 
 		if current.key ~= shownKey then
 			shownKey = current.key
+			--[[ The eyebrow used to be the literal "GETTING STARTED", set once at
+			     build time. That was true while the card only covered the first
+			     five minutes and became a lie the moment it started saying
+			     "Earn the Plinko seal" underneath it. ]]
+			eyebrow.Text = current.chapter or "NEXT UP"
 			title.Text = current.title
 			body.Text = current.body
 
@@ -250,6 +436,23 @@ function Coach.init(ctx)
 				suppressed = want
 				render()
 			end
+		end,
+
+		--[[ The step the card is showing, or nil when it is showing nothing --
+		     suppressed, or every step done. UI/Beacon reads this to decide what
+		     to point at, so the marker in the world and the words on the card
+		     can never be about two different objectives: there is one answer to
+		     "what now", and this is it. ]]
+		current = function()
+			if suppressed then
+				return nil
+			end
+			for _, step in ipairs(STEPS) do
+				if not step.done(ctx.state) then
+					return step
+				end
+			end
+			return nil
 		end,
 	}
 

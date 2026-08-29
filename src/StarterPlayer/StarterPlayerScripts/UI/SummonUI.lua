@@ -16,7 +16,7 @@
 
 	Reads the inventory straight off ctx.state, which the server already pushes
 	on every change, so there is no second copy of your collection to go stale
-	and no request to wait on when the perch is used.
+	and no request to wait on when the chooser opens.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -75,7 +75,7 @@ function SealTracker.init(ctx)
 	local header = Theme.label({
 		parent = card,
 		name = "Header",
-		text = "SEALS",
+		text = "SADDLE",
 		font = Theme.font.black,
 		textSize = 11,
 		color = Theme.color.dim,

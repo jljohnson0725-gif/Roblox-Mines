@@ -8,14 +8,21 @@
 	DELIBERATELY NO LUCK UPGRADE. Buying better drop odds would attack the first
 	design pillar -- the multiplier IS the luck stat. If luck is purchasable,
 	the mine-count dial and the cash-out decision both matter less, and the thing
-	that makes this more than a clicker gets diluted. Every upgrade here moves
-	money, time or distance; none of them touch the drop table.
+	that makes this more than a clicker gets diluted. Nothing here touches the
+	drop table.
+
+	EXTRA LIFE IS THE ONE THAT TOUCHES RISK, and it is worth being honest about
+	that rather than pretending it belongs with the others. It does not change
+	what drops or how often; it changes what a mistake costs. Three levels is
+	the whole ceiling and the third costs 30M, so a bad pick still ends the run
+	for anyone who has not spent a fortune on not being punished for it.
 
 	Effects are pure functions of level so nothing has to be recomputed or
 	cached -- the level is the only thing that persists.
 ]]
 
 local Config = require(script.Parent.Config)
+local Items = require(script.Parent.Items)
 
 local Upgrades = {}
 
@@ -75,19 +82,27 @@ Upgrades.List = {
 		end,
 	},
 	{
-		id = "radius",
-		name = "Long Arms",
-		blurb = "Collect from further away",
-		color = Color3.fromRGB(90, 226, 255),
-		maxLevel = 10,
-		baseCost = 8000,
-		costGrowth = 1.70,
-		-- base reach is 4 studs around a strip; at max you sweep most of a row
+		id = "lives",
+		name = "Extra Life",
+		blurb = "Survive a mine instead of busting",
+		color = Color3.fromRGB(255, 96, 128),
+		maxLevel = 3,
+		--[[ Priced by hand, not by a growth rate: 1.5M, then 10M, then 30M.
+		     Steep on purpose. Each life blunts the bet a little, so the cost is
+		     what keeps this a late milestone instead of something everyone owns
+		     three of by the second hour. ]]
+		costs = { 1500000, 10000000, 30000000 },
+		--[[ Spent PER ROUND and refilled at the next one. A life that persisted
+		     across rounds would be a consumable wearing an upgrade's clothes,
+		     and you'd be buying it again forever. ]]
 		effect = function(level)
-			return 4 + level * 3.5
+			return level
 		end,
 		format = function(level)
-			return string.format("%.0f stud reach", 4 + level * 3.5)
+			if level == 0 then
+				return "no second chances"
+			end
+			return string.format("%d mistake%s a round", level, level == 1 and "" or "s")
 		end,
 	},
 }
@@ -101,11 +116,20 @@ function Upgrades.get(id)
 	return Upgrades.ById[id]
 end
 
---[[ Cost of the NEXT level, or nil when maxed. ]]
+--[[ Cost of the NEXT level, or nil when maxed.
+
+     Two shapes, because two things are being priced. Most upgrades are a curve
+     -- a base and a growth rate, running for a dozen levels or more. Extra Life
+     is three prices: 1.5M, 10M, 30M, a 6.7x step followed by a 3x one, which no
+     single growth rate produces. Forcing it into one would mean picking which
+     of the three numbers to get wrong, so a def may simply list them. ]]
 function Upgrades.cost(id, currentLevel)
 	local def = Upgrades.get(id)
 	if not def or currentLevel >= def.maxLevel then
 		return nil
+	end
+	if def.costs then
+		return def.costs[currentLevel + 1]
 	end
 	return math.floor(def.baseCost * (def.costGrowth ^ currentLevel))
 end
@@ -122,9 +146,15 @@ function Upgrades.valueOf(profile, id)
 	return def.effect(Upgrades.levelOf(profile, id))
 end
 
---[[ Convenience readers, so callers don't repeat the effect lookups. ]]
+--[[ Convenience readers, so callers don't repeat the effect lookups.
+
+     TIMED BOOSTS FOLD IN HERE, not at the call sites. "What does this player's
+     income get multiplied by" has one honest answer and three callers who each
+     need it -- the HUD readout, the accrual tick and the per-pad rate -- and a
+     boost that only some of them knew about would show one number and pay a
+     different one. Same argument for walk speed and its one caller. ]]
 function Upgrades.incomeMultiplier(profile)
-	return Upgrades.valueOf(profile, "income")
+	return Upgrades.valueOf(profile, "income") * Items.incomeMultiplier(profile)
 end
 
 function Upgrades.capSeconds(profile, baseSeconds)
@@ -132,11 +162,13 @@ function Upgrades.capSeconds(profile, baseSeconds)
 end
 
 function Upgrades.walkSpeed(profile)
-	return Upgrades.valueOf(profile, "speed")
+	return Upgrades.valueOf(profile, "speed") + Items.walkBonus(profile)
 end
 
-function Upgrades.collectReach(profile)
-	return Upgrades.valueOf(profile, "radius")
+--[[ How many mines this player survives in one round. Read fresh at the start
+     of each round; MinesService owns the spending. ]]
+function Upgrades.extraLives(profile)
+	return Upgrades.valueOf(profile, "lives")
 end
 
 return Upgrades

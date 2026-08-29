@@ -447,9 +447,12 @@ function MinesUI.init(ctx)
 		return snapshot and Events.modsFor(snapshot.activeId) or nil
 	end
 
-	local function renderOdds(multiplier, mines)
+	--[[ `bet` is not decoration here. The bet sets a FLOOR under drop depth, so
+	     the table this panel quotes changes as you move the bet box -- and a
+	     panel quoting odds the roll does not use is worse than no panel. ]]
+	local function renderOdds(multiplier, mines, stake)
 		local mods = eventMods()
-		local odds = DropTable.tierOdds(multiplier, mods)
+		local odds = DropTable.tierOdds(multiplier, mods, mines, stake)
 		local peak = 0
 		for _, p in pairs(odds) do
 			peak = math.max(peak, p)
@@ -556,7 +559,7 @@ function MinesUI.init(ctx)
 		Theme.recolor(actionButton, Theme.color.accent)
 		actionButton.Active = true
 
-		renderOdds(MinesMath.multiplier(mines, 1), mines)
+		renderOdds(MinesMath.multiplier(mines, 1), mines, bet)
 		renderRisk()
 	end
 
@@ -568,7 +571,16 @@ function MinesUI.init(ctx)
 
 		multiplierLabel.Text = Format.multiplier(round.multiplier)
 		payoutLabel.Text = Format.money(math.floor(round.bet * round.multiplier))
-		safeLabel.Text = string.format("%s safe next", Format.percent(MinesMath.nextTileSafeChance(mines, round.picks)))
+		--[[ Lives ride on the safe-chance line rather than getting furniture of
+		     their own: they are only interesting while a round is live, and this
+		     is already the line you read before every pick. ]]
+		local chance = string.format("%s safe next", Format.percent(MinesMath.nextTileSafeChance(mines, round.picks)))
+		if (round.lives or 0) > 0 then
+			safeLabel.Text = ("%s  ·  %d life%s left"):format(chance, round.lives,
+				round.lives == 1 and "" or "s")
+		else
+			safeLabel.Text = chance
+		end
 
 		if round.picks < 1 then
 			actionButton.Text = "PICK A TILE"
@@ -580,7 +592,7 @@ function MinesUI.init(ctx)
 			actionButton.Active = true
 		end
 
-		renderOdds(MinesMath.multiplier(mines, round.picks + 1), mines)
+		renderOdds(MinesMath.multiplier(mines, round.picks + 1), mines, round.bet)
 		renderRisk()
 	end
 
@@ -612,6 +624,18 @@ function MinesUI.init(ctx)
 		TweenService:Create(tile, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Size = UDim2.fromScale(1, 1),
 		}):Play()
+	end
+
+	--[[ A mine you walked away from. Deliberately not the bust red -- that
+	     colour means the run ended, and using it here would read as a loss on a
+	     board that is still live. Amber, and the tile keeps its cross. ]]
+	local function markSurvived(index)
+		local tile = tiles[index]
+		tile.Active = false
+		tile.Text = "✖"
+		tile.TextColor3 = Color3.new(1, 1, 1)
+		Theme.recolor(tile, Theme.color.gold)
+		tile.BackgroundTransparency = 0
 	end
 
 	local function markMine(index, isTrigger)
@@ -669,6 +693,8 @@ function MinesUI.init(ctx)
 			picks = 0,
 			multiplier = 1,
 			unsecured = {},
+			-- server's count, not a client guess: it is the thing being spent
+			lives = result.round.lives or 0,
 		}
 		for _, tile in ipairs(tiles) do
 			setTileIdle(tile)
@@ -727,6 +753,22 @@ function MinesUI.init(ctx)
 		end
 		local result = invoke(ctx.remotes.RevealTile, index)
 		if not result or not result.ok then
+			return
+		end
+
+		--[[ Survived it. Ahead of the bust branch on purpose: both carry
+		     `mine = true`, and the only thing separating them is whether a life
+		     was there to spend. ]]
+		if result.survived then
+			round.lives = result.lives
+			Sounds.play("uiDenied")
+			ctx.fx.shakeBy(0.5)
+			ctx.fx.flashColor(Theme.color.gold, 0.30, 0.35)
+			markSurvived(index)
+			ctx.notify(result.lives > 0
+				and ("Close one. %d life%s left."):format(result.lives, result.lives == 1 and "" or "s")
+				or "That was your last life.", "info")
+			render()
 			return
 		end
 

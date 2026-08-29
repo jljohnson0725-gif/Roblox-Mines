@@ -52,17 +52,24 @@ local GROUND_PLAYLIST = {
 }
 local SKY_TRACK = "rbxassetid://139997523791273"
 
---[[ The racing island gets its own rotation rather than the sky loop. It sits
-     at 1150, far above the altitude band, so without this it would inherit the
-     one track meant for the trip up and never change -- and this is a place you
-     stand and play in, not fly through. Three, alternating, for the same reason
-     the street has two. ]]
+--[[ An island gets its own rotation rather than the sky loop. These sit far
+     above the altitude band, so without this they inherit the one track meant
+     for the trip up and never change -- and these are places you stand and play
+     in, not fly through. Three, alternating, for the same reason the street has
+     two.
+
+     EVERY ISLAND, NOT JUST RACING. This was `ISLAND_ID = "racing"`, a single id,
+     which meant the FIRST island -- the one where you grind five saddle pieces
+     over an hour or more -- was the one place still playing SKY_TRACK, the
+     ninety seconds written for the climb. The place you spend longest had the
+     music for the place you pass through. A set, so adding island three is a
+     table entry rather than another id nobody remembers to change. ]]
 local ISLAND_PLAYLIST = {
 	{ id = "rbxassetid://1847683499", gain = 1.00 },
 	{ id = "rbxassetid://85685374675332", gain = 1.00 },
 	{ id = "rbxassetid://117496769617516", gain = 1.00 },
 }
-local ISLAND_ID = "racing"
+local ISLAND_IDS = { plinko = true, racing = true }
 
 local BUSES = { "Music", "SFX", "UI", "Ambient" }
 
@@ -183,6 +190,40 @@ function Audio.init(ctx)
 	local sky = makeTrack("sky")
 	local island = makeTrack("island")
 
+	--[[
+		WIND, AND THE FIRST THING EVER ROUTED TO THE AMBIENT BUS.
+
+		That bus has been declared in BUSES and given a volume since this module
+		was written, and grepping the repo found nothing playing through it: the
+		islands were in total silence. Silence is what makes a place read as a
+		backdrop rather than somewhere you are standing.
+
+		TWO LAYERS, DELIBERATELY OUT OF STEP. A steady bed underneath, and a
+		gust layer whose volume swells and dies on a slow cycle. One rhythm
+		reads as a machine; two that never line up read as weather. The gust
+		period is prime-ish against nothing in particular -- it just must not
+		divide evenly into anything else.
+
+		Non-positional, because it is the air itself rather than a thing in the
+		world, and it rides the same altitude blend the music does so it fades
+		in on the climb instead of snapping on at a boundary.
+	]]
+	local function makeWind(name, id)
+		local sound = Instance.new("Sound")
+		sound.Name = "ambient_" .. name
+		sound.SoundId = id
+		sound.Looped = true
+		sound.Volume = 0
+		sound.SoundGroup = Audio.groups.Ambient
+		sound.Parent = SoundService
+		sound:Play()
+		return sound
+	end
+
+	local windBed = makeWind("wind", "rbxassetid://9112854440")
+	local windGust = makeWind("gust", "rbxassetid://9112854440")
+	windGust.PlaybackSpeed = 0.82 -- detuned, so the two never phase together
+
 	sky.SoundId = SKY_TRACK
 	sky.Looped = true
 	sky:Play()
@@ -227,18 +268,28 @@ function Audio.init(ctx)
 		boundary would begin it from bar one every time you crossed.
 	]]
 	local onIsland = 0
+	local windClock = 0
 	RunService.Heartbeat:Connect(function(dt)
 		local t = Sky.blend()
 
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local here = root and Islands.at(root.Position)
-		local target = (here and here.id == ISLAND_ID) and 1 or 0
+		local target = (here and ISLAND_IDS[here.id]) and 1 or 0
 		onIsland += (target - onIsland) * math.min(dt * 1.6, 1)
 
 		ground.Volume = (1 - t) * groundGain * (1 - onIsland)
 		sky.Volume = t * (1 - onIsland)
 		island.Volume = onIsland * islandGain
+
+		--[[ Wind follows ALTITUDE, not the island test: it should already be
+		     there on the way up, which is most of what sells the climb. The
+		     gust rides a slow sine on top so the air keeps moving even when the
+		     player does not. ]]
+		windClock += dt
+		local gust = 0.55 + 0.45 * math.sin(windClock * 0.11)
+		windBed.Volume = t * 0.42
+		windGust.Volume = t * 0.30 * gust
 	end)
 
 	return Audio

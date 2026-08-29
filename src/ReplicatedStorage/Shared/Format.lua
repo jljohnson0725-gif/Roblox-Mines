@@ -72,6 +72,21 @@ function Format.percent(p)
 	return "0%"
 end
 
+--[[ Seconds as a clock: "9:58", or "1:04:30" once it's worth showing hours.
+
+     Rounds UP, which matters more than it looks. A boost with 0.4 seconds left
+     is still running, and a readout that rounds down says "0:00" next to an
+     effect the player can plainly see is still working. ]]
+function Format.duration(seconds)
+	seconds = math.max(math.ceil(seconds or 0), 0)
+	local hours = math.floor(seconds / 3600)
+	local minutes = math.floor(seconds % 3600 / 60)
+	if hours > 0 then
+		return string.format("%d:%02d:%02d", hours, minutes, seconds % 60)
+	end
+	return string.format("%d:%02d", minutes, seconds % 60)
+end
+
 --[[ Adds thousands separators for places where the exact value matters. ]]
 function Format.comma(n)
 	local text = tostring(math.floor(math.abs(n or 0)))

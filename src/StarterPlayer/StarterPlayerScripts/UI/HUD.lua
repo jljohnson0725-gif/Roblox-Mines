@@ -276,7 +276,16 @@ function HUD.init(ctx)
 		{ id = "collection", glyph = "🎒", label = "BASE", color = Color3.fromRGB(255, 120, 190) },
 		{ id = "codes", glyph = "🎁", label = "CODES", color = Color3.fromRGB(64, 200, 120) },
 		{ id = "rebirth", glyph = "🔁", label = "REBIRTH", color = Color3.fromRGB(255, 176, 48) },
+		--[[ Last, and only once the whistle is bought. It is the one rail entry
+		     that appears mid-game: before the purchase there is nothing to open,
+		     and a permanent button that always refused would be exactly the dead
+		     end the rule above rejects. The ride used to be called from a perch
+		     on the street, which is what the whistle replaced. ]]
+		{ id = "summon", glyph = "🐎", label = "RIDE", color = Color3.fromRGB(190, 150, 255),
+			owned = function() return ctx.state.whistle == true end },
 	}
+
+	local railButtons = {}
 
 	for order, entry in ipairs(RAIL) do
 		local button = Theme.button({
@@ -316,6 +325,14 @@ function HUD.init(ctx)
 				handler()
 			end
 		end)
+
+		--[[ Hidden rather than absent, so the grid can put it back the moment
+		     the purchase lands without the rail being rebuilt. Layouts skip
+		     invisible children, so an unowned entry leaves no gap. ]]
+		if entry.owned then
+			button.Visible = entry.owned()
+			railButtons[entry.id] = { button = button, owned = entry.owned }
+		end
 	end
 
 	-- ── toasts ──────────────────────────────────────────────────────────────
@@ -345,8 +362,63 @@ function HUD.init(ctx)
 		great = Theme.color.gold,
 	}
 
+	--[[
+		ONE TOAST AT A TIME, AND 2.5 SECONDS.
+
+		This posted an unbounded stack that each lived three seconds, which was
+		fine when a message meant something had happened to you once. Plinko
+		posts one per settled ball and allows several in the air at once, so a
+		decent run buried the top of the screen in a wall of results.
+
+		REPLACING RATHER THAN QUEUEING, deliberately. A queue drains at 2.5s
+		apiece, so twenty quick drops would have you reading forty-second-old
+		outcomes while balls you can no longer see are landing -- the toast would
+		stop describing what is actually happening in front of you. The newest
+		outcome is the one worth the slot.
+
+		The cost is real and worth naming: back-to-back drops means only the last
+		one's result is read. That is the right trade for a machine you fire
+		repeatedly, and the money counter shows the total either way.
+	]]
+	local TOAST_SECONDS = 2.5
+	local current
+
+	--[[ Text fades WITH the background. Tweening only the frame left the label
+		 fully opaque until the instant it was destroyed, so a toast blinked out
+		 rather than fading -- unnoticeable at three seconds and obvious when one
+		 is being pushed aside after a tenth of one. ]]
+	local function retire(toast, seconds)
+		if not toast or not toast.Parent then
+			return
+		end
+		local info = TweenInfo.new(seconds)
+		for _, d in ipairs(toast:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				TweenService:Create(d, info, { TextTransparency = 1 }):Play()
+			elseif d:IsA("UIStroke") then
+				TweenService:Create(d, info, { Transparency = 1 }):Play()
+			end
+		end
+		local fade = TweenService:Create(toast, info, { BackgroundTransparency = 1 })
+		fade:Play()
+		fade.Completed:Connect(function()
+			toast:Destroy()
+		end)
+	end
+
 	function hud.notify(text, kind)
 		local accent = TOAST_COLOR[kind or "info"] or Theme.color.dim
+
+		--[[ The outgoing one goes AT ONCE, not on a short fade. Fading it left
+			 both on screen for the length of the fade -- measured at a peak of
+			 two -- and because these sit in a list layout the survivor was
+			 shoved down a row while the corpse faded above it. The incoming
+			 toast fades in over 0.15s regardless, so the handoff still reads as
+			 a cross-dissolve rather than a pop. ]]
+		if current then
+			current:Destroy()
+			current = nil
+		end
 
 		local toast = Theme.frame({
 			parent = toastStack,
@@ -367,16 +439,19 @@ function HUD.init(ctx)
 			size = UDim2.fromScale(1, 1),
 		})
 
+		current = toast
 		toast.BackgroundTransparency = 1
 		TweenService:Create(toast, TweenInfo.new(0.15), { BackgroundTransparency = 0 }):Play()
 
-		task.delay(3, function()
-			if toast.Parent then
-				local fade = TweenService:Create(toast, TweenInfo.new(0.25), { BackgroundTransparency = 1 })
-				fade:Play()
-				fade.Completed:Wait()
-				toast:Destroy()
+		task.delay(TOAST_SECONDS, function()
+			--[[ Only clear the slot if this toast is still the one in it. A
+				 later message may already have taken it, and blanking `current`
+				 then would leave the NEXT toast un-retired when one after that
+				 arrived -- two on screen, which is the bug being fixed. ]]
+			if current == toast then
+				current = nil
 			end
+			retire(toast, 0.25)
 		end)
 	end
 
@@ -469,6 +544,10 @@ function HUD.init(ctx)
 
 	function hud.render()
 		moneyLabel.Text = Format.money(math.floor(ctx.state.money or 0))
+
+		for _, entry in pairs(railButtons) do
+			entry.button.Visible = entry.owned()
+		end
 
 		-- Pending is the nudge to walk home, so it takes over the income line
 		-- entirely when there's something waiting.

@@ -27,6 +27,7 @@ local Sounds = require(Shared.Sounds)
 
 local DataService = require(script.Parent.DataService)
 local Rebirth = require(Shared.Rebirth)
+local Upgrades = require(Shared.Upgrades)
 local PlayerState = require(script.Parent.PlayerState)
 local EventService = require(script.Parent.EventService)
 
@@ -54,6 +55,7 @@ local function publicRound(round)
 		payout = math.floor(round.bet * round.multiplier),
 		revealed = round.revealed,
 		unsecured = round.unsecured,
+		lives = round.lives,
 		dropChance = DropTable.dropChance(round.mines, EventService.currentMods()),
 	}
 end
@@ -127,6 +129,10 @@ function MinesService.startRound(player, bet, mines)
 		multiplier = 1,
 		unsecured = {},
 		busy = false,
+		--[[ Read once, at the start, and spent down as the round goes. Reading
+		     it per hit instead would let someone buy a life mid-round from the
+		     shop and retroactively survive a tile they already lost on. ]]
+		lives = Upgrades.extraLives(profile),
 	}
 	rounds[player.UserId] = round
 
@@ -162,6 +168,35 @@ function MinesService.revealTile(player, index)
 
 	round.busy = true
 	round.revealed[index] = true
+
+	--[[ ── survived ───────────────────────────────────────────────────────────
+
+		A hit tile with a life left to spend. The round continues, and what it
+		deliberately does NOT do is as important as what it does:
+
+		  no multiplier   -- `picks` counts SAFE tiles, and paying out for
+		                     stepping on a mine would make buying lives a way to
+		                     farm multiplier rather than a way to survive.
+		  no drop roll    -- same reason. A mine is not a find.
+		  no bust stat    -- it wasn't a bust; the run is still going.
+
+		The tile stays in `revealed`, so it cannot be picked again, and it stays
+		true on the board, so a client that recounts still sees where the mines
+		are. What is spent is the life.
+	]]
+	if round.board[index] and (round.lives or 0) > 0 then
+		round.lives -= 1
+		round.busy = false
+		return {
+			ok = true,
+			mine = true,
+			survived = true,
+			lives = round.lives,
+			index = index,
+			multiplier = round.multiplier,
+			payout = math.floor(round.bet * round.multiplier),
+		}
+	end
 
 	-- ── boom ────────────────────────────────────────────────────────────────
 	if round.board[index] then
@@ -242,7 +277,7 @@ function MinesService.revealTile(player, index)
 			profile.forceDrops -= 1
 			drop = forced
 		else
-			drop = DropTable.roll(round.multiplier, rng, mods, round.mines)
+			drop = DropTable.roll(round.multiplier, rng, mods, round.mines, round.bet)
 		end
 		if drop then
 			drop.income = Economy.incomeOf(drop.charId, drop.variantId)

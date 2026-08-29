@@ -30,8 +30,10 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Theme = require(script.Parent.Theme)
+local Cutscene = require(script.Parent.Cutscene)
 
 local Friend = {}
 
@@ -130,7 +132,7 @@ local TOPICS = {
 		end,
 		lines = {
 			"You bought the jetpack. So you've seen there's stuff up there.",
-			"Plinko first. It drops seal fragments, and seals are what open the next one up.",
+			"Plinko first. It drops saddle pieces, and a saddle is what gets you to the next one.",
 			"I don't go up. Puro gets airsick. She's never said so. I just know.",
 		},
 	},
@@ -143,6 +145,75 @@ local TOPICS = {
 			"Still here. Still winning, relationship-wise.",
 			"You're doing well, you know. The flat's looking less like a crime scene.",
 			"If you ever want to talk about her — don't. Buy another brainrot instead.",
+		},
+	},
+}
+
+--[[
+	THE GUIDED TOUR.
+
+	Offered once, the second time you talk to him -- after the ground loop has
+	worked and before you have any idea the rest of the map exists. The old
+	shape ended at "collect your money" and left the player to find the shop,
+	the wheel and the sky on their own; this walks them round it.
+
+	IT MOVES ON THE PLAYER'S PRESS, never on a timer. He is explaining things,
+	and a camera that slides away mid-sentence is the reason people skip
+	tutorials. Next advances the line; the last line of a stop flies to the next
+	one.
+
+	FOCUS IS A LOOKUP, not a position. Every one of these is built at runtime --
+	the shop is cloned from a template, the wheel picks its own site, the island
+	moved 330 studs up this week -- so a baked coordinate would be pointing at
+	empty sky within a day. A stop whose thing is missing is skipped rather than
+	flown to.
+]]
+local TOUR = {
+	{
+		id = "shop",
+		focus = function()
+			local shop = Workspace:FindFirstChild("UpgradeShop")
+			local counter = shop and shop:FindFirstChild("Counter")
+			return counter and counter.Position
+		end,
+		offset = Vector3.new(16, 13, -30),
+		aim = Vector3.new(0, -1, 0),
+		lines = {
+			"Right — since you've got money now, let me show you where it goes.",
+			"That's the shop. Upgrades on one tab, items on the other.",
+			"Upgrades are forever. Items you spend and they're gone — but the jetpack's in there, and you'll want that.",
+		},
+	},
+	{
+		id = "wheel",
+		focus = function()
+			local wheel = Workspace:FindFirstChild("TheWheel")
+			return wheel and wheel:GetPivot().Position
+		end,
+		offset = Vector3.new(0, 26, -46),
+		aim = Vector3.new(0, 4, 0),
+		lines = {
+			"The wheel. You stake everything you're carrying, all at once.",
+			"It's the only place a <b>Secret</b> comes from. Nowhere else. Ever.",
+			"I've never dared. You look like you might.",
+		},
+	},
+	{
+		id = "sky",
+		focus = function()
+			local island = Workspace:FindFirstChild("Island_plinko")
+			return island and island:GetPivot().Position
+		end,
+		--[[ From well below and a long way out, looking up. This is the one stop
+		     that is about ALTITUDE -- the point being made is "that is a long way
+		     up and you cannot walk there" -- and a level shot of it says nothing. ]]
+		offset = Vector3.new(120, -300, -520),
+		aim = Vector3.new(0, 20, 0),
+		lines = {
+			"And that. Up there.",
+			"Plinko. Drop a ball, watch it fall, hope. Buy the jetpack and go and see.",
+			"Every good bin gives you a saddle piece. Five makes a saddle.",
+			"Then you can ride to the racing island — higher than any jetpack goes.",
 		},
 	},
 }
@@ -234,7 +305,102 @@ function Friend.init(ctx)
 		setOpen(true)
 	end
 
+	-- ── the tour ────────────────────────────────────────────────────────────
+
+	--[[ nil when not touring; otherwise { stop, line }. ]]
+	local tour
+
+	--[[ Offered exactly once: after the ground loop has paid out, and only
+	     while the server says it has not been sat through. `toured` is on the
+	     profile rather than a client attribute for that reason -- a tour is
+	     minutes long and being shown it again on every rejoin is a punishment. ]]
+	local function wantsTour()
+		local ob = state.onboarding
+		return ob ~= nil and ob.collected == true and ob.toured ~= true
+	end
+
+	local function showTour()
+		local stop = TOUR[tour.stop]
+		body.Text = stop.lines[tour.line]
+		local lastLine = tour.line >= #stop.lines
+		advance.Text = (lastLine and tour.stop >= #TOUR) and "Got it" or "Next"
+		--[[ card.Visible directly, NOT setOpen. setOpen also clears
+		     TalkingToNeighbour, and Tutorial reads that every frame to decide
+		     whether to stand down -- so hiding the card between stops through
+		     setOpen would flash the tutorial overlay across the letterbox each
+		     time the camera flew. The attribute is held for the whole tour and
+		     released once, at the end. ]]
+		card.Visible = true
+	end
+
+	local function endTour()
+		if not tour then
+			return
+		end
+		tour = nil
+		card.Visible = false
+		game.Players.LocalPlayer:SetAttribute("TalkingToNeighbour", false)
+		if prompt then
+			prompt.Enabled = true
+		end
+		Cutscene.close()
+		--[[ Latched server-side so it survives the session. Fired even when the
+		     player escaped early: they have seen the map, and re-offering it is
+		     worse than letting them miss the last stop. ]]
+		local remote = ctx.remotes and ctx.remotes.FinishTour
+		if remote then
+			remote:FireServer()
+		end
+	end
+
+	--[[ Fly to a stop, then speak. Yields on the camera move, so it runs in its
+	     own thread -- the button handler must return immediately or the click
+	     that started the move is still being processed when it lands. ]]
+	local function goToStop(n)
+		while n <= #TOUR do
+			local focus = TOUR[n].focus()
+			if focus then
+				tour.stop, tour.line = n, 1
+				card.Visible = false
+				Cutscene.moveTo({
+					focus = focus,
+					offset = TOUR[n].offset,
+					aim = TOUR[n].aim,
+				}, tour.first and 0 or 1.9)
+				tour.first = false
+				if not tour then -- escaped while the camera was moving
+					return
+				end
+				showTour()
+				return
+			end
+			--[[ Nothing to point at -- the wheel demolishes a base to place
+			     itself and could be missing on a map that changed. Skip the stop
+			     rather than flying to the world origin. ]]
+			n += 1
+		end
+		endTour()
+	end
+
+	local function startTour()
+		if not Cutscene.open(endTour) then
+			return false
+		end
+		tour = { stop = 0, line = 1, first = true }
+		game.Players.LocalPlayer:SetAttribute("TalkingToNeighbour", true)
+		if prompt then
+			prompt.Enabled = false
+		end
+		task.spawn(function()
+			goToStop(1)
+		end)
+		return true
+	end
+
 	local function open()
+		if wantsTour() and startTour() then
+			return
+		end
 		current = topicFor(state, seen)
 		--[[ Resume where this topic left off, wrapping. Talking to him again in
 		     the same state should not replay line one forever, and should not
@@ -244,6 +410,22 @@ function Friend.init(ctx)
 	end
 
 	advance.Activated:Connect(function()
+		if tour then
+			local stop = TOUR[tour.stop]
+			if tour.line < #stop.lines then
+				tour.line += 1
+				showTour()
+			elseif tour.stop < #TOUR then
+				local next_ = tour.stop + 1
+				task.spawn(function()
+					goToStop(next_)
+				end)
+			else
+				endTour()
+			end
+			return
+		end
+
 		if not current then
 			setOpen(false)
 			return

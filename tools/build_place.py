@@ -43,6 +43,11 @@ DESK = ROOT / "assets" / "desk.psv"
 RIGS = [
     (ROOT / "assets" / "friend.rbxmx", "FriendTemplate"),
     (ROOT / "assets" / "ex.rbxmx", "ExTemplate"),
+    #[[ Not a rig -- a 170-part market stall with a shopkeeper standing in it.
+    #   It rides the same road because the problem is identical: unions, meshes
+    #   and a Humanoid, all of which .psv cannot carry and all of which need the
+    #   shared-string merge below to survive the trip. ]]
+    (ROOT / "assets" / "upgradeshop.rbxmx", "UpgradeShopTemplate"),
 ]
 OUT = ROOT / "BrainrotMines.rbxlx"
 

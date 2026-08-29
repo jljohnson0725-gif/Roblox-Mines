@@ -42,26 +42,50 @@ Config.DropChanceBase = 0.06
 Config.DropChancePerMine = 0.04
 Config.DropChanceCap = 0.90
 
---- Mine count also sets a FLOOR under drop QUALITY, in depth units (the same
---- units log2(multiplier) is in, so 1.0 == one doubling of the multiplier).
----
---- Mines used to change only how OFTEN a drop came, never how good it was: a
---- 24-mine board rained the same commons as a 1-mine board, just faster, which
---- made the risk dial feel decorative from the player's side.
----
---- A FLOOR rather than a bonus, and that is the whole trick. Added to depth it
---- would compound with a deep run and take Secrets at 256x from 7.5% to 30% --
---- four times the top end, from a change meant to help the first few clicks. As
---- a floor it lifts shallow reveals and does nothing once the multiplier has
---- passed it, so the deep economy is untouched at every mine count.
----
---- It lands where the reveals actually are. High mine counts rarely survive
---- past a few tiles, so nearly all their drops are shallow -- exactly what the
---- floor covers. Low counts go deep and are carried by the multiplier instead.
----
---- 0.16/mine puts 12 mines at a floor of 1.92, which is a 20% chance a drop is
---- Rare or better against 10% today. Re-run tools/balance.py after touching it.
-Config.DropQualityPerMine = 0.16
+--[[
+	MINE COUNT NO LONGER LIFTS RARITY DIRECTLY, and this is 0 for that reason.
+
+	It was 0.16 a mine, which forced a floor under the drop depth so a 12-mine
+	board rolled as though it were already at 3.8x. That was added to make a
+	dangerous board feel rarer, and it did -- but it also meant two things set
+	your luck, and the first design pillar is that the MULTIPLIER is the luck
+	stat. A board could be generous before you had risked anything.
+
+	Mines still make you luckier; they do it the honest way. More mines means a
+	steeper multiplier per pick, a deeper depth by the time you cash out, and a
+	better roll. The luck comes from the risk you actually took.
+
+	Kept as a knob rather than deleted so the behaviour can be dialled back in
+	without re-threading it through DropTable. Re-run tools/balance.py after
+	touching it.
+]]
+Config.DropQualityPerMine = 0
+
+--[[
+	THE BET IS THE OTHER HALF OF THE RISK, so it lifts drop QUALITY too.
+
+	Mine count and multiplier were the only things that touched rarity, which
+	meant a player shoving their whole balance onto one board got exactly the
+	same brainrots as one betting the ten-dollar minimum. The bet is the purest
+	statement of how much you are risking and it was worth nothing.
+
+	A FLOOR, NOT A BONUS, and this is the distinction the mine version got
+	wrong twice. Added to depth it COMPOUNDS with a deep run: modelled, a 100x
+	cash-out at a ten-million bet took Secret from 1 in 665 to 1 in 187, which
+	would have quietly undone the rarity pass. As a floor it lifts the shallow
+	reveals -- where nearly every drop actually happens -- and does nothing once
+	the multiplier has climbed past it, so the deep economy is untouched at
+	every bet size. Modelled at 12 mines: a first-pick drop goes from 13.6% to
+	31.4% rare-or-better, while 30x and 100x cash-outs come out identical.
+
+	LOGARITHMIC AND CAPPED. Bets span the minimum of 10 to hundreds of millions,
+	so anything linear is either nothing at the bottom or unbounded at the top.
+	log2(bet / MinBet) * 0.20, capped at 3.5 -- so ten million buys a floor
+	equivalent to an 11x multiplier, and a billion buys exactly the same. The
+	cap is what stops this becoming a way to purchase the top of the table.
+]]
+Config.DropQualityPerBet = 0.20
+Config.DropQualityBetCap = 3.5
 
 -- ── Plot ────────────────────────────────────────────────────────────────────
 -- Slot economy, sized to the imported map: each base there has exactly 8 slot
@@ -188,28 +212,40 @@ Config.OnboardingDrops = 2
 
 -- ── The Wheel ───────────────────────────────────────────────────────────────
 --[[
-	One machine, one bet: EVERYTHING. All your cash and every brainrot you own,
-	placed or stored, for a shot at a Secret.
+	YOU CHOOSE WHAT TO STAKE, AND ONLY MONEY IS AT RISK.
 
-	Secrets exist nowhere else. The Mines cannot roll one (Rarity marks the tier
-	wheelOnly) and nothing else can mint one, so
-	the only source in the game is this wager.
+	It used to be one bet: everything, cash and every brainrot you owned, for a
+	flat 9.4% shot at a Secret. Two things were wrong with that. Losing a
+	collection you had spent hours placing is a punishment nobody comes back
+	from, and a flat chance at a 1.5M floor made the wheel the CHEAP route to a
+	Secret -- about 16M expected, against the Mines' thousands of drops.
 
-	NUMBERS WORTH KNOWING, from tools/wheel.py:
+	Now the Secret chance rises linearly with the stake, from nothing to
+	WheelSecretMaxChance at WheelSecretCapStake. Brainrots are never wagered.
 
-	  - The real chance of a Secret is 9.4%, not 8%. A retry re-rolls rather than
-	    resolving, so the true odds are the non-retry ones renormalised.
-	  - As a cash game it is atrocious: ~4.7% of the minimum stake comes back on
-	    average. That is the point -- it is a sink, and the Secret is the reason.
-	  - The floor only ever gates the FIRST spin. The weakest possible Secret
-	    earns back 1.5M in about four minutes.
+	THE NUMBER THAT MATTERS: expected money spent per Secret is
+	WheelSecretCapStake / WheelSecretMaxChance -- $1.2B, constant at every
+	stake. The dial buys variance, not value. Two spins of 600M and eight
+	hundred of 1.5M cost the same in expectation; what differs is how long you
+	are willing to be uncertain.
 
-	That last one is self-correcting rather than a hole: spinning again wagers
-	the Secret too, so once you hold a good one the bet is terrible and you stop.
-	The wheel is attractive exactly while you have little to lose.
+	That constant is also what makes this a sink worthy of the rarest tier:
+	$1.2B is about eight rebirths.
 ]]
 Config.WheelMinStake = 1500000
-Config.WheelCashPrize = 200000
+
+--[[ The stake at which the Secret chance reaches its ceiling, and that
+     ceiling. Half, rather than a certainty, so the biggest possible bet is
+     still a bet. ]]
+Config.WheelSecretCapStake = 600000000
+Config.WheelSecretMaxChance = 0.50
+
+--[[ The consolation, as a FRACTION OF THE STAKE rather than a flat 200K.
+     Flat made sense when every spin cost the same; against a stake that ranges
+     four hundredfold it would have paid a rounding error on a big bet and most
+     of the stake back on a small one. ]]
+Config.WheelCashReturn = 0.5
+
 Config.WheelRange = 34 -- how close you must stand
 
 --[[ The wheel takes over a player base's footprint. That base is demolished at
@@ -283,7 +319,25 @@ Config.TakeoffRise = 62 -- and how fast that opening climb goes
 	headline the UI has to be able to state: 85.2% back, 7% of drops carry a
 	fragment, five fragments to a seal.
 ]]
+--[[ The MINIMUM stake now, not the only one -- the player picks anything from
+     here upward. The name is kept because it is still what a drop costs if you
+     never touch the dial, and renaming it would churn six call sites to say
+     the same thing. ]]
 Config.PlinkoDropCost = 450000
+
+--[[
+	And the ceiling, which exists because of the 1000x bin.
+
+	A stake with no cap and a four-figure multiplier is not a game, it is a
+	money printer waiting for one lucky drop: at ten million staked, a single
+	edge bin returns ten billion, which is sixty-six rebirths from one ball.
+	Twenty times the minimum puts the best possible drop at nine billion --
+	still enormous, still worth chasing, and about one drop in thirty-three
+	thousand rather than one in twenty-eight.
+
+	Expressed as a multiple so it follows the minimum if that is ever retuned.
+]]
+Config.PlinkoMaxStakeMultiple = 20
 Config.PlinkoRange = 26 -- how close you must stand to the machine
 
 -- ── Racing ──────────────────────────────────────────────────────────────────
@@ -297,6 +351,80 @@ Config.RaceStake = 250000
      enough to run many times. The payout lands on the same beat as the finish;
      see RaceService. ]]
 Config.RaceSeconds = 14
+
+-- ── Fighting ────────────────────────────────────────────────────────────────
+
+--[[
+	There was no combat in this game at all before duels, so all of this is
+	new ground and the numbers are set to make a THIRTY SECOND fight readable
+	rather than to model anything.
+
+	At 9 damage on a 0.55s swing, a clean hit rate empties 100 health in about
+	seven seconds -- so a duel is roughly four exchanges long if both players
+	are landing everything, and nobody is knocked out by two lucky hits. The
+	clock, not the health bar, is what ends it.
+]]
+Config.PunchDamage = 9
+Config.PunchCooldown = 0.55
+--[[ Generous, because the server is checking a distance the client has already
+     acted on and the two are a ping apart. Deliberately shorter than the
+     ProximityPrompt ranges elsewhere: a punch that lands from further away
+     than you can read a sign would feel like being shot. ]]
+Config.PunchRange = 11
+--[[ How far off straight-ahead a swing may still connect. cos(50 degrees),
+     compared against the dot product, so it is a cone and not a sphere --
+     otherwise you would hit people behind you. ]]
+Config.PunchArc = 0.64
+
+--[[
+	THE DASH.
+
+	Speed and time multiply out to roughly 13 studs of ground covered, which is
+	a little over one dash of separation in the arena and about a second and a
+	half of walking. Long enough to be worth pressing, short enough that four
+	of them do not cross the street.
+
+	The cooldown is what stops it being a movement speed upgrade: at 1.15s
+	against a 0.22s dash, chaining them averages out slower than the walk you
+	already have, so dashing is for closing a gap rather than for travelling.
+]]
+Config.DashSpeed = 58
+Config.DashTime = 0.22
+Config.DashCooldown = 1.15
+
+--[[
+	CRITICAL HITS. One punch in ten lands for double.
+
+	Rolled on the SERVER at the moment damage is applied, not at the swing:
+	a crit is a property of a hit, and rolling it early would mean a whiff
+	could "be" a crit. It is also the only reason the roll cannot live on the
+	client -- a client that picks its own crits picks all of them.
+
+	The chance is what was asked for. THE MULTIPLIER IS AN ASSUMPTION: 2x, so a
+	crit takes 18 off a 100 health pool instead of 9, which is noticeable
+	without making a duel a coin flip -- across a thirty second fight it is
+	worth roughly one extra landed punch. Change the number here if it should
+	hit harder or softer.
+]]
+Config.PunchCritChance = 0.10
+Config.PunchCritMultiplier = 2
+
+--[[ How long a gap resets the M1 combo back to its first hit. Shared, because
+     the server picks the sound off this and the client picks the matching
+     animation off it -- two copies of the number would eventually mean the
+     fourth punch playing the first punch's sound. ]]
+Config.PunchComboReset = 1.6
+
+--[[ A street fight is remembered only long enough to notice a reply. Hit
+     someone and wander off, and thirty seconds later there is nothing to
+     answer -- which is what stops a punch thrown across the map at someone
+     you have forgotten about from opening a wager prompt. ]]
+Config.StreetFightMemory = 30
+
+--[[ Nobody is dragged into this. Both of these exist so a player who never
+     wants to fight can turn duels off and be left alone; the offer is simply
+     never raised against them. ]]
+Config.DuelsDefaultOn = true
 
 -- ── Codes ───────────────────────────────────────────────────────────────────
 --[[
@@ -337,7 +465,7 @@ Config.Codes = {
 		secrets = true,
 		money = 5000000,
 		testOnly = true,
-		blurb = "the Plinko seal, a Secret to ride, and stake money",
+		blurb = "the Plinko saddle, a Secret to ride, and stake money",
 	},
 }
 

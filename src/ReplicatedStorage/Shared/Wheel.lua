@@ -43,9 +43,48 @@ Wheel.SEGMENTS = 100
 	wheel with a missing wedge is the kind of thing nobody notices until a
 	player lands on it.
 ]]
-local function buildFace()
-	local counts, order, used = {}, {}, 0
+--[[
+	THE ODDS ARE A FUNCTION OF THE STAKE NOW, not a constant.
+
+	Secret rises linearly with what you put in: nothing at nothing, and
+	WheelSecretMaxChance at WheelSecretCapStake. Everything else keeps its
+	share of what is left, in the same ratio Config.WheelOdds states -- so the
+	retry/cash/bust balance is unchanged and only the Secret slice grows.
+
+	LINEAR RATHER THAN A CURVE, and the reason is the one number a curve gets
+	wrong. Under a linear ramp the expected money spent per Secret is constant
+	at WheelSecretCapStake / WheelSecretMaxChance -- $1.2B whatever you stake.
+	The dial buys VARIANCE, not value: two spins of 600M or eight hundred of
+	1.5M, same expected cost. A square-root ramp instead makes the minimum
+	stake twenty times cheaper per Secret than the maximum, which turns "bet
+	more for a better chance" into a trap for anyone who does not do the
+	arithmetic.
+]]
+function Wheel.oddsFor(stake)
+	local p = math.clamp((stake or 0) / Config.WheelSecretCapStake, 0, 1)
+		* Config.WheelSecretMaxChance
+
+	--[[ The rest keep their relative proportions. Taken from the table rather
+	     than hardcoded, so retuning the bust/cash balance there still works. ]]
+	local rest = 0
 	for _, outcome in ipairs(Config.WheelOdds) do
+		if outcome.id ~= "secret" then
+			rest += outcome.chance
+		end
+	end
+
+	local out = {}
+	for _, outcome in ipairs(Config.WheelOdds) do
+		local chance = outcome.id == "secret" and p
+			or (rest > 0 and outcome.chance / rest * (1 - p) or 0)
+		table.insert(out, { id = outcome.id, chance = chance, label = outcome.label })
+	end
+	return out
+end
+
+local function buildFace(odds)
+	local counts, order, used = {}, {}, 0
+	for _, outcome in ipairs(odds) do
 		local exact = outcome.chance * Wheel.SEGMENTS
 		local whole = math.floor(exact)
 		counts[outcome.id] = whole
@@ -81,7 +120,7 @@ local function buildFace()
 	local RUN = { nothing = 12, cash = 10, retry = 5, secret = 4 }
 
 	local pools = {}
-	for _, outcome in ipairs(Config.WheelOdds) do
+	for _, outcome in ipairs(odds) do
 		table.insert(pools, { id = outcome.id, left = counts[outcome.id] })
 	end
 	-- most common first, so a cycle opens on a wide dark band
@@ -102,13 +141,36 @@ local function buildFace()
 	return face
 end
 
-Wheel.FACE = buildFace()
+function Wheel.faceFor(stake)
+	return buildFace(Wheel.oddsFor(stake))
+end
+
+--[[
+	THE PHYSICAL FACE IS A PROP, and this is the one place the old rule had to
+	give. It used to be that the face could not misreport the odds -- a player
+	who counted wedges had to be reading the same game the server ran. Odds are
+	per-stake now, so no single face can be right for everyone, and the wheel is
+	a shared object: two people watching the same spin would need different
+	faces.
+
+	So the resolution is the other way round. The face is built from the base
+	ratios in Config.WheelOdds -- a representative carnival wheel with all four
+	outcomes on it -- and the honest number lives in the panel, where it is
+	quoted exactly for the stake you dialled in.
+
+	IT MUST BE BUILT FROM THE BASE RATIOS, not from oddsFor(minimum). At the
+	minimum stake the Secret share is 0.125%, which is an eighth of one wedge
+	out of a hundred and rounds to NONE -- and segmentsFor would then hand back
+	an empty list for the outcome the server had just rolled, crashing the spin
+	on the one result anybody cares about.
+]]
+Wheel.FACE = buildFace(Config.WheelOdds)
 
 --[[ Every wedge index showing this outcome, so the server can pick one to land
      on and the spin looks different each time it repeats a result. ]]
-function Wheel.segmentsFor(outcomeId)
+function Wheel.segmentsFor(outcomeId, face)
 	local list = {}
-	for index, id in ipairs(Wheel.FACE) do
+	for index, id in ipairs(face or Wheel.FACE) do
 		if id == outcomeId then
 			table.insert(list, index)
 		end
@@ -123,12 +185,13 @@ end
 	This is what lets the wheel carry words: one label per arc, at its middle,
 	instead of a hundred wedges nobody can read.
 ]]
-function Wheel.runs()
+function Wheel.runs(face)
+	face = face or Wheel.FACE
 	local runs, i = {}, 1
-	while i <= #Wheel.FACE do
-		local id = Wheel.FACE[i]
+	while i <= #face do
+		local id = face[i]
 		local count = 0
-		while Wheel.FACE[i + count] == id do
+		while face[i + count] == id do
 			count += 1
 		end
 		local step = 360 / Wheel.SEGMENTS
@@ -168,16 +231,17 @@ end
 	the raw 8% would understate the real chance of a Secret. This is what the UI
 	shows.
 ]]
-function Wheel.effectiveOdds()
+function Wheel.effectiveOdds(stake)
+	local odds = Wheel.oddsFor(stake or Config.WheelMinStake)
 	local retry = 0
-	for _, outcome in ipairs(Config.WheelOdds) do
+	for _, outcome in ipairs(odds) do
 		if outcome.id == "retry" then
 			retry = outcome.chance
 		end
 	end
 	local live = 1 - retry
 	local out = {}
-	for _, outcome in ipairs(Config.WheelOdds) do
+	for _, outcome in ipairs(odds) do
 		if outcome.id ~= "retry" then
 			out[outcome.id] = live > 0 and outcome.chance / live or 0
 		end

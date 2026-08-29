@@ -68,26 +68,31 @@ end
 
 --[[ What the wager is worth, for the confirmation screen. Brainrot value is
      income per second, because that is the thing you actually lose. ]]
+--[[ What the panel needs to draw the dial. Brainrots are reported so it can
+     say they are SAFE -- they used to be part of the wager and a returning
+     player will assume they still are. ]]
 function WheelService.stakeOf(profile)
-	local income = 0
-	for _, item in ipairs(profile.inventory) do
-		income += Economy.incomeOf(item.charId, item.variantId)
-	end
 	return {
 		money = math.floor(profile.money),
 		brainrots = #profile.inventory,
-		income = income,
 		eligible = profile.money >= Config.WheelMinStake,
 		minimum = Config.WheelMinStake,
+		--[[ The most that buys anything. Staking past the cap raises no chance,
+		     so the panel clamps there rather than letting someone burn a
+		     fortune for nothing. ]]
+		maximum = Config.WheelSecretCapStake,
 	}
 end
 
 -- ── the roll ────────────────────────────────────────────────────────────────
 
-local function rollOutcome()
+--[[ Rolled against the odds for THIS stake, which the caller works out once
+     and passes in -- so the roll, the face the wheel shows and the number the
+     panel quoted are all the same distribution. ]]
+local function rollOutcome(odds)
 	local roll = rng:NextNumber()
 	local sum = 0
-	for _, outcome in ipairs(Config.WheelOdds) do
+	for _, outcome in ipairs(odds) do
 		sum += outcome.chance
 		if roll < sum then
 			return outcome.id
@@ -95,7 +100,7 @@ local function rollOutcome()
 	end
 	-- floating point can leave a sliver at the top end; treat it as the last
 	-- entry rather than returning nil
-	return Config.WheelOdds[#Config.WheelOdds].id
+	return odds[#odds].id
 end
 
 --[[ A Secret, rolled honestly across the characters in that tier and the
@@ -133,7 +138,7 @@ end
 
 -- ── the wager ───────────────────────────────────────────────────────────────
 
-function WheelService.spin(player)
+function WheelService.spin(player, stake)
 	local profile = DataService.get(player)
 	if not profile then
 		return { ok = false, err = "Still loading, one sec." }
@@ -151,18 +156,31 @@ function WheelService.spin(player)
 		}
 	end
 
+	--[[ THE STAKE IS AN INPUT, so it is floored and clamped rather than
+	     trusted -- the same treatment the Plinko dial gets. Clamped at the cap
+	     because nothing above it buys any more chance, and at the player's
+	     balance because you cannot wager what you do not have. ]]
+	stake = math.floor(tonumber(stake) or Config.WheelMinStake)
+	stake = math.clamp(stake, Config.WheelMinStake,
+		math.min(Config.WheelSecretCapStake, math.floor(profile.money)))
+
 	spinning[player.UserId] = true
 
-	-- Take the stake BEFORE rolling. Losing the connection mid-spin then costs
-	-- the stake, which is the honest failure -- the alternative is a player who
-	-- keeps everything and gets the prize.
-	local staked = {
-		money = math.floor(profile.money),
-		brainrots = #profile.inventory,
-	}
-	profile.money = 0
-	profile.inventory = {}
-	PlotService.refresh(player)
+	--[[ Take the stake BEFORE rolling. Losing the connection mid-spin then
+	     costs the stake, which is the honest failure -- the alternative is a
+	     player who keeps everything and gets the prize.
+
+	     ONLY MONEY. The inventory used to be emptied here and that is the whole
+	     change: a collection you spent hours placing is not a thing to put on a
+	     spin, and losing it is a punishment people quit over. ]]
+	local staked = { money = stake, brainrots = 0 }
+	profile.money -= stake
+	profile.wheelStake = stake -- so the panel reopens on the same dial
+
+	--[[ Worked out once and used for the roll and the payload, so the two can
+	     never quote different odds. The physical face is not derived from it --
+	     see the note on Wheel.FACE. ]]
+	local odds = Wheel.oddsFor(stake)
 
 	local results = {}
 	local outcome, secret
@@ -172,7 +190,7 @@ function WheelService.spin(player)
 	     chain impossible in practice, but an unbounded loop on a server thread
 	     is not something to leave to probability. ]]
 	repeat
-		outcome = rollOutcome()
+		outcome = rollOutcome(odds)
 		guard += 1
 
 		local wedges = Wheel.segmentsFor(outcome)
@@ -185,7 +203,7 @@ function WheelService.spin(player)
 	if outcome == "secret" then
 		secret = mintSecret(profile)
 	elseif outcome == "cash" then
-		profile.money += Config.WheelCashPrize
+		profile.money += math.floor(stake * Config.WheelCashReturn)
 	end
 
 	profile.stats.wheelSpins = (profile.stats.wheelSpins or 0) + 1
@@ -201,7 +219,8 @@ function WheelService.spin(player)
 		spins = results, -- one entry per roll; more than one means retries
 		outcome = outcome,
 		staked = staked,
-		cash = outcome == "cash" and Config.WheelCashPrize or 0,
+		stake = stake,
+		cash = outcome == "cash" and math.floor(stake * Config.WheelCashReturn) or 0,
 		secret = secret and {
 			charId = secret.charId,
 			variantId = secret.variantId,
@@ -222,9 +241,10 @@ function WheelService.spin(player)
 		})
 		PlayerState.notify(player, "THE WHEEL PAYS OUT: " .. payload.secret.name, "good")
 	elseif outcome == "cash" then
-		PlayerState.notify(player, "Consolation: " .. Format.money(Config.WheelCashPrize), "info")
+		PlayerState.notify(player, "Consolation: "
+			.. Format.money(math.floor(stake * Config.WheelCashReturn)), "info")
 	else
-		PlayerState.notify(player, "The wheel took everything.", "bad")
+		PlayerState.notify(player, "The wheel took " .. Format.money(stake) .. ".", "bad")
 	end
 
 	return payload
@@ -790,8 +810,8 @@ end
 function WheelService.start()
 	WheelService.build()
 
-	Net.get("SpinWheel").OnServerInvoke = function(player)
-		return WheelService.spin(player)
+	Net.get("SpinWheel").OnServerInvoke = function(player, stake)
+		return WheelService.spin(player, stake)
 	end
 
 	Net.get("WheelStake").OnServerInvoke = function(player)

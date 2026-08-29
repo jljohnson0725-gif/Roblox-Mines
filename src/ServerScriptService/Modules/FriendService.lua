@@ -30,9 +30,40 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Net = require(Shared.Net)
+
+local DataService = require(script.Parent.DataService)
+local PlayerState = require(script.Parent.PlayerState)
+
 local FriendService = {}
 
+--[[
+	The tour is a client-side thing -- a camera and a dialogue card -- so all
+	the server owns is the latch that stops it being offered a second time.
+
+	NOTHING IS TRUSTED HERE BEYOND "IT HAPPENED". There is no reward and no
+	gate behind this flag; the worst a forged call can do is skip a tour the
+	player was going to be shown once. Latched rather than toggled, so it can
+	only ever move one way.
+]]
+local function watchTour()
+	Net.get("FinishTour").OnServerEvent:Connect(function(player)
+		local profile = DataService.get(player)
+		if not profile or not profile.onboarding then
+			return
+		end
+		if profile.onboarding.toured then
+			return
+		end
+		profile.onboarding.toured = true
+		PlayerState.push(player)
+	end)
+end
+
 function FriendService.start()
+	watchTour()
+
 	local model = ReplicatedStorage:FindFirstChild("FriendTemplate")
 	if not model then
 		warn("[FriendService] no FriendTemplate -- run tools/build_place.py "

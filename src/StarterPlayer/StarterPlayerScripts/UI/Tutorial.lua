@@ -333,8 +333,18 @@ function Tutorial.init(ctx)
 
 		root.Visible = true
 		setGating(not step.world)
-		highlight(true)
-		frame(rect)
+		--[[ A nil rect is the ordinary case, not an error: the neighbour is off
+		     screen, or hasn't spawned yet. The rule stated above frame() is to
+		     keep the card and drop the highlight, and this is where it has to be
+		     enforced -- the world branch above leaves rect nil and used to fall
+		     straight through into frame(nil), which threw once a frame for as
+		     long as the player was facing away from him. The card text below
+		     still updates either way, so a step that changes while the target is
+		     off screen doesn't leave stale instructions on screen. ]]
+		highlight(rect ~= nil)
+		if rect then
+			frame(rect)
+		end
 
 		if shown ~= step.key then
 			shown = step.key

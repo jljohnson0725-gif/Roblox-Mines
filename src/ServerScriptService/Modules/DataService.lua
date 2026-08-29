@@ -61,7 +61,18 @@ local function newProfile()
 		]]
 		index = {},
 		redeemed = {}, -- [CODE] = true; codes are one use each
-		jetpack = false, -- bought once at the launch pad, then owned forever
+		jetpack = false, -- bought once at the street shop, then owned forever
+		--[[ The Brainrot Whistle. Calls a ride from anywhere; does NOT open the
+		     racing island, which stays behind the Plinko seal. ]]
+		whistle = false,
+		--[[ [itemId] = os.time() the boost runs out. An EXPIRY, not a remaining
+		     duration: a duration would keep its full value across a logout and
+		     hand back minutes nobody was here for. See Shared/Items. ]]
+		boosts = {},
+		--[[ The Plinko dial, remembered between drops. nil means they have never
+		     moved it and the minimum applies. ]]
+		plinkoStake = nil,
+		wheelStake = nil, -- the wheel dial, same idea
 		rebirths = 0, -- permanent luck; see Shared/Rebirth
 		--[[ Racing is a PLAYER stat, not a per-brainrot one -- the summoned
 		     brainrot is fashion, so speed lives here and applies whichever one
@@ -77,7 +88,8 @@ local function newProfile()
 		     `collected` records that a cash pile has actually been banked (the
 		     coach's last step reads it), and `done` latches once the whole loop
 		     has worked, so the coach never returns for an existing player. ]]
-		onboarding = { drops = Config.OnboardingDrops, collected = false, done = false, introSeen = false },
+		onboarding = { drops = Config.OnboardingDrops, collected = false, done = false,
+			introSeen = false, toured = false },
 		stats = {
 			rounds = 0,
 			busts = 0,
@@ -111,15 +123,39 @@ local function reconcile(profile)
 		profile.redeemed = {}
 	end
 	profile.jetpack = profile.jetpack == true
+	profile.whistle = profile.whistle == true
+	profile.plinkoStake = tonumber(profile.plinkoStake) or nil
+	profile.wheelStake = tonumber(profile.wheelStake) or nil
+	--[[ Rebuilt rather than trusted: JSON hands numeric-looking values back in
+	     whatever type it feels like, and a string expiry compares as an error
+	     rather than as false. Expired entries are dropped on the way through so
+	     the table doesn't grow a row per boost ever bought. ]]
+	if type(profile.boosts) ~= "table" then
+		profile.boosts = {}
+	else
+		local now, live = os.time(), {}
+		for id, expiry in pairs(profile.boosts) do
+			expiry = tonumber(expiry)
+			if expiry and expiry > now then
+				live[id] = expiry
+			end
+		end
+		profile.boosts = live
+	end
 	profile.rebirths = math.max(math.floor(tonumber(profile.rebirths) or 0), 0)
 	if type(profile.fragments) ~= "table" then profile.fragments = {} end
 	if type(profile.seals) ~= "table" then profile.seals = {} end
 	if type(profile.onboarding) ~= "table" then
-		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false, introSeen = false }
+		profile.onboarding = { drops = Config.OnboardingDrops, collected = false, done = false,
+			introSeen = false, toured = false }
 	end
 	profile.onboarding.drops = tonumber(profile.onboarding.drops) or 0
 	profile.onboarding.collected = profile.onboarding.collected == true
 	profile.onboarding.done = profile.onboarding.done == true
+	--[[ The guided tour. Persisted rather than kept on the client like
+	     MetNeighbour, because a tour is minutes long and being asked to sit
+	     through it again on every rejoin would be a punishment. ]]
+	profile.onboarding.toured = profile.onboarding.toured == true
 	--[[ Old saves predate the cold open. They are EXISTING players, so the
 	     kind thing and the correct thing agree: they have already lived the
 	     breakup, and replaying it now would be a cutscene about a game they

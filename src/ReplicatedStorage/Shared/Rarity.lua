@@ -50,7 +50,8 @@ Rarity.Tiers = {
 	Legendary = {
 		index = 5,
 		income = 320,
-		weight = 6,
+		-- 6 -> 3. Halved; see the note on Secret below for why all three moved.
+		weight = 3,
 		growth = 1.60,
 		color = Color3.fromRGB(255, 176, 46),
 		modelColor = Color3.fromRGB(226, 150, 30),
@@ -59,7 +60,8 @@ Rarity.Tiers = {
 		index = 6,
 		-- 4500 x mul 0.90-1.20 -> 4.1K to 5.4K/s, i.e. "around 5K"
 		income = 4500,
-		weight = 0.8,
+		-- 0.8 -> 0.22, about a third of what it was.
+		weight = 0.22,
 		growth = 1.90,
 		color = Color3.fromRGB(255, 82, 110),
 		modelColor = Color3.fromRGB(214, 58, 88),
@@ -90,15 +92,23 @@ Rarity.Tiers = {
 			wheel stays overwhelmingly the faster route, and a Secret out of
 			Mines stays a story rather than a plan.
 
-			0.18, not the 0.02 tried first. That put a Secret at one drop in
-			36,800 -- about 433 hours of mining -- which is rollable on paper
-			and never in practice. "Rarer than Mythic" has to still be
-			reachable, so this sits about four times under it: roughly one in
-			4,000 drops, or a couple of days of play. The wheel offers 9.4% a
-			spin, so it remains the route anyone actually takes.
+			0.015, and the GROWTH cut with it -- both halves matter.
+
+			0.18 put a Secret at 1 in 98 drops on a 30x cash-out and 1 in 29 on a
+			100x one, which is not a story, it is a plan. Weight alone would not
+			have fixed the deep end either: at growth 2.20 the tier climbed faster
+			than Mythic's 1.90, so every extra multiplier narrowed the gap between
+			"rarest thing in the game" and the tier below it. 1.95 keeps Secret
+			roughly twelve times rarer than Mythic at every depth instead of
+			converging on it.
+
+			Together they put a Secret at about 1 in 2,000 on a 30x cash-out and
+			1 in 665 on a 100x one -- still reachable in the Mines, still a thing
+			you tell people about, and the wheel remains the route anyone
+			actually takes.
 		]]
-		weight = 0.18,
-		growth = 2.20,
+		weight = 0.015,
+		growth = 1.95,
 		-- Near-white so it reads on the dark UI; the model itself is void-black.
 		color = Color3.fromRGB(238, 238, 250),
 		modelColor = Color3.fromRGB(26, 26, 34),

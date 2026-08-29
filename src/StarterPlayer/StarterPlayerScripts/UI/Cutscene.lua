@@ -1,6 +1,12 @@
 --[[
 	Cutscene
-	Takes the camera, moves it through a list of shots, and gives it back.
+	Takes the camera, moves it where it is told, and gives it back.
+
+	IT USED TO DRIVE ITSELF -- a list of shots, a hold time each, skippable with
+	any key. That was right for a flyover nobody was talking over. The guided
+	tour is not that: the neighbour explains each place and the camera moves
+	when the PLAYER presses Next, so pacing belongs to whoever owns the
+	dialogue. This is a rig now, not a player: open it, move it, close it.
 
 	SHOTS ARE FOCUS PLUS OFFSET, never a baked CFrame. A shot stored as an
 	absolute position is frozen to one spot in a world that is entirely
@@ -14,15 +20,15 @@
 	space with no way out and no idea why -- the single worst failure this
 	module can have, and the easiest one to ship.
 
-	IT IS ALWAYS SKIPPABLE. A tutorial cutscene you cannot dismiss is the thing
-	players complain about most, and it lands hardest on exactly the people who
-	have seen it before.
+	IT IS ALWAYS ESCAPABLE. A tutorial you cannot leave is the thing players
+	complain about most, and it lands hardest on exactly the people who have
+	seen it before -- so `onEscape` is armed while the rig is open and the
+	caller decides what leaving means.
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Theme = require(script.Parent.Theme)
 
@@ -32,6 +38,7 @@ local BAR = 0.13 -- letterbox height, as a fraction of the screen
 local player = Players.LocalPlayer
 
 local playing = false
+local escapeConnection
 
 --[[ So other UI can stand down while a cutscene owns the screen. ]]
 function Cutscene.isPlaying()
@@ -40,9 +47,30 @@ end
 
 --[[ Where a shot actually puts the camera. `focus` may be a live part, so this
      is resolved at the moment the shot starts rather than when it is written. ]]
+--[[ A focus may be a Vector3, a BasePart, or a MODEL, and the difference bit:
+     Models have no `.Position`, so `focus.Position` threw the moment a stop
+     pointed at one -- inside a spawned thread, which meant the tour simply
+     stopped with no error on screen and the camera stuck on the previous shot.
+     GetPivot covers models; parts keep using Position. ]]
+local function focusPoint(focus)
+	if typeof(focus) == "Vector3" then
+		return focus
+	end
+	if typeof(focus) == "Instance" then
+		if focus:IsA("BasePart") then
+			return focus.Position
+		end
+		if focus:IsA("Model") then
+			return focus:GetPivot().Position
+		end
+	end
+	return nil
+end
+
+Cutscene.focusPoint = focusPoint
+
 local function resolve(shot)
-	local focus = shot.focus
-	local point = typeof(focus) == "Instance" and focus.Position or focus
+	local point = focusPoint(shot.focus)
 	return CFrame.lookAt(point + shot.offset, point + (shot.aim or Vector3.zero))
 end
 
@@ -72,16 +100,25 @@ function Cutscene.init(ctx)
 		bars[edge] = bar
 	end
 
-	local skip = Theme.label({
-		parent = root, name = "Skip", text = "",
-		font = Theme.font.black, textSize = 13, color = Theme.color.dim,
-		size = UDim2.new(0, 260, 0, 20),
+	--[[
+		A BUTTON, NOT "PRESS ANY KEY".
+
+		This was any unprocessed keypress, which is correct for a flyover nobody
+		interacts with and actively hostile for a tour you advance by clicking:
+		a click that lands a few pixels off Next -- or during the second the card
+		is hidden while the camera flies -- counted as input and abandoned the
+		whole thing. Measured exactly that way. Leaving is now a deliberate
+		press on a deliberate target.
+	]]
+	local skip = Theme.button({
+		parent = root, name = "Skip", text = "Skip",
+		textSize = 13, color = Theme.color.raised, textColor = Theme.color.dim,
+		size = UDim2.fromOffset(84, 26),
 		position = UDim2.new(1, -20, 1, -18),
 		anchor = Vector2.new(1, 1),
-		align = Enum.TextXAlignment.Right,
+		radius = 8,
 	})
 	skip.ZIndex = 61
-	skip.TextStrokeTransparency = 0.5
 
 	local function bars_to(scale, time)
 		for _, bar in pairs(bars) do
@@ -118,9 +155,15 @@ function Cutscene.init(ctx)
 		end
 	end)
 
-	--[[ shots: { focus = Vector3|BasePart, offset = Vector3, aim = Vector3?,
-	              move = seconds, hold = seconds } ]]
-	function Cutscene.play(shots, label)
+	--[[
+		OPEN THE RIG. Letterbox in, camera to Scriptable, player frozen.
+
+		`onEscape` fires on any unprocessed keypress. It is a callback rather
+		than a built-in skip because only the caller knows what abandoning its
+		sequence should do -- the tour has to tell the server it finished and
+		put its own dialogue card away.
+	]]
+	function Cutscene.open(onEscape)
 		if playing then
 			return false
 		end
@@ -129,16 +172,10 @@ function Cutscene.init(ctx)
 		local camera = workspace.CurrentCamera
 		camera.CameraType = Enum.CameraType.Scriptable
 		root.Visible = true
-		skip.Text = (label or "Skip") .. "  —  press any key"
 
-		--[[
-			Hide the tutorial overlay directly, rather than asking it to hide
-			itself. It already checks Cutscene.isPlaying() every frame and that
-			SHOULD be enough -- but it was still drawing over the letterbox in
-			practice, and a cooperating flag only works if both halves agree
-			about when they run. Reaching across is uglier and cannot lose a
-			race. Tutorial's own loop puts it back the frame after this ends.
-		]]
+		--[[ Hide the tutorial overlay directly rather than asking it to hide
+		     itself. A cooperating flag only works if both halves agree about
+		     when they run, and this one was still drawing over the letterbox. ]]
 		local overlay = gui:FindFirstChild("Tutorial")
 		if overlay then
 			overlay.Visible = false
@@ -154,52 +191,58 @@ function Cutscene.init(ctx)
 			humanoid.JumpHeight = 0
 		end
 
-		local skipped = false
-		local connection
-		connection = UserInputService.InputBegan:Connect(function(_, processed)
-			if not processed then
-				skipped = true
+		if escapeConnection then
+			escapeConnection:Disconnect()
+		end
+		escapeConnection = skip.Activated:Connect(function()
+			if playing and onEscape then
+				onEscape()
 			end
 		end)
+		return true
+	end
 
-		for index, shot in ipairs(shots) do
-			if skipped then
-				break
-			end
+	--[[
+		Move to a shot and return when it has arrived.
 
-			--[[ StreamingEnabled is on, so a camera sent somewhere the player
-			     is not will look at unloaded space. Ask for it first; this
-			     yields, which is why it happens before the tween rather than
-			     during it. ]]
-			local point = typeof(shot.focus) == "Instance" and shot.focus.Position
-				or shot.focus
-			pcall(function()
-				player:RequestStreamAroundAsync(point, 4)
-			end)
+		YIELDS, on purpose: the caller wants to show a line once the camera is
+		looking at the thing the line is about. The stream request comes first
+		and yields too -- StreamingEnabled means a camera sent somewhere the
+		player is not would otherwise arrive at unloaded space.
+	]]
+	function Cutscene.moveTo(shot, seconds)
+		if not playing then
+			return
+		end
+		local camera = workspace.CurrentCamera
+		local point = focusPoint(shot.focus)
+		if not point then
+			return -- nothing to look at; the caller skips this stop
+		end
+		pcall(function()
+			player:RequestStreamAroundAsync(point, 4)
+		end)
 
-			local target = resolve(shot)
-			if index == 1 then
-				camera.CFrame = target
-			else
-				local move = shot.move or 1.6
-				TweenService:Create(camera, TweenInfo.new(move,
-					Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-					{ CFrame = target }):Play()
-				local until_ = os.clock() + move
-				while os.clock() < until_ and not skipped do
-					task.wait(0.05)
-				end
-			end
-
-			local hold = os.clock() + (shot.hold or 1.2)
-			while os.clock() < hold and not skipped do
+		local target = resolve(shot)
+		if seconds and seconds > 0 then
+			TweenService:Create(camera, TweenInfo.new(seconds,
+				Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+				{ CFrame = target }):Play()
+			local until_ = os.clock() + seconds
+			while os.clock() < until_ and playing do
 				task.wait(0.05)
 			end
+		else
+			camera.CFrame = target
 		end
+	end
 
-		connection:Disconnect()
+	function Cutscene.close()
+		if escapeConnection then
+			escapeConnection:Disconnect()
+			escapeConnection = nil
+		end
 		restore()
-		return true
 	end
 
 	return Cutscene

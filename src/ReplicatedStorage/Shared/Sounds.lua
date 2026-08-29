@@ -57,6 +57,44 @@ Sounds.Library = {
 	--[[ Speed 1.00 with the real file: it is already in its own key, and the
 	     0.60 existed only to make a generic ping sound like an occasion. ]]
 	unlock = { id = "rbxassetid://136993031050456", volume = 0.80, speed = 1.00 },
+	--[[ The saddle. Loud on purpose: it fires once a chapter, after roughly
+	     sixty-five drops, and it is the sound of the second island opening.
+
+	     NOTE THIS IS THE LEGENDARY STING'S ID. It was chosen deliberately,
+	     but it does mean forging a saddle and finding a Legendary share a
+	     cue -- give this its own asset if the two ever need telling apart
+	     by ear alone. ]]
+	saddle = { id = "rbxassetid://75127344844404", volume = 0.95, speed = 1.00 },
+
+	--[[
+		PUNCHES ARE CUED BY OUTCOME, NOT BY COMBO INDEX.
+
+		A punch that connects and a punch that swings through air are different
+		events and want different sounds; the combo position only decides how
+		heavy the CONNECTING one is. So there are three cues and not four:
+
+		  whiff  the swing hit nobody. The same sound whatever the combo index
+		         -- air does not care which punch it was.
+		  light  connected, on the first three of the combo.
+		  heavy  connected, on the fourth.
+
+		This is why the cue is chosen AFTER the target is resolved. It used to
+		fire before, so that a whiff would still make a noise; now the whiff has
+		a sound of its own and that reason is gone.
+	]]
+	punchWhiff = { id = "rbxassetid://139795256698131", volume = 0.45, speed = 1.00 },
+	punchLight = { id = "rbxassetid://139697578472716", volume = 0.60, speed = 1.00 },
+	punchHeavy = { id = "rbxassetid://109316755832781", volume = 0.68, speed = 1.00 },
+
+	--[[ Layered on top of the hit cue, and only ever on a hit. Replacing it
+	     would lose the combo's cadence on exactly the punch you most want to
+	     hear land. ]]
+	punchCrit = { id = "rbxassetid://96359585058783", volume = 0.75, speed = 1.00 },
+
+	--[[ One cue for all four dash directions. A per-direction set was the
+	     other option and would be four ways to hear the same 0.22 seconds of
+	     movement -- the animation already says which way you went. ]]
+	dash = { id = "rbxassetid://136880713327520", volume = 0.50, speed = 1.00 },
 	eventStart = { id = "rbxassetid://136993031050456", volume = 0.70, speed = 1.00 },
 }
 
@@ -242,6 +280,46 @@ function Sounds.play(name, speedMultiplier, volumeMultiplier)
 	-- Backstop: a sound that never loads never fires Ended.
 	Debris:AddItem(sound, 10)
 
+	return sound
+end
+
+--[[
+	THE SAME CUE, BUT IT COMES FROM SOMEWHERE.
+
+	Sounds.play is 2D on purpose -- a UI click has no position. A punch does:
+	you should hear someone else's fight from their direction and lose it as
+	you walk away, which a SoundService-parented sound cannot do.
+
+	SERVER SIDE, DELIBERATELY, and it is the one cue in here that is. A sound
+	parented to a part and played on the server replicates to everyone at once,
+	which is exactly the behaviour a punch wants -- the alternative is every
+	client playing it off an attribute and getting a different idea of how many
+	punches were thrown. That also means this is the only function here that
+	does NOT no-op on the server.
+
+	No bus routing: the router lives on the client and this instance is created
+	on the server, so it plays through the default group. Worth knowing if the
+	mixer ever needs to duck fights.
+]]
+function Sounds.playAt(name, adornee, speedMultiplier)
+	local def = Sounds.Library[name]
+	if not def or not adornee then
+		return nil
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "sfx_" .. name
+	sound.SoundId = def.id
+	sound.Volume = def.volume
+	sound.PlaybackSpeed = def.speed * (speedMultiplier or 1)
+	--[[ Comfortably short. A punch you can hear across the street would make a
+	     busy server sound like a boxing gym. ]]
+	sound.RollOffMaxDistance = 90
+	sound.Parent = adornee
+	sound:Play()
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+	Debris:AddItem(sound, 6)
 	return sound
 end
 

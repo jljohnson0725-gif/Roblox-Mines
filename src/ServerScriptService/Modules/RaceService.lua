@@ -80,7 +80,7 @@ function RaceService.enter(player, fieldId)
 	local island = Islands.get("racing")
 	local allowed, missing = Seals.canEnter(profile, island)
 	if not allowed then
-		return { ok = false, err = ("The %s seal opens this."):format(missing or "?") }
+		return { ok = false, err = ("You need the %s saddle to ride."):format(missing or "?") }
 	end
 
 	local field = Racing.get(fieldId)
@@ -100,7 +100,7 @@ function RaceService.enter(player, fieldId)
 		end
 	end
 	if not racer then
-		-- same rule the perch uses: your best earner turns up if you never chose
+		-- same rule the whistle uses: your best earner turns up if you never chose
 		local best = -1
 		for _, item in ipairs(profile.inventory) do
 			local score = Economy.powerScore(item.charId, item.variantId)
@@ -206,7 +206,7 @@ function RaceService.start()
 			end
 			local allowed, missing = Seals.canEnter(profile, Islands.get("racing"))
 			if not allowed then
-				PlayerState.notify(player, ("The %s seal opens this."):format(missing or "?"))
+				PlayerState.notify(player, ("You need the %s saddle to ride."):format(missing or "?"))
 				return
 			end
 			Net.get("OpenRace"):FireClient(player)

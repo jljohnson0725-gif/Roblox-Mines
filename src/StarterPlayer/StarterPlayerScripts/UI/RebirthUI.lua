@@ -28,7 +28,7 @@ local RebirthUI = {}
 
 local KEPT = {
 	"Your Index — every brainrot ever secured",
-	"The jetpack, and any island seals",
+	"The jetpack, and any island saddles",
 	"Redeemed codes and lifetime stats",
 }
 
