@@ -509,6 +509,209 @@ function DuelUI.init(ctx)
 		picker.Visible = false
 	end
 
+	-- ── the arena's sky ─────────────────────────────────────────────────────
+
+	--[[
+		THE ARENA HAS ITS OWN SKY, and only the two fighters see it.
+
+		Lighting is global. Swapping it on the server would put the arena's
+		night over the whole game -- the street, the shop, the islands, every
+		player who is not in the duel. Done here instead, on the client, which
+		does not replicate: the same trick Braziers uses to light shared
+		geometry for one player.
+
+		THE ORIGINAL IS CAPTURED ON THE WAY IN, not written down as constants.
+		Reading the properties back off the live Sky means the restore returns
+		whatever the game actually had, so a future change to the daytime sky
+		does not leave duellists permanently under yesterday's.
+
+		EVERY Sky IN LIGHTING, NOT THE FIRST ONE FOUND. The supplied map ships
+		with TWO -- rbxassetid://6444884337 and rbxassetid://13107325341 -- and
+		Roblox renders one of them without saying which. This used
+		FindFirstChildOfClass, which returned 6444884337 while the sky actually
+		on screen was the other one, so the swap ran, reported success, and
+		changed nothing anybody could see. Writing to all of them is correct
+		whichever renders, and stays correct if the map ever ships three.
+	]]
+	local Lighting = game:GetService("Lighting")
+	local skyBefore = nil
+
+	local function skies()
+		local found = {}
+		for _, d in ipairs(Lighting:GetChildren()) do
+			if d:IsA("Sky") then
+				table.insert(found, d)
+			end
+		end
+		return found
+	end
+
+	local function enterArenaSky()
+		if skyBefore then
+			return -- already swapped
+		end
+		local found = skies()
+		if #found == 0 then
+			return
+		end
+		--[[ Keyed by the Sky itself, so a restore puts each one back to its
+		     own values rather than to whatever the last one happened to
+		     have. ]]
+		skyBefore = {}
+		for _, sky in ipairs(found) do
+			local saved = {}
+			for prop, value in pairs(Config.ArenaSky) do
+				local ok, current = pcall(function()
+					return sky[prop]
+				end)
+				if ok then
+					saved[prop] = current
+					pcall(function()
+						sky[prop] = value
+					end)
+				end
+			end
+			skyBefore[sky] = saved
+		end
+	end
+
+	local function leaveArenaSky()
+		if not skyBefore then
+			return
+		end
+		local restore = skyBefore
+		--[[ Cleared BEFORE the writes, so a failure partway through cannot
+		     leave this thinking a swap is still owed and refuse the next one. ]]
+		skyBefore = nil
+		for sky, saved in pairs(restore) do
+			if sky.Parent then
+				for prop, value in pairs(saved) do
+					pcall(function()
+						sky[prop] = value
+					end)
+				end
+			end
+		end
+	end
+
+	-- ── lock on ─────────────────────────────────────────────────────────────
+
+	--[[
+		WHILE A DUEL IS RUNNING, YOU ALWAYS FACE YOUR OPPONENT.
+
+		This is the whole of the aim assist, and it works because of where the
+		server measures a hit from: CombatService resolves the punch cone
+		against the character's own LookVector. Point the character at the
+		other player and every swing is already aimed -- nothing about the
+		server's hit test has to be loosened, so a punch still has to be in
+		range and in front, it is simply no longer possible to be facing the
+		wrong way by accident.
+
+		AUTOROTATE GOES OFF, because the humanoid turns the character toward
+		whatever direction it is walking and would fight this every frame. With
+		it off the character strafes instead of turning, which is what lock-on
+		feels like in anything else that has it.
+
+		AN ALIGNORIENTATION, NOT A CFRAME WRITE. Writing the root's CFrame every
+		frame fights the physics solver and reads as jitter -- Flight already
+		learned this and drives its flying pose the same way. The constraint is
+		handed a target and the solver gets there smoothly.
+
+		YAW ONLY. The target is flattened to the character's own height before
+		it is looked at, or standing on a platform beside a player who is
+		mid-jump would tilt you at the sky.
+
+		IT IS NOT A CAMERA LOCK. The camera stays yours -- you can look wherever
+		you like while the character keeps its guard up. A camera that snaps to
+		a target is a much bigger change in feel, and this is the half that
+		makes punches land.
+	]]
+	local lock = nil
+
+	local function stopLock()
+		if not lock then
+			return
+		end
+		local held = lock
+		lock = nil
+		if held.conn then
+			held.conn:Disconnect()
+		end
+		--[[ AutoRotate is restored before the constraint goes, so there is no
+		     frame where nothing is steering the character. ]]
+		if held.humanoid and held.humanoid.Parent then
+			held.humanoid.AutoRotate = true
+		end
+		for _, inst in ipairs({ held.orientation, held.attachment }) do
+			if inst and inst.Parent then
+				inst:Destroy()
+			end
+		end
+	end
+
+	local function startLock(opponentId)
+		stopLock()
+		local opponent = opponentId and Players:GetPlayerByUserId(opponentId)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not opponent or not humanoid or not root then
+			return
+		end
+
+		local attachment = Instance.new("Attachment")
+		attachment.Name = "LockAttachment"
+		attachment.Parent = root
+
+		local orientation = Instance.new("AlignOrientation")
+		orientation.Name = "LockOrientation"
+		orientation.Attachment0 = attachment
+		orientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		orientation.RigidityEnabled = false
+		--[[
+			INFINITE TORQUE, AND THE NUMBER MATTERS.
+
+			This shipped at 60000, copied from Flight's 90000, and the
+			character did not turn AT ALL -- measured over 1.2 seconds it stayed
+			exactly 180 degrees off target. Flight gets away with less because
+			its player is airborne; a grounded Humanoid holds its own
+			orientation hard enough to win against any finite torque worth
+			naming, so the torque is taken out of the equation entirely and the
+			SPEED is set by Responsiveness alone.
+
+			35 turns a full 180 in 0.35s. Measured across the range: 15 takes
+			0.77s (sluggish -- an opponent can circle you), 60 takes 0.20s
+			(snaps hard enough to read as a glitch when they dash past). 35 is
+			quick enough to keep a dashing opponent in front and slow enough to
+			look like the character did the turning.
+		]]
+		orientation.MaxTorque = math.huge
+		orientation.Responsiveness = 35
+		orientation.CFrame = root.CFrame.Rotation
+		orientation.Parent = root
+
+		humanoid.AutoRotate = false
+
+		lock = { humanoid = humanoid, attachment = attachment, orientation = orientation }
+		lock.conn = RunService.RenderStepped:Connect(function()
+			if not lock or not root.Parent or not humanoid.Parent then
+				stopLock()
+				return
+			end
+			local theirChar = opponent.Character
+			local theirRoot = theirChar and theirChar:FindFirstChild("HumanoidRootPart")
+			if not theirRoot then
+				return -- they died or are respawning; hold the last facing
+			end
+			--[[ Flattened to our own height -- see the header. ]]
+			local at = Vector3.new(theirRoot.Position.X, root.Position.Y, theirRoot.Position.Z)
+			if (at - root.Position).Magnitude < 0.5 then
+				return -- standing inside each other; any facing is arbitrary
+			end
+			orientation.CFrame = CFrame.lookAt(root.Position, at).Rotation
+		end)
+	end
+
 	-- ── the fight ───────────────────────────────────────────────────────────
 
 	local fightCard = Theme.frame({
@@ -604,6 +807,12 @@ function DuelUI.init(ctx)
 
 	-- ── wiring ──────────────────────────────────────────────────────────────
 
+	--[[ A respawn replaces the character, and with it the attachment, the
+	     constraint and the humanoid whose AutoRotate was turned off. The lock
+	     is dropped rather than re-pointed: dying in a duel ends it anyway, so
+	     there is nothing left to aim at. ]]
+	player.CharacterRemoving:Connect(stopLock)
+
 	Net.get("DuelOffer").OnClientEvent:Connect(showOffer)
 
 	Net.get("DuelState").OnClientEvent:Connect(function(payload)
@@ -611,6 +820,11 @@ function DuelUI.init(ctx)
 			hide()
 			fightEndsAt = nil
 			fightCard.Visible = false
+			--[[ Unconditional. Every way a duel ends comes through here,
+			     including the ones that never reached the arena, and putting
+			     the sky back when it was never taken is a no-op. ]]
+			leaveArenaSky()
+			stopLock()
 			return
 		end
 		state.duelId = payload.id
@@ -628,6 +842,8 @@ function DuelUI.init(ctx)
 			hide()
 			fightEndsAt = os.clock() + Duel.Seconds
 			fightCard.Visible = true
+			enterArenaSky()
+			startLock(payload.opponentId)
 		end
 	end)
 

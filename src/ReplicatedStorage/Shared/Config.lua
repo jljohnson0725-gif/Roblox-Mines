@@ -393,6 +393,29 @@ Config.DashTime = 0.22
 Config.DashCooldown = 1.15
 
 --[[
+	THE ARENA'S SKY, from asset 570559352.
+
+	Shared rather than server-side because it is applied on the CLIENT: Lighting
+	is global, so swapping it on the server would hang a night sky over the
+	whole game -- the street, the islands, everyone. The two fighters get it on
+	their own clients for the length of the duel and it is put back afterwards,
+	the same way Braziers lights shared geometry for one player at a time.
+
+	Stored as the raw ids rather than as a Sky instance, so nothing has to be
+	replicated or parented anywhere to make it available.
+]]
+Config.ArenaSky = {
+	SkyboxBk = "http://www.roblox.com/asset/?id=570557514",
+	SkyboxDn = "http://www.roblox.com/asset/?id=570557775",
+	SkyboxFt = "http://www.roblox.com/asset/?id=570557559",
+	SkyboxLf = "http://www.roblox.com/asset/?id=570557620",
+	SkyboxRt = "http://www.roblox.com/asset/?id=570557672",
+	SkyboxUp = "http://www.roblox.com/asset/?id=570557727",
+	StarCount = 3000,
+	CelestialBodiesShown = false,
+}
+
+--[[
 	CRITICAL HITS. One punch in ten lands for double.
 
 	Rolled on the SERVER at the moment damage is applied, not at the swing:

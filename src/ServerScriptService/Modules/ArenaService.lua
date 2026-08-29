@@ -2,34 +2,68 @@
 	ArenaService
 	Where a duel is fought.
 
-	BUILT IN CODE, like the islands, the race track and the Mines landmark. The
-	alternative was a model file, and this codebase has already decided that
-	question everywhere else: geometry that is generated is geometry that can
-	be re-tuned by changing a number, and it cannot go missing from a place
-	file or arrive with the wrong pivot.
+	THIS IS THE SUPPLIED ARENA, rebuilt from the two assets rather than
+	inserted from them. What was handed over was a place containing one part
+	and a Sky:
 
-	IT IS SEALED. A ring wall, high enough that nobody leaves. That is not
-	decoration -- the duel is decided on health, so falling off the edge would
-	be a way to hand someone the win, and worse, a way to lose a Mythic to your
-	own bad footing rather than to the other player. Nobody falls out of a
-	fight they staked a brainrot on.
+	    79264147822932  a 2048 x 16 x 2048 plate, grey, Reflectance 0.25,
+	                    with a grid Texture on its top face
+	    570559352       a Sky -- and the Sky is where the purple comes from,
+	                    not the plate, which is very nearly neutral grey
 
-	IT IS NOWHERE. Parked far off the map at altitude rather than sited on the
-	street, because two players hitting each other for thirty seconds in the
-	middle of the shopping district would drag every passer-by's camera into
-	it, and because a fight nobody can wander into is a fight nobody can
-	interfere with. Spectators watch through the betting card, not in person.
+	Rebuilt rather than loaded because a plate is six properties and a texture,
+	and InsertService at runtime would mean the arena could fail to exist
+	because an asset fetch timed out. The numbers below are read straight off
+	the asset; changing them changes the arena.
+
+	THE GROUND IS TERRAIN WATER, and the fighters stand on a platform sitting
+	on it. That is what the reference shows: a slab floating on a mirror that
+	runs to the horizon.
+
+	Water rather than a very shiny part, because the two do not look the same.
+	A part with Reflectance 1 mirrors the skybox and stops there; terrain water
+	also ripples, refracts and carries its own colour, and it is the movement
+	that reads as water rather than as polished floor. Roblox's default water
+	is already Reflectance 1.0 -- the sky does the rest.
+
+	THE GLOBAL WATER PROPERTIES ARE TUNED, WITH A CAVEAT. WaterColor and the
+	rest live on Terrain itself rather than on a region, so setting them here
+	retints every body of water in the game. That is safe TODAY and only today:
+	the arena's is the only water there is -- the islands and the street are
+	built from parts, and sampling them turned up none. The day this game grows
+	an ocean, these four lines become its ocean's settings too, and the arena
+	will need its own way to look different.
+
+	Left at the Roblox default the water reads teal-blue in the near field,
+	because the default colour is a sea colour: 0.05, 0.33, 0.36. The reference
+	is almost pure reflection, so the colour goes neutral-violet and the
+	transparency up -- what you see is then mostly the sky in the mirror rather
+	than the water's own body.
+
+	THE EDGE IS WALLED, INVISIBLY. Nobody goes in the water. The original ring
+	was a visible cage and this is the same idea with the geometry taken away:
+	the platform reads as open, the reflection runs out to the horizon, and you
+	simply cannot leave. Falling in would decide a wager on footing, and worse,
+	a swimming player is one the punch cone cannot reach.
+
+	INVISIBLE RATHER THAN SHORT. A knee-high lip would be visible and would
+	still let a dash carry someone over it -- a dash is 58 studs a second and
+	does not care about a step. The wall is tall enough that nothing in the
+	game clears it.
+
+	THE SKY IS SWAPPED PER CLIENT, not here. Lighting is global -- changing it
+	on the server would put a night sky over the whole game for everybody,
+	including the people standing in the street. The two fighters get it on
+	their own clients instead, exactly the way Braziers lights shared geometry
+	for one player. See UI/DuelUI, and Config.ArenaSky for the ids.
+
+	IT IS STILL NOWHERE. Parked far off the map at altitude for the same reason
+	as before: a fight nobody can wander into is a fight nobody can interfere
+	with. Spectators watch through the betting card, not in person.
 
 	ONE ARENA, NOT ONE PER DUEL. Two duels at once would share the floor and
-	the fighters would tangle -- four people punching in one ring, with the
-	health comparison at the end reading whoever happened to be hit least.
-	`busy` is what stops that: DuelService checks it before it moves anyone,
-	and a second pair is turned away and told to try again rather than queued.
-	Queuing would mean holding two players in a menu for an unknown length of
-	time on the promise of a floor.
-
-	Building a fresh arena per duel was the other answer and a worse one: it
-	puts an unbounded amount of geometry in the world at the mercy of a crash.
+	the fighters would tangle. `busy` is what stops that: DuelService checks it
+	before it moves anyone, and a second pair is turned away rather than queued.
 ]]
 
 local Workspace = game:GetService("Workspace")
@@ -40,34 +74,52 @@ local ArenaService = {}
      sits around the origin, Plinko at y=550 and the racing island at y=1150,
      all of them within a few hundred studs of the middle. ]]
 local CENTER = Vector3.new(4000, 400, 4000)
-local RADIUS = 46
-local WALL_HEIGHT = 34
 
-local COL = {
-	floor = Color3.fromRGB(38, 34, 52),
-	ring = Color3.fromRGB(88, 76, 122),
-	wall = Color3.fromRGB(28, 26, 40),
-	post = Color3.fromRGB(150, 128, 210),
-	glow = Color3.fromRGB(214, 92, 92),
-}
+--[[ The platform. Colour and reflectance are read off asset 79264147822932 --
+     it is very nearly neutral grey, and the purple everybody sees is that
+     0.25 reflectance picking up the skybox. Its footprint is this codebase's
+     own: the asset's own 2048 was a whole world, not a stage. ]]
+local PLATE = Vector3.new(180, 4, 180)
+local PLATE_COLOR = Color3.fromRGB(94, 93, 95)
+local PLATE_REFLECTANCE = 0.25
 
-local function part(props, parent)
-	local p = Instance.new("Part")
-	p.Anchored = true
-	p.CanCollide = props.collide ~= false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Material = props.material or Enum.Material.SmoothPlastic
-	p.Size = props.size
-	p.CFrame = props.cframe
-	p.Color = props.color
-	p.Transparency = props.transparency or 0
-	p.Name = props.name or "Part"
-	p.Parent = parent
-	return p
-end
+--[[ The water. Wide enough that its edge is past anything you can pick out
+     from the platform -- 1024 studs to the nearest one -- and deliberately
+     SHALLOW, because the fill cost is per voxel and depth buys nothing you can
+     see. 2048 x 12 x 2048 at four studs a voxel is about 786,000 of them,
+     which fills in well under a second; going to 32 deep would nearly triple
+     that for a floor nobody swims to. ]]
+--[[ 4096, not 2048. At 2048 the far edge of the region was visible from the
+     platform as a seam against the skybox -- 1024 studs is inside the draw
+     distance. Doubling it puts the edge past where anything is resolved. The
+     fill is still cheap: 786k voxels took 0.06s, and this is about four times
+     that. ]]
+local WATER = Vector3.new(4096, 12, 4096)
+
+--[[ Read to match the reference: a mirror rather than a sea. Applied to
+     Terrain globally -- see the header for why that is currently safe. ]]
+local WATER_COLOR = Color3.fromRGB(126, 118, 168)
+local WATER_TRANSPARENCY = 0.62
+local WATER_REFLECTANCE = 1
+local WATER_WAVE_SIZE = 0.08
+local WATER_WAVE_SPEED = 6
+
+--[[ The grid. Black at 0.8 transparency over a grey plate is a faint darkening
+     rather than a drawn line, which is what stops 2048 studs of flat floor
+     reading as a single untextured slab. ]]
+local GRID_TEXTURE = "rbxassetid://16848415109"
+local GRID_TILE = 8
+
+--[[ How far apart the two fighters start, total. Sixty against a punch range
+     of eleven means the first few seconds are spent closing, which is what the
+     dash is for. ]]
+local SEPARATION = 60
+
+--[[ Tall enough that nothing in the game gets over it: a jump is about seven
+     studs and the dash is purely horizontal, so forty is far more than needed
+     and costs nothing to be sure about. ]]
+local WALL_HEIGHT = 40
+local WALL_THICKNESS = 4
 
 ArenaService.center = CENTER
 ArenaService.busy = false
@@ -75,18 +127,21 @@ ArenaService.busy = false
 --[[
 	Where each fighter starts.
 
-	Opposite each other across the floor and TURNED TO FACE the middle, because
-	a duel that opens with both players looking at a wall wastes the first two
-	seconds of a thirty second clock on finding the other one.
+	Opposite each other and TURNED TO FACE the middle, because a duel that
+	opens with both players looking at empty floor wastes the first seconds of
+	a thirty second clock on finding the other one. On a featureless plate that
+	matters more than it did in the ring -- there is no wall to orient by.
 
 	`index` is 1 or 2. Anything else lands on the centre, which is harmless --
 	this is called with a loop counter and a wrong number should not throw
 	inside the one function that has to work for the arena to be usable.
 ]]
 function ArenaService.spawnFor(index)
-	local angle = index == 1 and 0 or math.pi
-	local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (RADIUS * 0.55)
-	local at = CENTER + offset + Vector3.new(0, 5, 0)
+	local side = index == 1 and 1 or -1
+	--[[ CENTER is the WATER LINE. The platform's top sits PLATE.Y above it,
+	     and the character is dropped a few studs higher again so it settles
+	     rather than spawning inside the slab. ]]
+	local at = CENTER + Vector3.new(side * (SEPARATION / 2), PLATE.Y + 4, 0)
 	return CFrame.lookAt(at, Vector3.new(CENTER.X, at.Y, CENTER.Z))
 end
 
@@ -100,88 +155,92 @@ function ArenaService.build()
 	root.Name = "Arena"
 	root.Parent = Workspace
 
-	--[[ A cylinder laid flat: Size.X is the LENGTH along the axis for a
-	     Cylinder, so the thickness goes in X and the diameter in Y/Z, then the
-	     whole thing is turned to stand on its face. The same trap the Plinko
-	     pegs fell into. ]]
-	local floor = part({
-		name = "Floor",
-		size = Vector3.new(3, RADIUS * 2, RADIUS * 2),
-		cframe = CFrame.new(CENTER) * CFrame.Angles(0, 0, math.rad(90)),
-		color = COL.floor,
-		material = Enum.Material.Slate,
-	}, root)
-	floor.Shape = Enum.PartType.Cylinder
+	--[[
+		THE WATER FIRST, so the platform is placed against a surface that
+		already exists.
 
-	--[[ A lit rim just inside the wall, so the floor reads as a ring rather
-	     than as a dark disc, and so both fighters can see where the edge is
-	     without walking into it. ]]
-	local segments = 48
-	for i = 1, segments do
-		local angle = (i / segments) * math.pi * 2
-		local nextAngle = ((i + 1) / segments) * math.pi * 2
-		local a = CENTER + Vector3.new(math.cos(angle), 0, math.sin(angle)) * (RADIUS - 2)
-		local b = CENTER + Vector3.new(math.cos(nextAngle), 0, math.sin(nextAngle)) * (RADIUS - 2)
-		local mid = (a + b) / 2 + Vector3.new(0, 1.7, 0)
-		part({
-			name = "Rim",
-			size = Vector3.new(0.8, 0.5, (b - a).Magnitude + 0.4),
-			cframe = CFrame.lookAt(mid, mid + (b - a).Unit),
-			color = COL.ring,
-			material = Enum.Material.Neon,
-			collide = false,
-		}, root)
+		Cleared to Air before filling. Rebuilding without the clear would leave
+		whatever a previous build put here, and a half-overlapping second fill
+		is how you end up with a seam you cannot find.
+	]]
+	local top = CENTER.Y
+	local waterCF = CFrame.new(CENTER.X, top - WATER.Y / 2, CENTER.Z)
+	local terrain = Workspace.Terrain
+	terrain:FillBlock(waterCF, WATER, Enum.Material.Air)
+	terrain:FillBlock(waterCF, WATER, Enum.Material.Water)
 
-		--[[ The wall itself, in the same pass. Invisible-but-solid was the
-		     other option and it is the wrong one: a fighter who cannot see the
-		     cage backs into it, and being stopped by nothing reads as the
-		     game sticking. ]]
-		part({
-			name = "Wall",
-			size = Vector3.new(1.6, WALL_HEIGHT, (b - a).Magnitude + 0.6),
-			cframe = CFrame.lookAt(
-				(a + b) / 2 + Vector3.new(0, WALL_HEIGHT / 2 + 1.5, 0),
-				(a + b) / 2 + Vector3.new(0, WALL_HEIGHT / 2 + 1.5, 0) + (b - a).Unit),
-			color = COL.wall,
-			material = Enum.Material.Metal,
-			transparency = 0.55,
-		}, root)
+	terrain.WaterColor = WATER_COLOR
+	terrain.WaterTransparency = WATER_TRANSPARENCY
+	terrain.WaterReflectance = WATER_REFLECTANCE
+	terrain.WaterWaveSize = WATER_WAVE_SIZE
+	terrain.WaterWaveSpeed = WATER_WAVE_SPEED
+
+	local plate = Instance.new("Part")
+	plate.Name = "Floor"
+	plate.Anchored = true
+	plate.CanCollide = true
+	--[[ Query and touch off: nothing raycasts against the arena floor and
+	     nothing needs a Touched event from it. ]]
+	plate.CanQuery = false
+	plate.CanTouch = false
+	plate.Size = PLATE
+	--[[ Sat ON the water rather than in it -- the underside meets the water
+	     line exactly, so the slab reads as floating rather than as a block
+	     someone sank. ]]
+	plate.CFrame = CFrame.new(CENTER.X, top + PLATE.Y / 2, CENTER.Z)
+	plate.Color = PLATE_COLOR
+	plate.Material = Enum.Material.Plastic
+	plate.Reflectance = PLATE_REFLECTANCE
+	plate.TopSurface = Enum.SurfaceType.Smooth
+	plate.BottomSurface = Enum.SurfaceType.Smooth
+	plate.Parent = root
+
+	local grid = Instance.new("Texture")
+	grid.Name = "Grid"
+	grid.Texture = GRID_TEXTURE
+	grid.Face = Enum.NormalId.Top
+	grid.StudsPerTileU = GRID_TILE
+	grid.StudsPerTileV = GRID_TILE
+	grid.Color3 = Color3.new(0, 0, 0)
+	grid.Transparency = 0.8
+	grid.Parent = plate
+
+	--[[
+		FOUR INVISIBLE WALLS, flush with the platform's edge.
+
+		Sized to overlap at the corners -- the two on X run the full width plus
+		both thicknesses -- because four walls that merely meet leave four
+		hairline gaps at the corners, and a dash arriving at 58 studs a second
+		is exactly the thing that finds them.
+
+		CanCollide on, CanQuery and CanTouch off: they exist for the physics
+		solver and for nothing else. A raycast that stops on an invisible wall
+		would be a bug nobody could see.
+	]]
+	local half = PLATE.X / 2
+	local wallY = top + WALL_HEIGHT / 2
+	for _, side in ipairs({
+		{ Vector3.new(PLATE.X + WALL_THICKNESS * 2, WALL_HEIGHT, WALL_THICKNESS),
+			Vector3.new(0, 0, half + WALL_THICKNESS / 2) },
+		{ Vector3.new(PLATE.X + WALL_THICKNESS * 2, WALL_HEIGHT, WALL_THICKNESS),
+			Vector3.new(0, 0, -half - WALL_THICKNESS / 2) },
+		{ Vector3.new(WALL_THICKNESS, WALL_HEIGHT, PLATE.Z + WALL_THICKNESS * 2),
+			Vector3.new(half + WALL_THICKNESS / 2, 0, 0) },
+		{ Vector3.new(WALL_THICKNESS, WALL_HEIGHT, PLATE.Z + WALL_THICKNESS * 2),
+			Vector3.new(-half - WALL_THICKNESS / 2, 0, 0) },
+	}) do
+		local wall = Instance.new("Part")
+		wall.Name = "Wall"
+		wall.Anchored = true
+		wall.CanCollide = true
+		wall.CanQuery = false
+		wall.CanTouch = false
+		wall.Transparency = 1
+		wall.Size = side[1]
+		wall.CFrame = CFrame.new(
+			CENTER.X + side[2].X, wallY, CENTER.Z + side[2].Z)
+		wall.Parent = root
 	end
-
-	--[[ Corner posts on the diagonals, purely so the cage has a silhouette
-	     from the outside and a scale from the inside. ]]
-	for i = 1, 4 do
-		local angle = (i / 4) * math.pi * 2 + math.rad(45)
-		local at = CENTER + Vector3.new(math.cos(angle), 0, math.sin(angle)) * (RADIUS - 1)
-		part({
-			name = "Post",
-			size = Vector3.new(2.4, WALL_HEIGHT + 6, 2.4),
-			cframe = CFrame.new(at + Vector3.new(0, (WALL_HEIGHT + 6) / 2, 0)),
-			color = COL.post,
-			material = Enum.Material.Metal,
-		}, root)
-		part({
-			name = "PostLamp",
-			size = Vector3.new(2.8, 1.2, 2.8),
-			cframe = CFrame.new(at + Vector3.new(0, WALL_HEIGHT + 6, 0)),
-			color = COL.glow,
-			material = Enum.Material.Neon,
-			collide = false,
-		}, root)
-	end
-
-	--[[ A centre mark, so the two spawn points read as opposite ends of
-	     something rather than as two arbitrary spots on a disc. ]]
-	local mark = part({
-		name = "CentreMark",
-		size = Vector3.new(0.4, 18, 18),
-		cframe = CFrame.new(CENTER + Vector3.new(0, 1.55, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		color = COL.ring,
-		material = Enum.Material.Neon,
-		transparency = 0.72,
-		collide = false,
-	}, root)
-	mark.Shape = Enum.PartType.Cylinder
 
 	ArenaService.root = root
 	return root
