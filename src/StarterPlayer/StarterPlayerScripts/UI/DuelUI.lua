@@ -36,6 +36,7 @@ local Config = require(Shared.Config)
 
 local Theme = require(script.Parent.Theme)
 local Punch = require(script.Parent.Punch)
+local Audio = require(script.Parent.Audio)
 
 local DuelUI = {}
 
@@ -825,6 +826,7 @@ function DuelUI.init(ctx)
 			     the sky back when it was never taken is a no-op. ]]
 			leaveArenaSky()
 			stopLock()
+			Audio.setDuel(false)
 			return
 		end
 		state.duelId = payload.id
@@ -844,6 +846,7 @@ function DuelUI.init(ctx)
 			fightCard.Visible = true
 			enterArenaSky()
 			startLock(payload.opponentId)
+			Audio.setDuel(true)
 		end
 	end)
 

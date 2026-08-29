@@ -38,19 +38,44 @@ local player = Players.LocalPlayer
 local Audio = {}
 
 --[[
-	THE GROUND MUSIC ALTERNATES, it does not loop. Two tracks taking turns, so
+	THE GROUND MUSIC ROTATES, it does not loop. Three tracks taking turns, so
 	the street does not become one four-minute phrase you learn by heart in a
-	session. The sky is a single track because you are not up there long enough
-	for repetition to set in.
+	session.
+
+	THERE IS NO SKY TRACK ANY MORE. Flying used to cross-fade into a bed of its
+	own; that track is gone, and rather than leave the altitude band silent the
+	GROUND rotation now carries all the way up. Silence would be the wrong
+	answer here for the same reason the island rotation exists at all -- a
+	place with no music reads as a place that is not finished. The wind bed
+	still does the work of selling the climb.
 ]]
---[[ `gain` is per TRACK, because two songs mastered separately are never the
-     same loudness and a single volume on the player cannot fix one without
-     moving the other. Tune the quiet one up or the loud one down here. ]]
+--[[ `gain` is per TRACK, because songs mastered separately are never the same
+     loudness and a single volume on the player cannot fix one without moving
+     the others. Tune the quiet one up or the loud one down here. ]]
 local GROUND_PLAYLIST = {
 	{ id = "rbxassetid://1841647093", gain = 0.28 },
 	{ id = "rbxassetid://1848354536", gain = 1.00 },
+	{ id = "rbxassetid://128057321669015", gain = 1.00 },
 }
-local SKY_TRACK = "rbxassetid://139997523791273"
+
+--[[
+	THE DUEL'S OWN TRACK, and the only one that starts from the top.
+
+	Everything else in here cross-fades and keeps playing, because the beds
+	mark PLACES and you can walk back and forth across the boundary between
+	two of them -- restarting on every crossing would slam the music. A duel is
+	not a place, it is an event with a beginning, so this one restarts each
+	time and everything else ducks under it.
+]]
+local DUEL_TRACK = "rbxassetid://87324071813778"
+local DUEL_GAIN = 1.00
+
+--[[
+	Whether a duel is being fought, for the fader below. A flag rather than a
+	function that sets volumes, so the duel track eases in and out on the same
+	Heartbeat as everything else instead of jumping.
+]]
+Audio.duelling = false
 
 --[[ An island gets its own rotation rather than the sky loop. These sit far
      above the altitude band, so without this they inherit the one track meant
@@ -187,8 +212,8 @@ function Audio.init(ctx)
 	end
 
 	local ground = makeTrack("ground")
-	local sky = makeTrack("sky")
 	local island = makeTrack("island")
+	local duel = makeTrack("duel")
 
 	--[[
 		WIND, AND THE FIRST THING EVER ROUTED TO THE AMBIENT BUS.
@@ -224,10 +249,6 @@ function Audio.init(ctx)
 	local windGust = makeWind("gust", "rbxassetid://9112854440")
 	windGust.PlaybackSpeed = 0.82 -- detuned, so the two never phase together
 
-	sky.SoundId = SKY_TRACK
-	sky.Looped = true
-	sky:Play()
-
 	--[[ Alternate rather than loop: when one finishes, the other starts. Looped
 	     would have to be false for Ended to fire at all, which is why the
 	     rotation lives here rather than in a property. ]]
@@ -255,19 +276,57 @@ function Audio.init(ctx)
 	island.Ended:Connect(advanceIsland)
 	advanceIsland()
 
+	--[[ Looped, because a duel runs a fixed thirty seconds and a track shorter
+	     than that would leave the last few in silence. It is started and
+	     stopped rather than left running, so each fight opens on bar one. ]]
+	duel.SoundId = DUEL_TRACK
+	duel.Looped = true
+
+	--[[
+		Called by UI/DuelUI when the arena takes the two fighters, and again on
+		every path out of a duel.
+
+		It sets a FLAG and starts the sound; the fade is the Heartbeat's job, so
+		the track eases in against the others easing out rather than the two
+		fighting over the same frame. Stopping is left to the fader too -- see
+		below -- because stopping here would cut it off mid-fade.
+
+		Guarded against being told the same thing twice: every exit path calls
+		this with false, and a second call must not restart a track that is
+		already on its way out.
+	]]
+	function Audio.setDuel(on)
+		on = on and true or false
+		if on == Audio.duelling then
+			return
+		end
+		Audio.duelling = on
+		if on then
+			--[[ From the top. A duel is an event, not a place. ]]
+			duel.TimePosition = 0
+			duel:Play()
+		end
+	end
+
 	--[[
 		Three beds, one fader.
 
-		Standing on the racing island swaps the sky track out for the island
-		rotation. Eased rather than switched, because the boundary is a place you
-		can walk back and forth across -- a hard cut would slam the music every
-		time you wandered near the rim.
+		Standing on an island swaps the ground rotation out for the island one.
+		Eased rather than switched, because the boundary is a place you can walk
+		back and forth across -- a hard cut would slam the music every time you
+		wandered near the rim.
 
-		Everything keeps PLAYING throughout and only the volumes move, the same
-		rule the ground and sky beds already follow: restarting a track at the
-		boundary would begin it from bar one every time you crossed.
+		Everything keeps PLAYING throughout and only the volumes move: restarting
+		a track at the boundary would begin it from bar one every time you
+		crossed.
+
+		THE DUEL IS THE EXCEPTION and ducks both of them to nothing. It is an
+		event rather than a place, you cannot wander in and out of one, and the
+		arena is somewhere else entirely -- so there is nothing to cross-fade
+		with and no reason to keep the street playing underneath.
 	]]
 	local onIsland = 0
+	local duelling = 0
 	local windClock = 0
 	RunService.Heartbeat:Connect(function(dt)
 		local t = Sky.blend()
@@ -278,9 +337,20 @@ function Audio.init(ctx)
 		local target = (here and ISLAND_IDS[here.id]) and 1 or 0
 		onIsland += (target - onIsland) * math.min(dt * 1.6, 1)
 
-		ground.Volume = (1 - t) * groundGain * (1 - onIsland)
-		sky.Volume = t * (1 - onIsland)
-		island.Volume = onIsland * islandGain
+		duelling += ((Audio.duelling and 1 or 0) - duelling) * math.min(dt * 2.2, 1)
+		local elsewhere = 1 - duelling
+
+		--[[ No (1 - t) any more. The ground rotation used to fade out as you
+		     climbed and hand over to a sky bed; that track is gone, so it
+		     simply carries on up. ]]
+		ground.Volume = groundGain * (1 - onIsland) * elsewhere
+		island.Volume = onIsland * islandGain * elsewhere
+		duel.Volume = duelling * DUEL_GAIN
+		--[[ Stopped only once it is inaudible, so the fade actually completes.
+		     Stopping in setDuel would cut the last of it off. ]]
+		if not Audio.duelling and duelling < 0.01 and duel.IsPlaying then
+			duel:Stop()
+		end
 
 		--[[ Wind follows ALTITUDE, not the island test: it should already be
 		     there on the way up, which is most of what sells the climb. The
@@ -288,8 +358,10 @@ function Audio.init(ctx)
 		     player does not. ]]
 		windClock += dt
 		local gust = 0.55 + 0.45 * math.sin(windClock * 0.11)
-		windBed.Volume = t * 0.42
-		windGust.Volume = t * 0.30 * gust
+		--[[ Ducked with everything else. The arena sits at altitude, so without
+		     this a duel would be fought over the sound of the climb. ]]
+		windBed.Volume = t * 0.42 * elsewhere
+		windGust.Volume = t * 0.30 * gust * elsewhere
 	end)
 
 	return Audio
