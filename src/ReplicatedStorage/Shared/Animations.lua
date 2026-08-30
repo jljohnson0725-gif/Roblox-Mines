@@ -51,11 +51,11 @@ local Animations = {}
      told to loop and the other two must not be. ]]
 Animations.Ride = {
 	--[[ DTalon_XRideStart_KeyframeSequence -- 0.98s ]]
-	start = "",
+	start = "94533213285841",
 	--[[ DTalon_XRideLoop_KeyframeSequence -- 1.33s, loops ]]
-	loop = "",
+	loop = "112210005062693",
 	--[[ DTalon_XRideJumpOff_KeyframeSequence -- 0.65s ]]
-	jumpOff = "",
+	jumpOff = "127365481694489",
 }
 
 --[[
