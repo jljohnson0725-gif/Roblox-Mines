@@ -3,7 +3,7 @@
 	The board, and the coin that decides each bounce.
 
 	THE BOUNCES ARE ROLLED, THE FALL IS REAL. At every peg row the server flips
-	a fair coin and the ball is carried that way; sixteen flips later it is
+	a fair coin and the ball is carried that way; fourteen flips later it is
 	wherever they sent it. Nothing knows the outcome in advance -- it emerges
 	from the flips, which is exactly what a Galton board is supposed to do and
 	only approximately does.
@@ -19,82 +19,114 @@
 	wall. Rolling the bounces gives exact odds instead of measured ones, and
 	those odds cannot drift when Roblox next changes its solver.
 
-	SIXTEEN ROWS, NINE BINS, AND THE WALLS MATTER. Sixteen coin flips of half a
-	bin each would spread over seventeen bins; the board is nine wide, so the
-	tail is clipped by the side walls and piles into the outer bins. That is
-	not a flaw to correct -- it is what puts 3.8% in each edge bin instead of a
-	binomial's 0.0015%, which is what makes the edges a prize worth aiming at
-	rather than a rounding error.
+	THE WALLS NO LONGER MATTER, AND THAT IS THE POINT. The board used to be
+	narrower than its own distribution, so the tail was clipped and piled into
+	the outer bins -- which is what once put 3.8% in each edge instead of a
+	binomial's rounding error. BINS is now ROWS + 1, so the spread finishes on
+	its own and `odds` below is the exact binomial. The clamp in there is dead
+	code kept honest: it costs nothing and it means the table cannot lie if the
+	board is ever narrowed again.
 ]]
 
 local Plinko = {}
 
-Plinko.ROWS = 16
 --[[
-	SEVENTEEN BINS, WHICH IS ROWS + 1, AND THAT IS NOT A STYLE CHOICE.
+	FOURTEEN ROWS, DOWN FROM SIXTEEN, AND THE ROW COUNT IS THE REAL DIAL.
 
-	It was nine, and nine is what forced the old payout table to top out at
-	4.7x. Sixteen coin flips of half a bin each spread over seventeen bins; on
-	a nine-wide board the tail is clipped and piles into the outer bins, which
-	put 3.6% in each edge. An edge you hit one drop in twenty-eight cannot pay
-	1000x -- at those odds the two edges alone would return 7200% of stake.
+	How often a drop loses is not a free parameter -- it is quantised by the
+	board, because the losing bins have to be the middle ones (payouts must
+	rise outward or the board reads as broken). The centre three bins take:
 
-	Widening the board to seventeen lets the distribution finish. The edges
-	become 0.0015% each, which is the real binomial, and a 1000x prize becomes
-	something you see about once in thirty-three thousand drops. That is what
-	makes the headline number payable at all.
+		12 rows -> 61.2% of drops      16 rows -> 54.6%
+		14 rows -> 57.6%               18 rows -> 51.9%
+
+	The target was "lose on 60%", which no board hits exactly. 12 and 14 rows
+	are the two either side of it. 14 won on the seal: fragments come from the
+	outer four bins, which is 5.7% of drops here, against 3.9% at 12 rows. The
+	Plinko seal gates the racing island, and halving its drop rate would wall
+	that island off -- the same failure this file already records once.
+
+	AND IT MUST BE EVEN. Each row moves the ball one half-bin, so after an odd
+	number of rows the ball's final column is odd -- and PlinkoService steers
+	to `column * W/2` while the pocket centre is `round(column/2) * W`. Those
+	two agree exactly when the column is even and sit a full half-pocket apart
+	when it is odd, so an odd ROWS parks every single ball on a divider. The
+	payout would still be right (it comes from the roll, not the landing) and
+	the machine would look broken on every drop, which is worse.
 ]]
-Plinko.BINS = 17
+Plinko.ROWS = 14
+--[[ ROWS + 1, so the distribution finishes inside the board rather than
+     piling against the side walls. Every other number in this file assumes
+     it; change one and change both. ]]
+Plinko.BINS = 15
 
 --[[
 	Per bin, outward from the left edge.
 
-	THE SHAPE IS THE STANDARD HIGH-RISK LADDER -- 1000, 130, 26, 9, 4, 2 and
-	then a flat floor across the middle. Checked against the published table it
-	comes from: with a 0.2x floor this geometry returns 98.98%, against their
-	stated 99%, so the odds model below is sound.
+	THE MACHINE IS NOW BUILT AROUND HOW OFTEN YOU LOSE, not around a headline
+	number. The centre three bins are the losing band -- 57.6% of drops -- and
+	everything else follows from what is left over.
 
-	THE FLOOR IS 0.1x, NOT 0.2x, and that single number is the machine's whole
-	edge. The outer six pay 83.2% of stake between them before the middle pays
-	anything, so the floor is the only free parameter left:
+	AND WHAT IS LEFT OVER IS CONSERVED. That is the whole trade, and it is
+	worth stating because it is not obvious:
 
-		floor 0.20x  ->  98.98% back to player   (a 1% edge; barely a sink)
-		floor 0.10x  ->  91.08% back to player   (an 8.9% edge)
-		floor 0.05x  ->  87.13% back to player   (a 12.9% edge)
+		lose 79.0% of drops  ->  the average win pays 3.96x   (the old board)
+		lose 57.6% of drops  ->  the average win pays 2.09x   (this one)
 
-	0.1x keeps this a money sink rather than a break-even toy, while still
-	being a visible improvement on the 84% it returned before.
+	Winning twice as often means winning half as much. There is no ladder that
+	escapes it -- at 100% back to player, frequency and size are the same
+	budget spent two ways. Every "make Plinko more generous" request is really
+	a request to move along this line, and the only question is where.
 
-	FRAGMENTS MOVED, AND THEY HAD TO. They used to come from the two edge bins,
-	which on the old nine-wide board were 3.6% each -- 7.26% a drop, a seal in
-	about 69. Those same bins are now 0.0015%, and leaving the award there
-	would have put the Plinko seal 163,840 drops away and quietly walled off
-	the racing island for good.
+	WHICH IS WHY THE 1000x IS GONE. On a 14-row board the edge bin comes up
+	once in 16,384 drops rather than once in 65,536, so a 1000x prize there
+	would cost 12 of the 100 points of return on its own and force every other
+	bin down toward 1x. 400x costs 5. The prize got smaller and four times
+	more reachable at the same time, which is the better end of that trade for
+	a machine nobody was ever going to hit the old one on.
 
-	So the rule is now "any bin paying 4x or better", which is 7.68% a drop and
-	a seal in about 65. Near enough to the 69 it was that the progression is
-	untouched, and a rule a player can actually state.
+	FRAGMENTS ARE PINNED TO THE OUTER FOUR, not to a payout threshold. The
+	rule used to be "any bin paying 4x or better", which quietly depended on
+	there being a 4x rung -- and this ladder has 3x there instead, which would
+	have dropped the seal rate to 1.3% and walled off the racing island. It is
+	positional now, so re-pricing a bin can never move it: 5.74% of drops, a
+	seal about every 87. That is slower than the 65 it was, and it is the
+	closest the board can get -- the next rung inward is 18%, a seal every 28.
 ]]
 local FLOOR = 0.1
 
 Plinko.Bins = {
-	{ pay = 1000, fragment = true },
-	{ pay = 130, fragment = true },
-	{ pay = 26, fragment = true },
-	{ pay = 9, fragment = true },
-	{ pay = 4, fragment = true },
-	{ pay = 2, fragment = false },
-	{ pay = FLOOR, fragment = false },
-	{ pay = FLOOR, fragment = false },
+	{ pay = 400, fragment = true },
+	{ pay = 60, fragment = true },
+	{ pay = 8, fragment = true },
+	{ pay = 3, fragment = true },
+	{ pay = 1.8, fragment = false },
+	--[[ 1.2x, AND IT HAS TO BE ABOVE 1. This pair takes 12.2% of drops each
+	     way -- a quarter of the board -- so it is the single most expensive
+	     rung to price. At exactly 1.0 it balanced beautifully and paid your
+	     stake back, which is a push, not a win: it would have made the honest
+	     headline "you lose on 57.6% and break even on 24.4%", and left only
+	     18% of drops actually winning anything. 1.2 costs 5 points of return
+	     and buys the sentence "you win money on 42.4% of drops". ]]
+	{ pay = 1.2, fragment = false },
+	--[[
+		NEAR-MISS, not another floor. These two used to pay FLOOR like the
+		centre, so the middle of the board was one flat dead zone.
+
+		0.25 IS LOAD-BEARING. This pair takes 36.7% of drops, so every 0.1
+		added to it moves the machine's return by about seven points -- at the
+		0.5 they were once set to, Plinko paid 114.8% and every drop was
+		profitable. Lower this first if the machine ever needs to be a sink.
+	]]
+	{ pay = 0.25, fragment = false },
 	{ pay = FLOOR, fragment = false }, -- the middle, and the likeliest landing
-	{ pay = FLOOR, fragment = false },
-	{ pay = FLOOR, fragment = false },
-	{ pay = 2, fragment = false },
-	{ pay = 4, fragment = true },
-	{ pay = 9, fragment = true },
-	{ pay = 26, fragment = true },
-	{ pay = 130, fragment = true },
-	{ pay = 1000, fragment = true },
+	{ pay = 0.25, fragment = false },
+	{ pay = 1.2, fragment = false },
+	{ pay = 1.8, fragment = false },
+	{ pay = 3, fragment = true },
+	{ pay = 8, fragment = true },
+	{ pay = 60, fragment = true },
+	{ pay = 400, fragment = true },
 }
 
 --[[

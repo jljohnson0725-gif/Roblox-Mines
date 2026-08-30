@@ -13,10 +13,14 @@
 	and a floating island that matched the town below would just read as more
 	town. The altitude lighting on the client is the other half of that.
 
-	ALTITUDE IS NOT THE GATE. Every island sits under Config.FlightCeiling and
-	anyone with a jetpack can reach any of them; what stops you walking into
-	the third island on your first flight is the SEAL it asks for, earned on the
-	one below. See the note on Config.JetpackCost.
+	ALTITUDE IS NOT THE GATE, and never really was. Each island is reached by
+	the thing that goes to it -- the Plinko ball to Plinko, the whistle to
+	Racing -- and what stops you walking into the third island on your first
+	visit is the SEAL it asks for, earned on the one below.
+
+	This used to be a jetpack and a height limit, which only ever LOOKED like a
+	gate: anyone who could fly could reach anything, and the seal was doing the
+	work even then.
 ]]
 
 local Islands = {}
@@ -25,10 +29,10 @@ local Islands = {}
 	OFF TO ONE SIDE OF THE LAUNCH PAD, NOT OVER IT.
 
 	Directly overhead was the first instinct -- the pad then reads as pointing
-	at the island, and the first question a new jetpack owner has is "where do
+	at the island, and the first question a new ball owner has is "where do
 	I go". It also meant that flying straight up from the pad drove you into
 	the island's underside at 218 studs and stopped you dead, which reads as a
-	height limit on the jetpack rather than as a solid object, because the
+	height limit rather than as a solid object, because the
 	thing blocking you is above your head where you cannot see it.
 
 	Ninety-five studs of offset against a 56-stud radius leaves the climb clear
@@ -45,7 +49,7 @@ Islands.List = {
 
 		--[[ 550, up from 220. High enough that the climb is a journey rather than
 		     a hop off the roof, and still well under Config.FlightCeiling (900) so
-		     the jetpack remains the way up -- Racing at 1150 is the one above the
+		     the ball is the way there -- Racing at 1150 is the one above the
 		     ceiling, and that separation is what makes the mount the only way there. ]]
 		center = Vector3.new(-165, 550, -50),
 		--[[ Was 56, which made this read as a ledge with a machine on it rather
@@ -124,7 +128,7 @@ Islands.List = {
 			for Plinko it isn't -- the seal is. This one breaks that on purpose,
 			because its arrival IS the feature: you get here by summoning a
 			brainrot and riding it, and a second route that quietly worked would
-			make the mount a decoration. At 1150 the jetpack stops 250 studs
+			make the mount a decoration. At 1150 nothing else reaches it --
 			short, so the ride is the only way and nothing has to police it.
 
 			Placed across the map from Plinko rather than above it, so the two

@@ -257,20 +257,24 @@ function MinesService.revealTile(player, index)
 	if guaranteed or rng:NextNumber() < DropTable.dropChance(round.mines, mods) then
 		-- roll() returns nil only if the roster is misconfigured; treat that as
 		-- "no drop this tile" rather than failing the reveal.
-		--[[ Rebirth luck rides in as a depth BONUS on the same mods table the
-		     events use. One path into DropTable, so a lucky player and a lucky
-		     server are the same mechanism rather than two that can disagree. ]]
-		local luck = Rebirth.luck(profile and profile.rebirths)
-		if luck > 0 then
-			local merged = { depthBonus = luck }
-			for key, value in pairs(mods or {}) do
-				merged[key] = value
-			end
-			mods = merged
-		end
+		--[[ Rebirth luck rides in on the same mods table the events use. One
+		     path into DropTable, so a lucky player and a lucky server are the
+		     same mechanism rather than two that can disagree.
+
+		     Two axes now: a depth BONUS, which lifts the whole curve, and a
+		     per-tier WEIGHT for the tiers this many rebirths has opened. See
+		     Config.RebirthTierBoost.
+
+		     COMBINED WITH THE EVENT'S VALUES, NOT WRITTEN OVER THEM. This block
+		     used to seed `{ depthBonus = luck }` and then copy the event mods
+		     on top, so any event carrying its own depthBonus silently deleted
+		     the player's rebirth luck for the duration -- and with tierMul now
+		     on the same table there would be a second way to lose it. ]]
+		mods = Rebirth.applyTo(mods, profile and profile.rebirths)
 		--[[ A forced tier, from a test code, spends one charge per drop. Checked
-		     before the honest roll so it can produce tiers the roll never
-		     will -- Secrets are wheelOnly. ]]
+		     before the honest roll so it stays exact: the roll would produce
+		     the asked-for tier only by chance, and a test that is merely likely
+		     to work is not a test. ]]
 		local forced = profile and (profile.forceDrops or 0) > 0
 			and DropTable.forceRoll(profile.forceTier, rng)
 		if forced then

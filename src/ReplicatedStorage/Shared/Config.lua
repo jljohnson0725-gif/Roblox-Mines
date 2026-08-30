@@ -143,7 +143,7 @@ Config.IncomeTickRate = 1 -- seconds between passive income payouts
 	what the global rate was, and this can be moved again without touching seven
 	tiers.
 
-	NOTHING ELSE MOVED WITH IT. Pads, upgrades, the jetpack, Plinko drops and
+	NOTHING ELSE MOVED WITH IT. Pads, upgrades, the Plinko ball, Plinko drops and
 	rebirth all still cost what they did, so raising this shortens the time to
 	every one of them in proportion.
 ]]
@@ -276,9 +276,49 @@ Config.RebirthLuckPerLevel = 0.35 -- bonus drop depth, permanently
 Config.RebirthPadsPerLevel = 1
 Config.RebirthMaxStartPads = 6 -- short of MaxSlots: still a base to build
 
+--[[
+	WHAT EACH REBIRTH OPENS, and why depth alone was not enough.
+
+	RebirthLuckPerLevel is a depth bonus, and depth lifts the whole curve at
+	once -- which sounds right and plays wrong. +0.35 is worth about 1.26x on
+	the top tiers, so three rebirths roughly DOUBLED a Mythic: 1 in 605 became
+	1 in 279 on a typical 8x cash-out. Three rebirths is a quarter of a billion
+	spent and the collection wiped twice over, and doubling a number that was
+	already 1 in 605 is invisible from inside the game. The reward was real and
+	unfeelable, which is the same as not being there.
+
+	So each rebirth now OPENS A TIER outright, on top of the depth it already
+	gave. The promise is legible before you pay for it -- one rebirth for
+	Legendaries, two for Mythics, three for Secrets -- and it lands as a step
+	rather than a slope you need a spreadsheet to notice:
+
+		         Legendary     Mythic      Secret
+		reb 0     1 in 74      1 in 605    1 in 8,202
+		reb 1     1 in 13      1 in 495    1 in 6,657
+		reb 2     1 in 11      1 in 56     1 in 5,247
+		reb 3     1 in  9      1 in 45     1 in 413
+
+	A WEIGHT MULTIPLIER, NOT MORE DEPTH, because depth is the multiplier's job
+	and doubling up on it would make a deep run pay twice for the same risk.
+	This rides the `tierMul` axis events already use, so a lucky player and a
+	lucky server are one mechanism.
+
+	THE BOOST DOES NOT GROW AFTER IT OPENS. It does not need to -- the depth
+	bonus keeps compounding underneath it, which is what carries Mythic from
+	1 in 56 at rebirth 2 to 1 in 24 by rebirth 6. Letting both grow put the
+	expected income of a drop at 19x by rebirth 6 against the 5.8x the cost
+	curve is built for, and a rebirth ladder that gets cheaper as you climb it
+	is not a ladder.
+]]
+Config.RebirthTierBoost = {
+	Legendary = { rebirth = 1, weight = 5 },
+	Mythic = { rebirth = 2, weight = 7 },
+	Secret = { rebirth = 3, weight = 10 },
+}
+
 -- ── The Sky ─────────────────────────────────────────────────────────────────
 --[[
-	The jetpack, which opens the islands above the map.
+	The Plinko ball, which opens the first island above the map.
 
 	ONE FLAT PRICE. An earlier plan tiered it -- $2M for the first island up to
 	$470M for the last -- so that altitude itself paced the climb. That put
@@ -296,7 +336,27 @@ Config.RebirthMaxStartPads = 6 -- short of MaxSlots: still a base to build
 	paced by their seals -- each one asking for the seal earned on the island
 	below -- rather than by the right to reach them. See tools/altitude.py.
 ]]
-Config.JetpackCost = 1000000
+--[[ What the jetpack used to cost, and for the same reason: it is the first
+     big purchase, the thing the early game is saving toward. Buying it is what
+     opens the second half of the game. ]]
+Config.PlinkoBallCost = 1000000
+
+--[[
+	THE TWO VANITY ITEMS, and they are priced like trophies rather than tools.
+
+	Everything else in the shop buys capability -- a ball that moves you, a
+	whistle that calls a ride. These buy nothing but how you look, so they sit
+	ABOVE the first rebirth (150M) on purpose: the point is that somebody who
+	has one has visibly been here a while. Pricing them like utilities would
+	make them the first thing everyone buys and the last thing anyone notices.
+
+	The stink is the default state, so the cologne is the one item in the shop
+	that REMOVES something you were given rather than adding something you were
+	not. That is why it is the cheaper of the two -- undoing a starting
+	condition should cost less than rewriting your face.
+]]
+Config.CologneCost = 500000000
+Config.PeptidesCost = 1000000000
 
 --[[ Bought once and owned forever. It is a way to reach the game rather than a
      consumable, and metering it per flight would turn every trip upward into a
@@ -305,7 +365,11 @@ Config.JetpackCost = 1000000
 
 Config.FlightSpeed = 74 -- horizontal cruise, about 3x walking
 Config.FlightRise = 46 -- climb rate on the boost key
-Config.FlightCeiling = 900 -- islands live under this; above it you stop climbing
+--[[ Kept as a NUMBER even though nothing enforces it any more. Flight is gone,
+     so there is no ceiling to hit -- but the islands were sited against this
+     value and Islands.lua still explains itself in terms of it, and deleting
+     it would leave those comments pointing at nothing. ]]
+Config.FlightCeiling = 900
 Config.TakeoffSeconds = 1.4 -- the scripted rise before you get the controls
 Config.TakeoffRise = 62 -- and how fast that opening climb goes
 

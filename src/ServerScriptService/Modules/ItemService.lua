@@ -12,7 +12,8 @@
 	already reports a lapsed boost as inactive, so income corrects itself with no
 	help. Walk speed does not. That one is written onto the Humanoid at purchase
 	and stays there until something writes it again -- so without this loop, one
-	Energy Drink would be permanent.
+	speed boost would be permanent. (The shop sells no boosts today; this is
+	kept with the rest of that machinery, not because anything exercises it.)
 ]]
 
 local Players = game:GetService("Players")
@@ -26,6 +27,7 @@ local Items = require(Shared.Items)
 local DataService = require(script.Parent.DataService)
 local ShopService = require(script.Parent.ShopService)
 local PlayerState = require(script.Parent.PlayerState)
+local AppearanceService = require(script.Parent.AppearanceService)
 local PlotService = require(script.Parent.PlotService)
 local UpgradeService = require(script.Parent.UpgradeService)
 
@@ -73,29 +75,22 @@ function resolve.unlock(player, profile, def)
 		ok = true,
 		commit = function()
 			profile[def.flag] = true
+			--[[ Cologne and Peptides change how the character LOOKS, and the
+			     look is rebuilt from the profile. Without this the player pays
+			     half a billion and sees nothing until they next die, which
+			     reads as the purchase having failed. Every other unlock is a
+			     no-op here -- apply only acts on the two appearance flags. ]]
+			AppearanceService.refresh(player)
 		end,
 		message = def.name .. " acquired.",
 	}
 end
 
-function resolve.instant(player, profile, def)
-	if def.id ~= "sweep" then
-		return { ok = false, err = "Unknown item." }
-	end
-	--[[ Counted before charging, so nobody pays to sweep an empty base. This is
-	     the reason resolve() runs before the money moves at all. ]]
-	local waiting = PlayerState.totalPending(profile)
-	if waiting < 1 then
-		return { ok = false, err = "Nothing waiting to collect." }
-	end
-	return {
-		ok = true,
-		commit = function()
-			local claimed = PlotService.sweep(player)
-			PlayerState.notify(player, "Swept " .. Format.money(claimed), "good")
-		end,
-	}
-end
+--[[ `instant` had one implementation and it was Vault Sweep's. The item is
+     gone, so the handler is too -- an unreachable branch naming a removed item
+     is worse than no branch, and `buy` already answers "Unknown item." for a
+     kind it has no handler for. PlotService.sweep is now unreferenced.
+     Re-add both together if the shop ever sells a one-shot again. ]]
 
 function ItemService.buy(player, id)
 	local profile = DataService.get(player)

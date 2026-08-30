@@ -157,8 +157,10 @@ function DropTable.roll(multiplier, rng, mods, mines, bet)
 	local depth = depthOf(multiplier)
 	local tierOpts, variantOpts = axisOpts(mods, mines, bet)
 
-	-- Rollable, not Order: the Secret tier is wheel-only and must never appear
-	-- from a tile reveal, at any multiplier or under any event.
+	--[[ Rollable, not Order. Nothing sets `wheelOnly` any more -- Secrets DO
+	     drop here, very rarely, and a third rebirth is what makes them a real
+	     prospect. The split is kept because it is the mechanism, not because
+	     anything currently uses it. ]]
 	local tierName = weightedPick(Rarity.Rollable, Rarity.Tiers, depth, rng, tierOpts)
 	local variantId = weightedPick(Variants.Order, Variants.List, depth, rng, variantOpts)
 
@@ -193,9 +195,22 @@ function DropTable.tierOdds(multiplier, mods, mines, bet)
 	local depth = depthOf(multiplier)
 	local tierOpts = axisOpts(mods, mines, bet)
 	--[[ The floor applies here too, or the odds panel would quote a table the
-	     roll does not use the moment somebody raises their bet. ]]
-	local effectiveDepth = math.max(depth * ((tierOpts and tierOpts.depthMul) or 1),
-		(tierOpts and tierOpts.floor) or 0)
+	     roll does not use the moment somebody raises their bet.
+
+	     AND SO DOES depthBonus, which this line used to leave out. weightedPick
+	     computes `depth * depthMul + depthBonus` and only then applies the
+	     floor; this computed `max(depth * depthMul, floor)` and dropped the
+	     bonus on the ground. Rebirth luck is delivered entirely as a depthBonus,
+	     so the one number rebirth actually buys was the one number this panel
+	     could not see -- it quoted un-rebirthed odds to a player who had paid
+	     for better ones, which is the worst version of a reward you cannot
+	     feel. Mirrors weightedPick exactly now; the two must not drift. ]]
+	local effectiveDepth = depth * ((tierOpts and tierOpts.depthMul) or 1)
+		+ ((tierOpts and tierOpts.depthBonus) or 0)
+	local floor = (tierOpts and tierOpts.floor) or 0
+	if effectiveDepth < floor then
+		effectiveDepth = floor
+	end
 	local total = 0
 	local raw = {}
 
@@ -223,9 +238,8 @@ end
 
 --[[
 	Force a drop of a named tier. Test-only, and it deliberately bypasses
-	Rarity.Rollable -- Secrets are wheelOnly and cannot reach Mines by any
-	honest route, which is exactly why hearing one otherwise means grinding the
-	wheel until it pays out.
+	Rarity.Rollable so it can still mint a tier that list ever excludes again.
+	Nothing is excluded today.
 ]]
 function DropTable.forceRoll(tierName, rng)
 	local pool = Brainrots.ByTier[tierName]

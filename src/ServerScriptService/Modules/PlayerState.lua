@@ -69,7 +69,12 @@ function PlayerState.snapshot(player)
 		upgrades = profile.upgrades or {},
 		index = profile.index or {}, -- ["charId:variantId"] = times secured
 		onboarding = profile.onboarding, -- drives the first-session coach
-		jetpack = profile.jetpack == true, -- whether F does anything
+		plinkoball = profile.plinkoball == true, -- whether the rail shows PLINKO
+		--[[ The shop rows read these to show OWNED instead of a price. The
+		     appearance itself is server-made, so the client never acts on
+		     them beyond that. ]]
+		cologne = profile.cologne == true,
+		peptides = profile.peptides == true,
 		whistle = profile.whistle == true, -- whether the ride button is there
 		plinkoStake = profile.plinkoStake, -- the dial, so the panel reopens on it
 		wheelStake = profile.wheelStake,

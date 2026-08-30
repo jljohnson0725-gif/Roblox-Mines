@@ -54,7 +54,7 @@ local Audio = {}
      the others. Tune the quiet one up or the loud one down here. ]]
 local GROUND_PLAYLIST = {
 	{ id = "rbxassetid://1841647093", gain = 0.28 },
-	{ id = "rbxassetid://1848354536", gain = 1.00 },
+	{ id = "rbxassetid://1845767793", gain = 1.00 },
 	{ id = "rbxassetid://128057321669015", gain = 1.00 },
 }
 
@@ -90,7 +90,7 @@ Audio.duelling = false
      music for the place you pass through. A set, so adding island three is a
      table entry rather than another id nobody remembers to change. ]]
 local ISLAND_PLAYLIST = {
-	{ id = "rbxassetid://1847683499", gain = 1.00 },
+	{ id = "rbxassetid://9044702905", gain = 1.00 },
 	{ id = "rbxassetid://85685374675332", gain = 1.00 },
 	{ id = "rbxassetid://117496769617516", gain = 1.00 },
 }
@@ -200,7 +200,7 @@ function Audio.init(ctx)
 	--[[
 		Both sides play continuously and only their VOLUMES move. Starting a
 		track at the transition would restart it from bar one on every crossing,
-		and a jetpack makes crossing 70 studs trivially repeatable.
+		and the boundary is a couple of steps wide.
 	]]
 	local function makeTrack(name)
 		local sound = Instance.new("Sound")

@@ -14,7 +14,7 @@
 	Wipe it and every player loses proof of every Secret they ever found, which
 	is the one thing in this game that cannot be re-earned on demand.
 
-	The jetpack survives because it was sold as "yours for good", and seals and
+	The Plinko ball survives because it was sold as "yours for good", and seals and
 	fragments survive because they are chapter progress rather than economy --
 	a player who has opened an island should not have to open it again.
 ]]
@@ -44,7 +44,11 @@ local RebirthService = {}
 local KEEP = {
 	index = true, -- every pair ever secured; the collection
 	redeemed = true, -- codes are one use per account, not per run
-	jetpack = true, -- sold as "yours for good"
+	plinkoball = true, -- sold as "yours for good"
+	--[[ Also "yours for good", and losing your face on rebirth would be a
+	     particularly cruel reading of "give the run back". ]]
+	cologne = true,
+	peptides = true,
 	fragments = true, -- chapter progress, not economy
 	seals = true,
 	rebirths = true, -- obviously
@@ -92,8 +96,15 @@ function RebirthService.perform(player)
 	     before pushing, or the base shows a collection the profile has lost. ]]
 	PlotService.refresh(player)
 	PlayerState.push(player)
-	PlayerState.notify(player, ("Rebirth %d — luck +%.2f, %d pads to start")
-		:format(level, Rebirth.luck(level), fresh.slots), "good")
+	--[[ Name the tier when this rebirth opened one. "+0.35 luck" is the true
+	     number and it is the reason rebirth felt like it did nothing: it is a
+	     depth bonus on a curve, and nobody can feel a curve move. ]]
+	local opened = Rebirth.opensAt(level - 1)
+	PlayerState.notify(player, opened
+		and ("Rebirth %d — %s NOW DROP, %d pads to start")
+			:format(level, Rebirth.plural(opened):upper(), fresh.slots)
+		or ("Rebirth %d — luck +%.2f, %d pads to start")
+			:format(level, Rebirth.luck(level), fresh.slots), "good")
 
 	--[[ Loud on purpose. Rebirth is the rarest thing anyone does here, and a
 	     server that never mentions it makes it look like it did nothing. ]]

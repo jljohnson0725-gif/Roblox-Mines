@@ -213,7 +213,7 @@ local STEPS = {
 		is but never that there is a seal to go and start. And the launch pad
 		that used to stand in the street -- sited off to one side of the Plinko
 		island precisely so that it pointed at it -- is gone now that the shop
-		sells the jetpack. Between them, a player who finished the tutorial was
+		sells the ball. Between them, a player who finished the tutorial was
 		told nothing whatsoever about the sky.
 
 		Same rule as the four above: every step is a question asked of real
@@ -221,14 +221,14 @@ local STEPS = {
 		over hours instead of minutes.
 	]]
 	{
-		key = "jetpack",
+		key = "plinkoball",
 		where = shopCounter,
 		chapter = "LEAVING THE GROUND",
-		title = "Buy a jetpack",
-		body = "The shop sells one for " .. costOf("jetpack")
-			.. ". It is the only way off the ground.",
+		title = "Buy a Plinko Ball",
+		body = "The shop sells one for " .. costOf("plinkoball")
+			.. ". Throw it and you are on the island.",
 		done = function(s)
-			return s.jetpack == true
+			return s.plinkoball == true
 		end,
 	},
 	{

@@ -942,7 +942,10 @@ end
 	Runs on the tick rather than Touched alone: Touched fires on entry but not
 	while you stand still, so you'd watch the pile grow under your feet.
 ]]
---[[ Bank every pile from anywhere -- what the Vault Sweep item buys.
+--[[ Bank every pile from anywhere. UNREFERENCED since the Vault Sweep item
+     was removed from the shop -- kept because it is the only implementation of
+     "collect without walking" and re-deriving it would be the expensive half
+     of ever selling that again.
 
      Deliberately the same ending as tickCollect below: money, the onboarding
      latch, a re-render and a push. The DIFFERENCE is the whole product, and it

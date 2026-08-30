@@ -112,7 +112,7 @@ function WheelUI.init(ctx)
 	})
 	Theme.label({
 		parent = root,
-		text = "the only place Secrets exist",
+		text = "by far the fastest way to a Secret",
 		font = Theme.font.regular,
 		textSize = 12,
 		color = Theme.color.faint,

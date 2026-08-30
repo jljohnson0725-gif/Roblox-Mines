@@ -28,7 +28,7 @@ local RebirthUI = {}
 
 local KEPT = {
 	"Your Index — every brainrot ever secured",
-	"The jetpack, and any island saddles",
+	"The Plinko ball, and any island saddles",
 	"Redeemed codes and lifetime stats",
 }
 
@@ -145,10 +145,25 @@ function RebirthUI.init(ctx)
 		local canAfford = (state.money or 0) >= cost
 		local hasPads = (state.slots or 0) >= Config.MaxSlots
 
-		summary.Text = ("Rebirth %d. Your luck is +%.2f drop depth, and you start with %d pads.")
-			:format(level, Rebirth.luck(level), Rebirth.startPads(level))
-		gain.Text = ("NEXT:  luck +%.2f  ·  %d starting pads")
-			:format(Rebirth.luck(level + 1), Rebirth.startPads(level + 1))
+		--[[ Name the tiers this rebirth has already opened. "+1.05 drop depth"
+		     is the honest number and it means nothing to anyone; the tiers are
+		     what the player is actually buying, and until now the only place
+		     either could be seen was the Mines odds panel. ]]
+		local opened = Rebirth.opened(level)
+		summary.Text = (#opened > 0)
+			and ("Rebirth %d. %s drop for you now, and you start with %d pads.")
+				:format(level, table.concat(opened, ", "), Rebirth.startPads(level))
+			or ("Rebirth %d. Your luck is +%.2f drop depth, and you start with %d pads.")
+				:format(level, Rebirth.luck(level), Rebirth.startPads(level))
+
+		--[[ The headline of the next one, when it opens a tier. A step is worth
+		     naming; the slope underneath it is not. ]]
+		local opening = Rebirth.opensAt(level)
+		gain.Text = opening
+			and ("NEXT:  %s START DROPPING  ·  %d starting pads")
+				:format(Rebirth.plural(opening):upper(), Rebirth.startPads(level + 1))
+			or ("NEXT:  luck +%.2f  ·  %d starting pads")
+				:format(Rebirth.luck(level + 1), Rebirth.startPads(level + 1))
 
 		local here = Rebirth.tier(level)
 		local nextTier, away = Rebirth.nextTier(level)

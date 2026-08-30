@@ -8,9 +8,10 @@
 	wherever you are standing, and the mount now spawns over the RIDER rather
 	than over a fixed spot. The seal still gates the island -- see canSummon.
 
-	THIS IS THE ONLY WAY UP. The racing island sits at y=1150 and the jetpack
-	stops at 900, so nothing here has to police access -- the geometry does it.
-	What this module owns is the trip.
+	THIS IS THE ONLY WAY THERE. The racing island sits at y=1150 and nothing
+	else in the game reaches it -- the Plinko ball goes to Plinko and nowhere
+	else -- so nothing here has to police access. What this module owns is the
+	trip.
 
 	IT IS NOT A CUTSCENE, and that is the whole design. A cutscene takes the
 	camera and turns the player into an audience; here the player is a
@@ -33,7 +34,7 @@
 	     not on landing, so the ground is there before they are.
 	  2. Any failure at all -- an error, a death, a disconnect, a tween that
 	     never finishes -- must still end with the rider standing on the island.
-	     At 1150 there is no ceiling to catch a fall and no jetpack that reaches,
+	     At 1150 there is no ceiling to catch a fall and no other way back up,
 	     so a stranded player is a lost player. `finish` is idempotent and every
 	     path leads to it, including a hard timeout that does not care why.
 ]]

@@ -13,7 +13,7 @@
 	coin, and the ball is steered toward whichever column that flip chose.
 	Vertical motion is left entirely to physics -- gravity, and every peg it
 	clatters off on the way down -- so the fall and the bouncing are genuine
-	and the ball really does arrive where sixteen flips sent it.
+	and the ball really does arrive where the flips sent it.
 
 	This is NOT the wheel's trick. The wheel picks a RESULT and animates toward
 	it. Here nothing knows the result; it is whatever the flips add up to.
@@ -25,8 +25,8 @@
 	that should take 27%. That is an 849% return to player and a seal fragment
 	on four drops in five.
 
-	It is not a tuning problem. A real ball is not sixteen independent coin
-	flips: it carries sideways momentum from one row into the next, so
+	It is not a tuning problem. A real ball is not a stack of independent
+	coin flips: it carries sideways momentum from one row into the next, so
 	deflections compound instead of cancelling and it walks to a wall. Damping
 	moves the number (52% in the middle three at elasticity 0.02 against 39% at
 	0.55) and never reaches the shape.
@@ -83,8 +83,8 @@ local rng = Random.new(os.clock() * 1e6 % 2 ^ 31)
 	and 4.2 less a 0.6 divider still leaves 3.6.
 
 	It also lands the peg pitch on the reference machine's, which measures
-	3.96 across 133 pegs. Ours is now 4.2 at the same board proportion (74 by
-	68, against its 71 by 67), which is the whole reason for the number.
+	3.96 across 133 pegs. Ours is now 4.2 at the same board proportion (66 by
+	62, against its 71 by 67), which is the whole reason for the number.
 ]]
 local W = 4.2
 --[[ Up from 2.6, and it is the narrower bins that pay for it: the board can
@@ -134,7 +134,7 @@ local PEG_LEN = 2.0
 local PEG_Z = -DEPTH / 2 + 0.5 + PEG_LEN / 2 -- flush to the backboard's face
 local BALL_Z = 1.0 -- clear of the peg tips behind and the glass in front
 
-local HALF = W * (Plinko.BINS / 2) -- 18 for a 9-bin board
+local HALF = W * (Plinko.BINS / 2) -- 31.5 across the 15 bins
 local FIELD = (Plinko.ROWS - 1) * SPACING
 local ENTRY = 9 -- drop height above the first peg
 local BINS_H = 11 -- bin pocket depth
@@ -318,8 +318,8 @@ local function buildMachine(index, base, facing, parent)
 		jackpot.
 
 		THAT REASON DIED WITH THE PHYSICS-DECIDED ERA. Nothing about the layout
-		can move the odds any more -- the bin comes from Plinko.roll, sixteen
-		coin flips made before the ball exists, and the ball is steered toward
+		can move the odds any more -- the bin comes from Plinko.roll, one coin
+		flip per row made before the ball exists, and the ball is steered toward
 		the column those flips chose. Pegs are now clatter and guidance, not a
 		decision, so the shape is free to be the shape everyone recognises.
 
@@ -327,7 +327,7 @@ local function buildMachine(index, base, facing, parent)
 		r half-steps from centre, which is r*W/2; a row of r+2 pegs spans
 		(r+1)*W/2 either side. So the field is always exactly wide enough to
 		hold every path the roll can produce -- it can never be steered into a
-		gap that isn't there. Row 16 carries 18 pegs, which is the 17 bins plus
+		gap that isn't there. Row 14 carries 16 pegs, which is the 15 bins plus
 		the pair that bound them.
 	]]
 	local topPeg = total / 2 - ENTRY
@@ -657,7 +657,7 @@ function PlinkoService.drop(player, stake)
 	PlayerState.push(player)
 	inFlight[player.UserId] = (inFlight[player.UserId] or 0) + 1
 
-	--[[ Sixteen coin flips, rolled before the ball exists. Nothing here knows
+	--[[ One coin flip per row, rolled before the ball exists. Nothing here knows
 	     the bin -- it is whatever the flips add up to. ]]
 	local path, bin = Plinko.roll(rng)
 	local column, targets = 0, {}
@@ -708,7 +708,7 @@ function PlinkoService.drop(player, stake)
 		clatters off on the way down. Only the sideways component is steered,
 		toward the column the coin flips chose for the row it is currently
 		passing. So the fall is real, the bouncing is real, and the ball
-		genuinely arrives where sixteen flips sent it.
+		genuinely arrives where the flips sent it.
 
 		Steering rather than teleporting, and with a dead zone, so it drifts
 		into each column instead of snapping to it.

@@ -25,6 +25,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Islands = require(Shared.Islands)
+local Seals = require(Shared.Seals)
+local Net = require(Shared.Net)
+
+local DataService = require(script.Parent.DataService)
 
 local IslandService = {}
 
@@ -855,12 +859,16 @@ end
 ]]
 local function buildBeacon(island, rng, root)
 	local c = island.center
-	--[[ 104, not 64. The Plinko board grew to sixteen rows and 71 studs tall,
-	     and its top reached y+76 -- straight through a ring placed for a much
-	     shorter machine. The 9-stud neon core ended up hanging in front of the
-	     peg field, which from the front reads as a giant yellow blob sitting on
-	     the board. Anything sited over the clearing has to clear whatever is
-	     standing in it. ]]
+	--[[ 104, not 64. The Plinko machines top out at y+79 -- straight through a
+	     ring placed for a much shorter board. The 9-stud neon core ended up
+	     hanging in front of the peg field, which from the front reads as a
+	     giant yellow blob sitting on the board. Anything sited over the
+	     clearing has to clear whatever is standing in it.
+
+	     Measured, not derived: the row count has changed twice and the height
+	     did not move the way either change predicted (dropping to 14 rows made
+	     the board shorter and the machine no taller, because the plinth and
+	     console set the top, not the peg field). 104 leaves 25 studs. ]]
 	local at = c + Vector3.new(0, 104, 0)
 	-- high and wide enough to clear the outcrops and read from the street
 	local segments, ringRadius = 16, 32
@@ -995,7 +1003,71 @@ function IslandService.build(island)
 	return root
 end
 
+--[[
+	THROWING THE BALL.
+
+	The jetpack used to be the way up and it was a traversal mechanic: you
+	bought flight, and every island's access was really a height check. The
+	ball is a DESTINATION instead -- it goes to Plinko and nowhere else -- so
+	the check is ownership rather than altitude.
+
+	IT LANDS YOU IN FROM THE RIM, not on the centre. The plaza has four
+	machines standing on it now, and arriving inside one of them would be a
+	teleport that looks like a bug. The same offset the mount uses to land on
+	Racing, for the same reason.
+
+	NO SEAL CHECK. Plinko is the chapter you start in -- Seals.canEnter passes
+	for it today -- so owning the ball is the whole gate. The call is still
+	made rather than skipped, so the day an island wants gating the answer
+	comes from one place.
+]]
+function IslandService.travelToPlinko(player)
+	local profile = DataService.get(player)
+	if not profile then
+		return { ok = false, err = "Still loading, one sec." }
+	end
+	if profile.plinkoball ~= true then
+		return { ok = false, err = "You need a Plinko Ball. The shop sells one." }
+	end
+
+	local island = Islands.get("plinko")
+	if not island then
+		return { ok = false, err = "Plinko island is not up yet." }
+	end
+	local allowed, needs = Seals.canEnter(profile, island)
+	if not allowed then
+		local gate = Islands.get(needs)
+		return { ok = false, err = ("Needs the %s saddle."):format(
+			(gate and gate.name) or tostring(needs)) }
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return { ok = false, err = "One moment." }
+	end
+	--[[ Already there. Throwing it again would be a no-op that reads as the
+	     button being broken, so it says so instead. ]]
+	local flat = (root.Position - island.center) * Vector3.new(1, 0, 1)
+	if flat.Magnitude <= island.radius and math.abs(root.Position.Y - island.center.Y) < 60 then
+		return { ok = false, err = "You are already on Plinko island." }
+	end
+
+	character:PivotTo(CFrame.new(
+		island.center + Vector3.new(0, 6, -island.radius * 0.45)))
+	return { ok = true }
+end
+
 function IslandService.start()
+	Net.get("UsePlinkoBall").OnServerInvoke = function(player)
+		local ok, result = pcall(IslandService.travelToPlinko, player)
+		if not ok then
+			warn("[IslandService] plinko ball failed:", result)
+			return { ok = false, err = "Something went wrong." }
+		end
+		return result
+	end
+
 	--[[ Each island built independently. A scoping mistake in the scatter code
 	     once threw partway through and took EVERY island down with it, leaving
 	     a sky with nothing in it and a stack trace that pointed at a tree. One

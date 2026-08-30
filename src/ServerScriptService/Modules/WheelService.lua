@@ -2,9 +2,11 @@
 	WheelService
 	The all-in wager. Everything you own, for a shot at a Secret.
 
-	THE ONLY SOURCE OF SECRETS. Rarity marks that tier wheelOnly and DropTable
-	skips it, so no tile reveal at any multiplier under any event can produce
-	one. Nothing else in the game can mint a Secret.
+	THE RELIABLE SOURCE OF SECRETS, and no longer the only one. Mines can roll
+	the tier -- at 1 in 8,200 drops un-rebirthed, and about 1 in 400 once a
+	third rebirth has opened it. This still pays out on 8% of spins, so the
+	wheel remains the route anyone takes on purpose and a Secret out of the
+	Mines stays a story rather than a plan.
 
 	WHAT "EVERYTHING" MEANS. All cash, and every brainrot -- placed on pads,
 	stored, no exceptions. It is taken BEFORE the roll, so a disconnect

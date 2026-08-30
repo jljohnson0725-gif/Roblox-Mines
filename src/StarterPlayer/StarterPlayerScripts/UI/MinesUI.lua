@@ -20,6 +20,7 @@ local Economy = require(Shared.Economy)
 local Format = require(Shared.Format)
 local Sounds = require(Shared.Sounds)
 local Events = require(Shared.Events)
+local Rebirth = require(Shared.Rebirth)
 
 local Theme = require(script.Parent.Theme)
 
@@ -441,17 +442,25 @@ function MinesUI.init(ctx)
 		Live event modifiers, so the odds panel tells the truth during an event
 		rather than showing the base curve. Same shared DropTable the server
 		rolls on, so the two can't disagree.
+
+		AND THE PLAYER'S OWN REBIRTH LUCK, through the same Rebirth.applyTo the
+		server rolls with. This panel used to quote un-rebirthed odds to a
+		player who had paid for better ones: it passed events only, and
+		tierOdds dropped depthBonus anyway, so rebirth was invisible here by two
+		separate routes. Rebirth's rewards are already a number inside a roll --
+		the one place they can be seen is this table.
 	]]
-	local function eventMods()
+	local function rollMods()
 		local snapshot = ctx.state.event
-		return snapshot and Events.modsFor(snapshot.activeId) or nil
+		local mods = snapshot and Events.modsFor(snapshot.activeId) or nil
+		return Rebirth.applyTo(mods, ctx.state.rebirths)
 	end
 
 	--[[ `bet` is not decoration here. The bet sets a FLOOR under drop depth, so
 	     the table this panel quotes changes as you move the bet box -- and a
 	     panel quoting odds the roll does not use is worse than no panel. ]]
 	local function renderOdds(multiplier, mines, stake)
-		local mods = eventMods()
+		local mods = rollMods()
 		local odds = DropTable.tierOdds(multiplier, mods, mines, stake)
 		local peak = 0
 		for _, p in pairs(odds) do

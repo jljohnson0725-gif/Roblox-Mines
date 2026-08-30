@@ -33,6 +33,7 @@
 
 local Shared = script.Parent
 local Config = require(Shared.Config)
+local Rarity = require(Shared.Rarity)
 
 local Rebirth = {}
 
@@ -45,6 +46,106 @@ end
 --[[ Bonus drop depth, permanently. Fed into DropTable alongside event mods. ]]
 function Rebirth.luck(rebirths)
 	return (rebirths or 0) * Config.RebirthLuckPerLevel
+end
+
+--[[
+	The tiers this many rebirths has OPENED, as weight multipliers for the
+	`tierMul` axis. Returns nil when nothing is open yet, so the caller can skip
+	building a mods table on the common path.
+
+	See Config.RebirthTierBoost for the numbers and why they are weights rather
+	than more depth.
+]]
+function Rebirth.tierBoost(rebirths)
+	local level = rebirths or 0
+	local out
+	for tier, entry in pairs(Config.RebirthTierBoost) do
+		if level >= entry.rebirth then
+			out = out or {}
+			out[tier] = entry.weight
+		end
+	end
+	return out
+end
+
+--[[
+	Fold this many rebirths' luck into an event mods bag, returning a NEW table
+	(or the original when there is nothing to add).
+
+	SHARED BECAUSE BOTH SIDES NEED THE SAME ANSWER. The server rolls with these
+	mods and the client's odds panel quotes them; if the two ever computed the
+	merge differently the panel would confidently display a table the roll does
+	not use. That already happened once -- see the note in DropTable.tierOdds --
+	so there is one implementation and both callers use it.
+
+	COMBINED WITH THE EVENT'S VALUES, NOT WRITTEN OVER THEM. An event carrying
+	its own depthBonus or tierMul must stack with the player's, in both
+	directions; whichever was written first would otherwise be lost.
+]]
+function Rebirth.applyTo(mods, rebirths)
+	local luck = Rebirth.luck(rebirths)
+	local boost = Rebirth.tierBoost(rebirths)
+	if luck <= 0 and not boost then
+		return mods
+	end
+
+	local merged = {}
+	for key, value in pairs(mods or {}) do
+		merged[key] = value
+	end
+	merged.depthBonus = (merged.depthBonus or 0) + luck
+
+	if boost then
+		local mul = {}
+		for tier, value in pairs(merged.tierMul or {}) do
+			mul[tier] = value
+		end
+		for tier, value in pairs(boost) do
+			mul[tier] = (mul[tier] or 1) * value
+		end
+		merged.tierMul = mul
+	end
+	return merged
+end
+
+--[[
+	The tiers this many rebirths has already opened, rarest first. For the UI:
+	naming them is the only way the player sees what rebirth bought.
+]]
+--[[ "Legendary" -> "Legendaries", not "Legendarys". Every tier name in Rarity
+     is either a plain noun or ends in -y, so the one rule covers all of them. ]]
+function Rebirth.plural(tier)
+	if tier:sub(-1) == "y" then
+		return tier:sub(1, -2) .. "ies"
+	end
+	return tier .. "s"
+end
+
+function Rebirth.opened(rebirths)
+	local level = rebirths or 0
+	local out = {}
+	for _, tier in ipairs(Rarity.Order) do
+		local entry = Config.RebirthTierBoost[tier]
+		if entry and level >= entry.rebirth then
+			table.insert(out, 1, Rebirth.plural(tier))
+		end
+	end
+	return out
+end
+
+--[[
+	What the NEXT rebirth opens, as a tier name, or nil if it opens nothing new.
+	The UI needs this: rebirth's rewards are otherwise invisible, and "you will
+	be luckier" has been the whole pitch for something a player cannot see.
+]]
+function Rebirth.opensAt(rebirths)
+	local level = (rebirths or 0) + 1
+	for tier, entry in pairs(Config.RebirthTierBoost) do
+		if entry.rebirth == level then
+			return tier
+		end
+	end
+	return nil
 end
 
 --[[

@@ -107,8 +107,17 @@ Sounds.Library = {
 	other people IS the reward at that rarity.
 ]]
 Sounds.Spectacle = {
-	Common = { level = 0 },
-	Uncommon = { level = 0 },
+	--[[ ZEROED, NOT EMPTY, and the difference is a crash. These two were
+	     `{ level = 0 }`, and every caller that reads a magnitude off a spec --
+	     Fx.announce does `spec.flash * 0.3` -- threw "arithmetic on nil" the
+	     moment one reached it. spectacleFor() also FALLS BACK to Common for an
+	     unknown tier, so the fallback was the least safe entry in the table.
+
+	     level 0 still means "no spectacle"; callers gate on that. The numbers
+	     are here so that a caller which does not gate gets a silent nothing
+	     instead of an error. ]]
+	Common = { level = 0, shake = 0, flash = 0, confetti = 0, stingerSpeed = 1, hold = 0 },
+	Uncommon = { level = 0, shake = 0, flash = 0, confetti = 0, stingerSpeed = 1, hold = 0 },
 	Rare = {
 		level = 1,
 		shake = 0.20,

@@ -68,7 +68,6 @@ local Beacon = require(UI.Beacon)
 local Friend = require(UI.Friend)
 local Cutscene = require(UI.Cutscene)
 local Intro = require(UI.Intro)
-local Flight = require(UI.Flight)
 local Tutorial = require(UI.Tutorial)
 local RebirthUI = require(UI.RebirthUI)
 local Sky = require(UI.Sky)
@@ -102,7 +101,7 @@ local state = {
 	income = 0,
 	stats = {},
 	upgrades = {},
-	jetpack = false, -- owned once, then forever; gates the F key
+	plinkoball = false, -- owned once, then forever; puts PLINKO on the rail
 	whistle = false, -- owned once; puts the RIDE button on the rail
 	boosts = {}, -- [itemId] = seconds left WHEN IT ARRIVED; see boostsAt below
 	plinkoStake = nil, -- the Plinko dial; nil means the minimum
@@ -143,7 +142,7 @@ local ctx = {
 		BuyItem = Net.get("BuyItem"),
 		DropBall = Net.get("DropBall"),
 		DoRebirth = Net.get("DoRebirth"),
-		SetFlying = Net.get("SetFlying"),
+		UsePlinkoBall = Net.get("UsePlinkoBall"),
 		SummonMount = Net.get("SummonMount"),
 		AskSummon = Net.get("AskSummon"),
 		FinishTour = Net.get("FinishTour"),
@@ -226,7 +225,6 @@ end)
 Tutorial.init(ctx)
 -- Not a panel: it poses characters and drives flight, so it never enters the
 -- chrome-hiding set below.
-Flight.init(ctx)
 -- Lights this client from its own altitude: bright street, sunset islands.
 Sky.init(ctx)
 --[[ After Fx: the saddle celebration goes through ctx.fx, which Fx.init
@@ -393,6 +391,31 @@ end
 	that was never going to be honoured, so the refusal arrives before the panel
 	does. MountService.canSummon is the single list both sides read.
 ]]
+--[[
+	Throwing the ball. One press, no panel: unlike the ride there is nothing to
+	choose -- it goes to Plinko or it refuses, and a chooser with one entry is
+	a dialog box asking you to confirm what you just clicked.
+
+	Wrapped, because the server can be mid-restart and an InvokeServer that
+	throws would otherwise take the rail handler down with it and leave the
+	button dead for the rest of the session.
+]]
+hud.onPlinkoball = function()
+	local ok, verdict = pcall(function()
+		return ctx.remotes.UsePlinkoBall:InvokeServer()
+	end)
+	if not ok then
+		warn("[ClientMain] UsePlinkoBall failed: " .. tostring(verdict))
+		hud.notify("Something went wrong — try again.", "bad")
+		return
+	end
+	if not verdict or not verdict.ok then
+		hud.notify((verdict and verdict.err) or "Not right now.", "info")
+		return
+	end
+	Sounds.play("uiClick")
+end
+
 hud.onSummon = function()
 	if summonUI.isVisible() then
 		Sounds.play("uiClose")

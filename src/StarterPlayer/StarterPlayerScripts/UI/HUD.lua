@@ -281,6 +281,12 @@ function HUD.init(ctx)
 		     and a permanent button that always refused would be exactly the dead
 		     end the rule above rejects. The ride used to be called from a perch
 		     on the street, which is what the whistle replaced. ]]
+		--[[ Both of these appear mid-game, once the thing they open has been
+		     bought. Before the purchase there is nothing to open, and a
+		     permanent button that always refused would be exactly the dead end
+		     the rule above rejects. ]]
+		{ id = "plinkoball", glyph = "🔮", label = "PLINKO", color = Color3.fromRGB(120, 200, 255),
+			owned = function() return ctx.state.plinkoball == true end },
 		{ id = "summon", glyph = "🐎", label = "RIDE", color = Color3.fromRGB(190, 150, 255),
 			owned = function() return ctx.state.whistle == true end },
 	}

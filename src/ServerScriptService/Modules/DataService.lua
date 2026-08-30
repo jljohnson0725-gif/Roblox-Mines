@@ -61,7 +61,12 @@ local function newProfile()
 		]]
 		index = {},
 		redeemed = {}, -- [CODE] = true; codes are one use each
-		jetpack = false, -- bought once at the street shop, then owned forever
+		plinkoball = false, -- bought once at the street shop, then owned forever
+		--[[ Both vanity, both permanent. `cologne` false means the stink aura
+		     is ON -- the default state is the smelly one, so a fresh profile
+		     wants exactly this and no migration. ]]
+		cologne = false,
+		peptides = false,
 		--[[ The Brainrot Whistle. Calls a ride from anywhere; does NOT open the
 		     racing island, which stays behind the Plinko seal. ]]
 		whistle = false,
@@ -122,7 +127,9 @@ local function reconcile(profile)
 	if type(profile.redeemed) ~= "table" then
 		profile.redeemed = {}
 	end
-	profile.jetpack = profile.jetpack == true
+	profile.plinkoball = profile.plinkoball == true
+	profile.cologne = profile.cologne == true
+	profile.peptides = profile.peptides == true
 	profile.whistle = profile.whistle == true
 	profile.plinkoStake = tonumber(profile.plinkoStake) or nil
 	profile.wheelStake = tonumber(profile.wheelStake) or nil

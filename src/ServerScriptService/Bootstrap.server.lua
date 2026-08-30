@@ -19,13 +19,13 @@ local DataService = require(Modules.DataService)
 local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
+local AppearanceService = require(Modules.AppearanceService)
 local MinesLandmark = require(Modules.MinesLandmark)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
 local ItemService = require(Modules.ItemService)
 local WheelService = require(Modules.WheelService)
 local CodeService = require(Modules.CodeService)
-local JetpackService = require(Modules.JetpackService)
 local IslandService = require(Modules.IslandService)
 local PlinkoService = require(Modules.PlinkoService)
 --[[ Required for its side effect and nothing else: MountService registers
@@ -89,7 +89,6 @@ CodeService.start()
 
 -- The launch pad sells the sky. Built last because it raycasts for its ground,
 -- so everything that reshapes the terrain has to be finished first.
-JetpackService.start()
 
 
 -- The sky. Islands are free-standing geometry with nothing under them, so
@@ -127,6 +126,12 @@ local function onCharacterAdded(player, character)
 	-- One frame for the character to finish assembling before we move it.
 	task.defer(function()
 		PlotService.spawnAt(player, character)
+		--[[ AFTER the move, and inside the same defer, because both want a
+		     fully assembled character: the aura hangs off the torso and the
+		     chad head off the head, and neither exists on the first frame.
+		     Roblox rebuilds the character on every death, so this has to run
+		     per spawn rather than once at purchase. ]]
+		AppearanceService.apply(player, character)
 	end)
 end
 

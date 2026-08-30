@@ -4,7 +4,7 @@
 
 	HE IS CLIENT-SIDE, one per player, standing outside the player's OWN
 	apartment. A single shared NPC would have to pick one base and would be
-	loitering outside a stranger's flat for everyone else. FriendService fetches
+	loitering outside a stranger's apartment for everyone else. FriendService fetches
 	the rig into ReplicatedStorage; this clones it.
 
 	WHAT HE IS FOR, and what he deliberately is not. Tutorial gates the two
@@ -24,13 +24,22 @@
 
 	THE JOKE IS LOAD-BEARING. He is in a happy relationship with a body pillow
 	and feels genuinely sorry for you, which is why he keeps giving advice you
-	did not ask for. It also quietly sets up the ending: he is the proof that
-	the glow-up is not actually about the girlfriend.
+	did not ask for.
+
+	AND HE OPENS AND CLOSES THE ARC. His first speech names the three things
+	wrong with you -- hideous, broke, stinking -- and those are not chosen for
+	the rhythm: they are the cologne, the loop, and the peptides, which is the
+	whole shop in one insult. `stink` and `face` nag through the middle of it,
+	and `adam` pays it off once both are bought, where he makes the point the
+	whole bit has been building to: the glow-up was never about the girlfriend.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared.Config)
 
 local Theme = require(script.Parent.Theme)
 local Cutscene = require(script.Parent.Cutscene)
@@ -63,11 +72,39 @@ local TOPICS = {
 		end,
 		lines = {
 			"Hey, neighbour!",
-			"Heard you got dumped. Sorry, mate. Plenty of fish in the sea, though.",
-			"Well — not for me. I've got my Puro Pillow. She's perfect.",
+			"Heard you got dumped. Sorry about that. Plenty of fish in the sea.",
+			--[[ THE THESIS, and it is three items long on purpose. Hideous,
+			     broke and stinking are not insults picked for the rhythm --
+			     they are the three things the game sells a fix for, in the
+			     order you can afford them. Everything he says afterwards is
+			     him working down this list. ]]
+			"Well — who can blame her? You're hideous, broke, and absolutely stink.",
+			"I say that with love. Nobody else is going to.",
+			"Me, I'm fine. I've got my Puro Pillow. She's perfect.",
 			"But you could win her back. If you became a <b>true Adam</b>.",
-			"Takes money and looks, that does. Try betting — quickest way to get rich, if you're lucky.",
-			"Get enough and you can buy peptides. Sort that mug of yours right out.",
+			"Three problems, three fixes. Money you go and earn. The shop sells the other two.",
+		},
+	},
+	{
+		--[[
+			THE ENDING, and the only other topic gated on having HEARD it.
+
+			Once both vanity items are bought there is nothing left for him to
+			nag about, and a neighbour who repeats his own finale forever stops
+			being a character. So it lands once and then falls through to the
+			ordinary topics below -- which is also the joke: after the big
+			speech he goes straight back to explaining the desk.
+		]]
+		id = "adam",
+		when = function(state, seen)
+			return not seen.adam
+				and state.cologne == true
+				and state.peptides == true
+		end,
+		lines = {
+			"Look at you. Rich, clean, and that jawline.",
+			"You could walk right back over there tomorrow.",
+			"Or — and I'm just saying this as your neighbour — you could stay here. With the guys. And me. And Puro.",
 		},
 	},
 	{
@@ -89,7 +126,7 @@ local TOPICS = {
 		lines = {
 			"Word of warning, friend to friend.",
 			"Brainrots you find mid-run aren't yours yet. Hit a mine and they go with the cash.",
-			"Cash out to keep them. I've watched people lose a Secret to one extra click. I made tea about it.",
+			"Cash out to keep them. I've watched someone lose a Secret to one extra click. I had to sit down for a bit.",
 		},
 	},
 	{
@@ -104,12 +141,43 @@ local TOPICS = {
 		},
 	},
 	{
+		--[[ Cologne bought, face still to go. Above `stink` because the two are
+		     mutually exclusive and this is the later half of the same arc. ]]
+		id = "face",
+		when = function(state)
+			return state.cologne == true and state.peptides ~= true
+		end,
+		lines = {
+			"Better! Genuinely. I can stand closer to you now.",
+			"That's one down. The face is the expensive one.",
+			"Peptides. A billion. You'll look like a completely different man, which is the idea.",
+		},
+	},
+	{
+		--[[
+			HALF THE PRICE, NOT ZERO. He only brings the smell up once doing
+			something about it is in sight -- nagging a player about a five
+			hundred million purchase while they are worth four thousand is not
+			advice, it is just being told you smell for six hours.
+		]]
+		id = "stink",
+		when = function(state)
+			return state.cologne ~= true
+				and (state.money or 0) >= Config.CologneCost * 0.5
+		end,
+		lines = {
+			"Not to bring it up again, but you do still smell.",
+			"There's a cologne in the shop. Half a billion. I know.",
+			"Puro says money can't buy happiness. Puro is a pillow. Buy the cologne.",
+		},
+	},
+	{
 		id = "desk",
 		when = function(state)
 			return (state.pending or 0) > 0
 		end,
 		lines = {
-			"Your lads are earning. See the ring round your desk?",
+			"Your guys are earning. See the ring around your desk?",
 			"Walk into it. All of it banks at once — you don't collect them one at a time like some animal.",
 			"I sit at mine a lot. Not for the money. It's just where the pillow is.",
 		},
@@ -122,16 +190,16 @@ local TOPICS = {
 		lines = {
 			"Eight pads. Look at you. Genuinely, I'm proud, and slightly threatened.",
 			"Rebirth wipes the money and the collection but keeps your luck — permanently.",
-			"It also redecorates the flat. Mine's still the starter one. Puro likes the concrete.",
+			"It also redecorates the apartment. Mine's still the starter one. Puro likes the concrete.",
 		},
 	},
 	{
 		id = "sky",
 		when = function(state)
-			return (state.jetpack == true)
+			return (state.plinkoball == true)
 		end,
 		lines = {
-			"You bought the jetpack. So you've seen there's stuff up there.",
+			"You bought the ball. So you've seen there's stuff up there.",
 			"Plinko first. It drops saddle pieces, and a saddle is what gets you to the next one.",
 			"I don't go up. Puro gets airsick. She's never said so. I just know.",
 		},
@@ -143,7 +211,7 @@ local TOPICS = {
 		end,
 		lines = {
 			"Still here. Still winning, relationship-wise.",
-			"You're doing well, you know. The flat's looking less like a crime scene.",
+			"You're doing well, you know. The place is looking less like a crime scene.",
 			"If you ever want to talk about her — don't. Buy another brainrot instead.",
 		},
 	},
@@ -181,7 +249,7 @@ local TOUR = {
 		lines = {
 			"Right — since you've got money now, let me show you where it goes.",
 			"That's the shop. Upgrades on one tab, items on the other.",
-			"Upgrades are forever. Items you spend and they're gone — but the jetpack's in there, and you'll want that.",
+			"Upgrades make you better. Items make you <b>you</b> — cologne, peptides, a ball that takes you to Plinko. All permanent.",
 		},
 	},
 	{
@@ -194,7 +262,7 @@ local TOUR = {
 		aim = Vector3.new(0, 4, 0),
 		lines = {
 			"The wheel. You stake everything you're carrying, all at once.",
-			"It's the only place a <b>Secret</b> comes from. Nowhere else. Ever.",
+			"Best odds on a <b>Secret</b> anywhere — eight percent. The Mines can drop one, but you'll be waiting.",
 			"I've never dared. You look like you might.",
 		},
 	},
@@ -211,9 +279,9 @@ local TOUR = {
 		aim = Vector3.new(0, 20, 0),
 		lines = {
 			"And that. Up there.",
-			"Plinko. Drop a ball, watch it fall, hope. Buy the jetpack and go and see.",
+			"Plinko. Drop a ball, watch it fall, hope. Buy the ball from the shop and go and see.",
 			"Every good bin gives you a saddle piece. Five makes a saddle.",
-			"Then you can ride to the racing island — higher than any jetpack goes.",
+			"Then you can ride to the racing island — the ball only ever goes to Plinko.",
 		},
 	},
 }

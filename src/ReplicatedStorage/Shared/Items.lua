@@ -2,7 +2,11 @@
 	Items
 	What the street shop sells that isn't an upgrade level.
 
-	Three kinds, and the difference is only where the purchase lands:
+	Three kinds, and the difference is only where the purchase lands. EVERY ITEM
+	IS CURRENTLY AN UNLOCK -- the boost and instant machinery is kept because it
+	is generic and costs nothing idle (every helper below walks Items.List, so
+	with no boost in the list they return 0 and 1), not because anything uses
+	it. Energy Drink, Double Rent and Vault Sweep were the three that did.
 
 	  boost   -- a stretch of time. Stored as an EXPIRY, never as a remaining
 	             duration, so logging out doesn't bank the minutes you weren't
@@ -26,58 +30,64 @@ local Config = require(script.Parent.Config)
 local Items = {}
 
 --[[ Ten minutes is deliberately short enough that a boost is something you
-     spend and then use, rather than something you buy and forget you have. ]]
-local SHIFT = 10 * 60
+     spend and then use, rather than something you buy and forget you have.
+     Unreferenced while the shop sells no boosts; kept with the machinery. ]]
 Items.MaxStack = 4 * 3600
 
 Items.List = {
 	{
-		id = "energy",
-		kind = "boost",
-		name = "Energy Drink",
-		blurb = "Move like the rent is due",
-		color = Color3.fromRGB(120, 235, 150),
-		cost = 25000,
-		duration = SHIFT,
-		--[[ +12 on top of Fast Feet, which runs 25 to 43. Big enough to feel
-		     from the first sip; temporary, so it never makes the upgrade
-		     pointless to buy. ]]
-		walkBonus = 12,
-		effect = "+12 walk speed",
-	},
-	{
-		id = "doublerent",
-		kind = "boost",
-		name = "Double Rent",
-		blurb = "Every brainrot pays twice over",
-		color = Color3.fromRGB(255, 190, 60),
-		cost = 150000,
-		duration = SHIFT,
-		incomeMultiplier = 2,
-		effect = "x2 income",
-	},
-	{
-		id = "sweep",
-		kind = "instant",
-		name = "Vault Sweep",
-		blurb = "Bank every pile without the walk",
-		color = Color3.fromRGB(120, 132, 255),
-		--[[ Flat priced, though what it collects isn't. That's the intended
-		     shape: it buys back a walk home, so it's worth it in the mid game
-		     and beneath notice later. It can never print money -- everything it
-		     banks is money you would have collected on foot anyway. ]]
-		cost = 60000,
-		effect = "collects your whole base",
-	},
-	{
-		id = "jetpack",
+		--[[
+			THE STINK IS THE DEFAULT, so this is the only row in the shop that
+			sells a SUBTRACTION. You spawn with the aura on; five hundred
+			million takes it off. Nothing else about the character changes.
+
+			Which makes it the one purchase whose effect other players see
+			before you do -- the aura is server-made and replicated, so it has
+			always been on for everyone but you. See AppearanceService.
+		]]
+		id = "cologne",
 		kind = "unlock",
-		flag = "jetpack",
-		name = "Jetpack",
-		blurb = "Press F and leave the ground",
+		flag = "cologne",
+		name = "Cologne",
+		blurb = "1st step to winning her back",
+		color = Color3.fromRGB(150, 205, 90),
+		cost = Config.CologneCost,
+		effect = "yours for good -- clears the stink",
+	},
+	{
+		--[[
+			Replaces the head outright: the real one goes invisible and the chad
+			head is welded on in its place. Hair and hats go with it, because a
+			ponytail through the jaw is not the joke.
+		]]
+		id = "peptides",
+		kind = "unlock",
+		flag = "peptides",
+		name = "Peptides",
+		blurb = "Fix your face",
+		color = Color3.fromRGB(236, 232, 224),
+		cost = Config.PeptidesCost,
+		effect = "yours for good -- new head",
+	},
+	{
+		--[[
+			THE BALL REPLACED THE JETPACK, and it is a different kind of thing.
+
+			The jetpack was a traversal mechanic: you bought flight and then
+			flew wherever you liked, which meant every island's access was
+			really a height check. The ball is a DESTINATION -- one press and
+			you are on Plinko island. Nothing about it lets you go anywhere
+			else, so the islands are now reached by the thing that goes to
+			them: the ball to Plinko, the whistle to Racing.
+		]]
+		id = "plinkoball",
+		kind = "unlock",
+		flag = "plinkoball",
+		name = "Plinko Ball",
+		blurb = "Keep it. Throw it. Be there.",
 		color = Color3.fromRGB(120, 200, 255),
-		cost = Config.JetpackCost,
-		effect = "yours for good",
+		cost = Config.PlinkoBallCost,
+		effect = "yours for good -- takes you to Plinko",
 	},
 	{
 		id = "whistle",

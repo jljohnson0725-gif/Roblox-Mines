@@ -40,6 +40,10 @@ local FUNCTIONS = {
 	"DuelRespond", -- yes / no to an offer to make this fight a duel
 	"DuelWager", -- put a stake up, deny theirs, or walk away
 	"DuelBet", -- a spectator backs one of the two
+	--[[ A RemoteFunction, not an event: the answer matters. "You do not own a
+	     ball" and "you are already there" both need saying, and a teleport that
+	     silently does nothing is indistinguishable from a broken button. ]]
+	"UsePlinkoBall",
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 	"ReplayIntro", -- run the cold open again on demand; does not clear the seen flag
 }
@@ -50,10 +54,6 @@ local FUNCTIONS = {
 	SetFlying, which is announcing something rather than asking for it.
 ]]
 local EVENTS = {
-	--[[ client -> server. The client owns its own character's physics, so it
-	     flies itself and merely reports it; the server decides whether that is
-	     allowed and publishes the pose attribute. ]]
-	"SetFlying",
 	--[[ client -> server. The tour runs entirely on the client -- it is a
 	     camera and a dialogue card -- so the server only needs telling that it
 	     finished, to latch the flag that stops it being offered again. ]]
