@@ -70,6 +70,7 @@ local combo = {}
 	inventories, and cannot be made to move an item by any code path in here.
 
 	  onRetaliation(a, b)      -- b just hit a back inside the memory window
+	  onStreetFight(a, b)      -- these two just started a fresh scrap
 	  canFight(attacker, dst)  -- may this pair exchange blows right now?
 
 	canFight takes BOTH players and not one. The first version asked "is this
@@ -80,6 +81,10 @@ local combo = {}
 	whether these two are in the SAME one.
 ]]
 CombatService.onRetaliation = nil
+--[[ A HOOK RATHER THAN A require(DataService), for the reason the note above
+     gives: this file knows nothing about profiles and is worth keeping that
+     way. The counter lives with the other combat bookkeeping in DuelService. ]]
+CombatService.onStreetFight = nil
 CombatService.canFight = nil
 
 local function humanoidOf(player)
@@ -247,7 +252,17 @@ function CombatService.swing(attacker)
 		like a retaliation against itself.
 	]]
 	local isReply = struckRecently(victim, attacker)
+	--[[ A FRESH SCRAP is neither of them having struck the other inside the
+	     window -- so it counts the encounter, not the punch, and a thirty-blow
+	     brawl is one fight rather than thirty. Asked BEFORE remember() for the
+	     same reason isReply is: recording first makes every opening punch look
+	     like a continuation of itself. ]]
+	local fresh = not isReply and not struckRecently(attacker, victim)
 	remember(attacker, victim)
+
+	if fresh and CombatService.onStreetFight then
+		CombatService.onStreetFight(attacker, victim)
+	end
 
 	if isReply and CombatService.onRetaliation then
 		--[[ The one who was hit FIRST is `a`. It decides nothing about the

@@ -100,6 +100,24 @@ local function newProfile()
 			busts = 0,
 			bestMultiplier = 1,
 			bestDrop = nil,
+			--[[
+				COMBAT. `fights` is street fights and has no win column, because
+				a street fight has no winner -- it stakes nothing and never
+				resolves, it just happens. Counting wins on it would be
+				inventing an outcome the mechanic does not have.
+
+				Duels do resolve, and in THREE ways, not two: Duel.winner
+				returns nil when the two health fractions land within 1e-4 of
+				each other, which two players who never connect a punch reach
+				by simply standing there for thirty seconds. So wins + losses
+				is not the number of duels fought, and a draw column is the
+				honest way to say so rather than quietly folding them into
+				losses.
+			]]
+			fights = 0,
+			duelWins = 0,
+			duelLosses = 0,
+			duelDraws = 0,
 		},
 	}
 end

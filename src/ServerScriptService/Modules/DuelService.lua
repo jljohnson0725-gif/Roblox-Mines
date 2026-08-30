@@ -214,6 +214,19 @@ end
 	ones that arrive twice, and a duel that half-closed would leave two players
 	locked out of ever duelling again.
 ]]
+--[[ One place that touches profile.stats, so a field added here cannot be
+     incremented in one spot and forgotten in another. `or 0` because a save
+     written before these existed reconciles on LOAD -- a profile already in
+     memory when the server updated would not have them. ]]
+local function bump(player, key)
+	local profile = DataService.get(player)
+	if not profile or type(profile.stats) ~= "table" then
+		return
+	end
+	profile.stats[key] = (profile.stats[key] or 0) + 1
+	PlayerState.push(player)
+end
+
 local function close(duel, reason, refundBets)
 	if duel.closed then
 		return
@@ -609,6 +622,19 @@ function DuelService.resolve(duel)
 	local winner = winnerKey == "a" and duel.a or (winnerKey == "b" and duel.b or nil)
 	local loser = winner and otherOf(duel, winner) or nil
 
+	--[[ RECORDED BEFORE THE STAKE MOVES, deliberately. The transfer below can
+	     fail -- the loser may have sold the brainrot they put up -- and that
+	     path returns early. The fight still happened and was still won, so a
+	     record that only counted duels whose prize survived would be a record
+	     of successful transfers rather than of duels. ]]
+	if winner and loser then
+		bump(winner, "duelWins")
+		bump(loser, "duelLosses")
+	else
+		bump(duel.a, "duelDraws")
+		bump(duel.b, "duelDraws")
+	end
+
 	local movedText = nil
 	if winner and loser then
 		local ok, tiers = DuelService.payStake(loser, winner, duel.stakes[loser.UserId] or {})
@@ -789,6 +815,15 @@ function DuelService.start()
 
 	--[[ One direction only: combat calls into duels, never the reverse. See
 	     CombatService's header for why that matters. ]]
+	--[[ Street fights are counted here rather than in CombatService so that
+	     file keeps knowing nothing about profiles. Both sides get the count:
+	     it takes two to have a scrap, and the one who was swung at was in it
+	     every bit as much as the one who swung. ]]
+	CombatService.onStreetFight = function(a, b)
+		bump(a, "fights")
+		bump(b, "fights")
+	end
+
 	CombatService.onRetaliation = function(a, b)
 		local ok, err = pcall(DuelService.offer, a, b)
 		if not ok then
