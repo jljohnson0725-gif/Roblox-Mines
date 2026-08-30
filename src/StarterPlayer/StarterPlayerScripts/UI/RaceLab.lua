@@ -35,14 +35,42 @@ function RaceLab.init(ctx)
 
 	local track = RaceSim.Tracks[1].id
 	local opponent = RaceSim.Opponents[1].id
-	local speed, endurance = 11, 11
+	--[[
+		POOL AND SPEED, with endurance derived. Two independent 0..40 counters
+		meant moving one point took two presses -- Speed down, then Endurance up
+		-- which is the opposite of the "one pool, one slider" the model is
+		built around. There is one number to drag now and the other follows.
+	]]
+	--[[
+		Seeded from the profile, but NOT AT INIT -- ClientMain builds every UI
+		module before it pulls the first state, so ctx.state.runner is still nil
+		here and reading it now would silently give everyone the default forever.
+		The saved split is adopted below, the first time state actually arrives.
+	]]
+	local pool = 22
+	local speed = 11
+	local endurance = pool - speed
+	local adopted = false
 	local racing = false
+
+	--[[ Debounced: the +/- buttons fire fast and the server does not need to
+	     hear about every intermediate value, only where you stopped. ]]
+	local saveAt = 0
+	local function save()
+		saveAt = os.clock()
+		local at = saveAt
+		task.delay(0.4, function()
+			if saveAt == at then
+				Net.get("SetRacer"):FireServer(pool, speed)
+			end
+		end)
+	end
 
 	local card = Theme.frame({
 		parent = ctx.gui,
 		name = "RaceLab",
 		color = Theme.color.panel,
-		size = UDim2.fromOffset(430, 396),
+		size = UDim2.fromOffset(430, 430),
 		position = UDim2.new(0.5, 0, 0.5, 0),
 		anchor = Vector2.new(0.5, 0.5),
 		radius = 14,
@@ -103,25 +131,31 @@ function RaceLab.init(ctx)
 	Theme.label({ parent = card, size = UDim2.new(1, 0, 0, 14), order = 8,
 		text = "YOUR RUNNER", textSize = 11, color = Theme.color.dim })
 	local statRow = row(9, 34)
-	local speedDown = Theme.button({ parent = statRow, size = UDim2.fromOffset(30, 34), order = 1, text = "-" })
-	local speedLabel = Theme.label({ parent = statRow, size = UDim2.fromOffset(150, 34), order = 2,
-		text = "", textSize = 13, color = Color3.fromRGB(120, 220, 255) })
-	local speedUp = Theme.button({ parent = statRow, size = UDim2.fromOffset(30, 34), order = 3, text = "+" })
-	local endDown = Theme.button({ parent = statRow, size = UDim2.fromOffset(30, 34), order = 4, text = "-" })
-	local endLabel = Theme.label({ parent = statRow, size = UDim2.fromOffset(150, 34), order = 5,
-		text = "", textSize = 13, color = Color3.fromRGB(255, 190, 120) })
-	local endUp = Theme.button({ parent = statRow, size = UDim2.fromOffset(30, 34), order = 6, text = "+" })
+	--[[ One control moves the split: a point out of Endurance is a point into
+	     Speed, which is what the pool actually means. ]]
+	local toEnd = Theme.button({ parent = statRow, size = UDim2.fromOffset(38, 34), order = 1, text = "<" })
+	local splitLabel = Theme.label({ parent = statRow, size = UDim2.fromOffset(230, 34), order = 2,
+		text = "", textSize = 13, color = Theme.color.text })
+	local toSpeed = Theme.button({ parent = statRow, size = UDim2.fromOffset(38, 34), order = 3, text = ">" })
+	local reset = Theme.button({ parent = statRow, size = UDim2.fromOffset(74, 34), order = 4,
+		text = "RESET", textSize = 11 })
+
+	local poolRow = row(10, 28)
+	local poolDown = Theme.button({ parent = poolRow, size = UDim2.fromOffset(38, 28), order = 1, text = "-" })
+	local poolLabel = Theme.label({ parent = poolRow, size = UDim2.fromOffset(230, 28), order = 2,
+		text = "", textSize = 12, color = Theme.color.dim })
+	local poolUp = Theme.button({ parent = poolRow, size = UDim2.fromOffset(38, 28), order = 3, text = "+" })
 
 	local estimate = Theme.label({
-		parent = card, size = UDim2.new(1, 0, 0, 34), order = 10,
+		parent = card, size = UDim2.new(1, 0, 0, 34), order = 11,
 		text = "", textSize = 12, color = Theme.color.text,
 	})
 	local go = Theme.button({
-		parent = card, size = UDim2.new(1, 0, 0, 36), order = 11,
+		parent = card, size = UDim2.new(1, 0, 0, 36), order = 12,
 		text = "RACE", textSize = 15, color = Theme.color.good,
 	})
 	local result = Theme.label({
-		parent = card, size = UDim2.new(1, 0, 0, 44), order = 12,
+		parent = card, size = UDim2.new(1, 0, 0, 44), order = 13,
 		text = "", textSize = 12, color = Theme.color.faint,
 	})
 	result.TextWrapped = true
@@ -136,38 +170,43 @@ function RaceLab.init(ctx)
 		local o = RaceSim.OpponentById[opponent]
 		tell.Text = o and ("pool %d  ·  %s"):format(o.pool, o.tell) or ""
 
-		speedLabel.Text = ("SPEED  %d"):format(speed)
-		endLabel.Text = ("ENDURANCE  %d"):format(endurance)
+		splitLabel.Text = ("SPEED %d      ENDURANCE %d"):format(speed, endurance)
+		poolLabel.Text = ("POOL %d"):format(pool)
 
 		local t = RaceSim.track(track)
 		local mine = RaceSim.predict(speed, endurance, track)
 		--[[ What the pool COULD do here, so a bad split is visible as a bad
 		     split rather than as a slow runner. ]]
-		local bs, be, bt = RaceSim.bestSplit(speed + endurance, track)
+		local bs, be, bt = RaceSim.bestSplit(pool, track)
 		estimate.Text = ("%s · %d studs%s\nyou: %.1fs      best possible at pool %d: %.1fs (%d/%d)")
 			:format(t.name, t.length,
 				t.drain > 1 and (" · uphill"):format() or "",
-				mine, speed + endurance, bt, bs, be)
+				mine, pool, bt, bs, be)
 		go.Text = racing and "RUNNING..." or "RACE"
 	end
 
-	local function clampSplit()
-		speed = math.clamp(speed, 0, RaceSim.MaxPool)
-		endurance = math.clamp(endurance, 0, RaceSim.MaxPool)
-		if speed + endurance > RaceSim.MaxPool then
-			endurance = RaceSim.MaxPool - speed
-		end
+	local function settle()
+		--[[ Any deliberate change wins over a late-arriving profile: adopting
+		     after the player has started dragging would yank it back. ]]
+		adopted = true
+		pool = math.clamp(pool, 1, RaceSim.MaxPool)
+		speed = math.clamp(speed, 0, pool)
+		endurance = pool - speed
+		render()
+		save()
 	end
 
-	local function bump(which, by)
-		if which == "s" then speed += by else endurance += by end
-		clampSplit()
-		render()
-	end
-	speedUp.Activated:Connect(function() bump("s", 1) end)
-	speedDown.Activated:Connect(function() bump("s", -1) end)
-	endUp.Activated:Connect(function() bump("e", 1) end)
-	endDown.Activated:Connect(function() bump("e", -1) end)
+	toSpeed.Activated:Connect(function() speed += 1 settle() end)
+	toEnd.Activated:Connect(function() speed -= 1 settle() end)
+	poolUp.Activated:Connect(function() pool += 1 settle() end)
+	poolDown.Activated:Connect(function()
+		pool -= 1
+		--[[ Shrinking the pool takes the point off Speed first, so the split
+		     never silently inverts on the way down. ]]
+		speed = math.min(speed, math.max(pool, 0))
+		settle()
+	end)
+	reset.Activated:Connect(function() speed = math.floor(pool / 2) settle() end)
 
 	for id, b in pairs(trackButtons) do
 		b.Activated:Connect(function() track = id render() end)
@@ -201,6 +240,22 @@ function RaceLab.init(ctx)
 				result.TextColor3 = Theme.color.faint
 			end
 		end)
+	end)
+
+	--[[ Adopt the saved split the first time the server tells us what it is. ]]
+	ctx.onState(function()
+		if adopted then
+			return
+		end
+		local saved = ctx.state.runner
+		if type(saved) ~= "table" then
+			return
+		end
+		adopted = true
+		pool = math.clamp(math.floor(saved.pool or pool), 1, RaceSim.MaxPool)
+		speed = math.clamp(math.floor(saved.speed or speed), 0, pool)
+		endurance = pool - speed
+		render()
 	end)
 
 	--[[ The finish, pushed by the server whenever it happens. ]]

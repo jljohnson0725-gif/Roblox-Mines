@@ -321,6 +321,26 @@ end
 ]]
 function RaceSandbox.start()
 	local Net = require(Shared.Net)
+	local DataService = require(script.Parent.DataService)
+
+	--[[
+		Remember the split. Stored as pool + speed with endurance DERIVED, so
+		the two can never be saved out of step with each other.
+
+		Fire-and-forget, and deliberately not validated against anything but its
+		own bounds: this is a bench, the pool is a dial the player is meant to
+		drag around, and the race clamps what it is handed anyway.
+	]]
+	Net.get("SetRacer").OnServerEvent:Connect(function(player, pool, speed)
+		local profile = DataService.get(player)
+		if not profile then
+			return
+		end
+		pool = math.clamp(math.floor(tonumber(pool) or 22), 1, RaceSim.MaxPool)
+		speed = math.clamp(math.floor(tonumber(speed) or 0), 0, pool)
+		profile.runner = { pool = pool, speed = speed }
+	end)
+
 	Net.get("RaceTest").OnServerInvoke = function(player, speed, endurance, trackId, opponentId)
 		speed = math.clamp(math.floor(tonumber(speed) or 0), 0, RaceSim.MaxPool)
 		endurance = math.clamp(math.floor(tonumber(endurance) or 0), 0, RaceSim.MaxPool)

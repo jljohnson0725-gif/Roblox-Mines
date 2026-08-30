@@ -68,6 +68,12 @@ local function newProfile()
 		--[[ Extra lives IN HAND, not a level. Spent one per survived mine and
 		     bought back at the shop; see Shared/Items. ]]
 		lives = 0,
+		--[[
+			YOUR RUNNER. Stored as POOL AND SPEED, with endurance derived, so
+			the invariant that they sum to the pool cannot be broken by a bad
+			write -- there is no second number to disagree with the first.
+		]]
+		runner = { pool = 22, speed = 11 },
 		cologne = false,
 		peptides = false,
 		--[[ The Brainrot Whistle. Calls a ride from anywhere; does NOT open the
@@ -161,6 +167,13 @@ local function reconcile(profile)
 		profile.lives = math.clamp(profile.lives + profile.upgrades.lives, 0, Config.MaxExtraLives)
 		profile.upgrades.lives = nil
 	end
+	--[[ Rebuilt rather than trusted: a pool above the ceiling or a speed above
+	     the pool would hand the race a runner the panel cannot represent. ]]
+	if type(profile.runner) ~= "table" then
+		profile.runner = { pool = 22, speed = 11 }
+	end
+	profile.runner.pool = math.clamp(math.floor(tonumber(profile.runner.pool) or 22), 1, 40)
+	profile.runner.speed = math.clamp(math.floor(tonumber(profile.runner.speed) or 0), 0, profile.runner.pool)
 	profile.cologne = profile.cologne == true
 	profile.peptides = profile.peptides == true
 	profile.whistle = profile.whistle == true

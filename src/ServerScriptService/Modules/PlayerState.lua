@@ -76,6 +76,12 @@ function PlayerState.snapshot(player)
 		--[[ The shop prices the next one off this, and the Mines HUD counts
 		     down from it. ]]
 		lives = profile.lives or 0,
+		--[[ The Race Lab reads its opening split from this, so a rejoin picks
+		     up the runner you left rather than the default. NOT `racer`, which
+		     is already the uid of the brainrot you summon -- coercing that to a
+		     table would have broken MountService, RaceService and SummonUI at
+		     once. ]]
+		runner = profile.runner,
 		cologne = profile.cologne == true,
 		peptides = profile.peptides == true,
 		whistle = profile.whistle == true, -- whether the ride button is there

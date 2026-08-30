@@ -74,6 +74,9 @@ local EVENTS = {
 	--[[ The finish, pushed rather than returned: a race is up to ninety
 	     seconds long and a RemoteFunction that waits that out is a hang. ]]
 	"RaceResult",
+	--[[ Save the split. An EVENT, not a function: the panel does not need an
+	     answer and a round trip per button press would be silly. ]]
+	"SetRacer",
 	"OpenPlinko", -- the machine was used; let them set a stake and drop
 	"PlayIntro", -- roll the cold open on this client
 	--[[ client -> server. The client reports a swing; the server decides
