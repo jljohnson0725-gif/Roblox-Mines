@@ -37,6 +37,32 @@ Items.MaxStack = 4 * 3600
 Items.List = {
 	{
 		--[[
+			A STOCK, WHICH IS NEITHER A BOOST NOR AN UNLOCK NOR AN INSTANT.
+
+			It was an upgrade level, refilled free at the start of every round
+			for the rest of the game. That made the third level the last time
+			risk ever cost you anything -- so it is a countable thing you own
+			now, spent one per survived mine, and the ladder below is the price
+			of holding two or three at once rather than the price of owning the
+			idea.
+
+			`costs` is indexed by how many you are ALREADY holding, so the
+			field it counts has to be named here: see Items.costOf, and the
+			note on Config.ExtraLifeCosts for why it reads the stock rather
+			than counting purchases in a row.
+		]]
+		id = "lives",
+		kind = "stock",
+		field = "lives",
+		max = Config.MaxExtraLives,
+		costs = Config.ExtraLifeCosts,
+		name = "Extra Life",
+		blurb = "Survive a mine instead of busting",
+		color = Color3.fromRGB(255, 96, 128),
+		effect = "one mistake, once",
+	},
+	{
+		--[[
 			THE STINK IS THE DEFAULT, so this is the only row in the shop that
 			sells a SUBTRACTION. You spawn with the aura on; five hundred
 			million takes it off. Nothing else about the character changes.
@@ -114,6 +140,26 @@ end
 
 function Items.get(id)
 	return Items.ById[id]
+end
+
+--[[
+	What this item costs RIGHT NOW. Flat for everything except a `stock`, whose
+	price is read off how many you are already holding.
+
+	Returns nil when there is nothing left to sell, which the shop row renders
+	as FULL rather than as a price you cannot pay. Callers must handle nil --
+	a stock at its maximum has no next price, and inventing one would put a
+	buyable button on a purchase the server is going to refuse.
+]]
+function Items.costOf(def, held)
+	if def.kind ~= "stock" then
+		return def.cost
+	end
+	held = held or 0
+	if held >= (def.max or #def.costs) then
+		return nil
+	end
+	return def.costs[held + 1]
 end
 
 --[[ Seconds left on a boost, 0 when it isn't running.

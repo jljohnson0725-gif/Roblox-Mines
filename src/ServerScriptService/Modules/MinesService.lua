@@ -131,8 +131,15 @@ function MinesService.startRound(player, bet, mines)
 		busy = false,
 		--[[ Read once, at the start, and spent down as the round goes. Reading
 		     it per hit instead would let someone buy a life mid-round from the
-		     shop and retroactively survive a tile they already lost on. ]]
-		lives = Upgrades.extraLives(profile),
+		     shop and retroactively survive a tile they already lost on.
+
+		     A SNAPSHOT OF THE STOCK, not a refill. It was an upgrade level and
+		     every round began with all of them back; now it is what you are
+		     carrying, and spending one below spends it off the profile too. A
+		     life bought mid-round therefore does not join THIS round -- the
+		     snapshot has already been taken -- but it is still there for the
+		     next one, which is the honest reading of both rules at once. ]]
+		lives = profile.lives or 0,
 	}
 	rounds[player.UserId] = round
 
@@ -186,6 +193,16 @@ function MinesService.revealTile(player, index)
 	]]
 	if round.board[index] and (round.lives or 0) > 0 then
 		round.lives -= 1
+		--[[ AND OFF THE PROFILE, which is the whole change: the life is gone,
+		     not refunded at the next round. Clamped rather than trusted equal
+		     to the snapshot -- the two can legitimately differ when a life is
+		     bought mid-round, and a stock that could go negative would hand out
+		     a free one at the next round start. ]]
+		local spender = DataService.get(player)
+		if spender then
+			spender.lives = math.max((spender.lives or 0) - 1, 0)
+			PlayerState.push(player)
+		end
 		round.busy = false
 		return {
 			ok = true,

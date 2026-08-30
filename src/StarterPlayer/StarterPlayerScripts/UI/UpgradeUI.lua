@@ -283,9 +283,22 @@ function UpgradeUI.init(ctx)
 
 		for _, def in ipairs(Items.List) do
 			local row = itemRows[def.id]
-			local affordable = money >= def.cost
+			--[[ Per def, not per panel: a `stock` is priced off how many you
+			     are holding, so there is no single cost to compare against. ]]
+			local cost = Items.costOf(def, def.field and ctx.state[def.field] or 0)
+			local affordable = cost ~= nil and money >= cost
 
-			if def.kind == "unlock" and ctx.state[def.flag] == true then
+			if def.kind == "stock" then
+				local held = ctx.state[def.field] or 0
+				row.effect.Text = held > 0
+					and ("%d in hand  ·  spent one per mine survived"):format(held)
+					or def.effect
+				row.status.Text = held > 0 and ("x%d"):format(held) or ""
+				row.status.TextColor3 = held > 0 and def.color or Theme.color.dim
+				--[[ FULL rather than a price, at the cap. A button quoting a
+				     number the server will refuse is worse than a dead one. ]]
+				setBuy(row, def, cost and Format.money(cost) or "FULL", affordable)
+			elseif def.kind == "unlock" and ctx.state[def.flag] == true then
 				row.effect.Text = def.effect
 				row.status.Text = "OWNED"
 				setBuy(row, def, "OWNED", false)
@@ -298,7 +311,7 @@ function UpgradeUI.init(ctx)
 				row.status.TextColor3 = left > 0 and def.color or Theme.color.dim
 				--[[ Still buyable while it's running: a second purchase extends
 				     the clock rather than being refused. ]]
-				setBuy(row, def, Format.money(def.cost), affordable)
+				setBuy(row, def, Format.money(cost), affordable)
 			else
 				--[[ The sweep quotes the money it would actually bank, which is
 				     the only honest way to price a convenience against itself. ]]
@@ -307,7 +320,7 @@ function UpgradeUI.init(ctx)
 					and ("collects %s right now"):format(Format.money(waiting))
 					or "nothing waiting to collect"
 				row.status.Text = ""
-				setBuy(row, def, Format.money(def.cost), affordable and waiting >= 1)
+				setBuy(row, def, Format.money(cost), affordable and waiting >= 1)
 			end
 		end
 	end

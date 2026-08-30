@@ -65,6 +65,9 @@ local function newProfile()
 		--[[ Both vanity, both permanent. `cologne` false means the stink aura
 		     is ON -- the default state is the smelly one, so a fresh profile
 		     wants exactly this and no migration. ]]
+		--[[ Extra lives IN HAND, not a level. Spent one per survived mine and
+		     bought back at the shop; see Shared/Items. ]]
+		lives = 0,
 		cologne = false,
 		peptides = false,
 		--[[ The Brainrot Whistle. Calls a ride from anywhere; does NOT open the
@@ -146,6 +149,18 @@ local function reconcile(profile)
 		profile.redeemed = {}
 	end
 	profile.plinkoball = profile.plinkoball == true
+	--[[ Clamped both ends: a negative would make the round-start read hand out
+	     a life it does not have, and the ceiling is the shop's, not the
+	     profile's, so a save written when the cap was higher settles down
+	     rather than keeping a fourth nobody can buy. ]]
+	profile.lives = math.clamp(math.floor(tonumber(profile.lives) or 0), 0, Config.MaxExtraLives)
+	--[[ ONE-TIME CARRY-OVER from when Extra Life was an upgrade level. The
+	     level buys nothing now, so it is handed over as stock and cleared --
+	     otherwise it sits in the save forever meaning nothing. ]]
+	if type(profile.upgrades) == "table" and (profile.upgrades.lives or 0) > 0 then
+		profile.lives = math.clamp(profile.lives + profile.upgrades.lives, 0, Config.MaxExtraLives)
+		profile.upgrades.lives = nil
+	end
 	profile.cologne = profile.cologne == true
 	profile.peptides = profile.peptides == true
 	profile.whistle = profile.whistle == true

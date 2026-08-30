@@ -73,6 +73,9 @@ function PlayerState.snapshot(player)
 		--[[ The shop rows read these to show OWNED instead of a price. The
 		     appearance itself is server-made, so the client never acts on
 		     them beyond that. ]]
+		--[[ The shop prices the next one off this, and the Mines HUD counts
+		     down from it. ]]
+		lives = profile.lives or 0,
 		cologne = profile.cologne == true,
 		peptides = profile.peptides == true,
 		whistle = profile.whistle == true, -- whether the ride button is there

@@ -11,11 +11,11 @@
 	that makes this more than a clicker gets diluted. Nothing here touches the
 	drop table.
 
-	EXTRA LIFE IS THE ONE THAT TOUCHES RISK, and it is worth being honest about
-	that rather than pretending it belongs with the others. It does not change
-	what drops or how often; it changes what a mistake costs. Three levels is
-	the whole ceiling and the third costs 30M, so a bad pick still ends the run
-	for anyone who has not spent a fortune on not being punished for it.
+	EXTRA LIFE USED TO LIVE HERE and does not any more. It was the one upgrade
+	that touched risk, and as a LEVEL it was permanent: buy the third and every
+	round afterwards started with three mistakes in hand, free, forever. That
+	made it the last time a bad pick ever cost anything. It is a consumable in
+	Shared/Items now -- bought, held, and spent one per survived mine.
 
 	Effects are pure functions of level so nothing has to be recomputed or
 	cached -- the level is the only thing that persists.
@@ -81,30 +81,6 @@ Upgrades.List = {
 			return string.format("%.0f walk speed", Config.BaseWalkSpeed + level * 1.5)
 		end,
 	},
-	{
-		id = "lives",
-		name = "Extra Life",
-		blurb = "Survive a mine instead of busting",
-		color = Color3.fromRGB(255, 96, 128),
-		maxLevel = 3,
-		--[[ Priced by hand, not by a growth rate: 1.5M, then 10M, then 30M.
-		     Steep on purpose. Each life blunts the bet a little, so the cost is
-		     what keeps this a late milestone instead of something everyone owns
-		     three of by the second hour. ]]
-		costs = { 1500000, 10000000, 30000000 },
-		--[[ Spent PER ROUND and refilled at the next one. A life that persisted
-		     across rounds would be a consumable wearing an upgrade's clothes,
-		     and you'd be buying it again forever. ]]
-		effect = function(level)
-			return level
-		end,
-		format = function(level)
-			if level == 0 then
-				return "no second chances"
-			end
-			return string.format("%d mistake%s a round", level, level == 1 and "" or "s")
-		end,
-	},
 }
 
 Upgrades.ById = {}
@@ -167,8 +143,5 @@ end
 
 --[[ How many mines this player survives in one round. Read fresh at the start
      of each round; MinesService owns the spending. ]]
-function Upgrades.extraLives(profile)
-	return Upgrades.valueOf(profile, "lives")
-end
 
 return Upgrades

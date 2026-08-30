@@ -355,6 +355,30 @@ Config.PlinkoBallCost = 1000000
 	not. That is why it is the cheaper of the two -- undoing a starting
 	condition should cost less than rewriting your face.
 ]]
+--[[
+	EXTRA LIVES, PRICED BY HOW MANY YOU ARE HOLDING.
+
+	The same three numbers this cost when it was a permanent upgrade, doing a
+	different job. It is a CONSUMABLE now: one life is one survived mine, and
+	then it is gone. The ladder is read off your current stock, so the price of
+	the next one is the price of stacking rather than the price of owning:
+
+		holding 0 -> 1.5M      holding 2 -> 30M
+		holding 1 -> 10M       holding 3 -> nothing left to sell
+
+	WHICH MEANS SPENDING ONE RESETS THE LADDER. Buy at 1.5M, use it, come back,
+	and it is 1.5M again -- you are buying your first life again, because that
+	is what it is. Only stockpiling gets expensive.
+
+	AND THE PRICE CANNOT BE DODGED BY PLAYING A ROUND IN BETWEEN. It reads the
+	stock, not a session counter, so holding one and going to buy a second
+	costs 10M whether or not you played Mines first. Pricing it off "back to
+	back" purchases literally would mean a single one-tile round between two
+	buys reset the ladder, and three lives would cost 4.5M instead of 41.5M.
+]]
+Config.ExtraLifeCosts = { 1500000, 10000000, 30000000 }
+Config.MaxExtraLives = 3
+
 Config.CologneCost = 500000000
 Config.PeptidesCost = 1000000000
 

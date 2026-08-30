@@ -92,6 +92,35 @@ end
      kind it has no handler for. PlotService.sweep is now unreferenced.
      Re-add both together if the shop ever sells a one-shot again. ]]
 
+--[[
+	A countable thing you hold, priced off how many you already have.
+
+	The cost comes back on the VERDICT rather than being read from the def,
+	because it is the only item whose price is not a constant -- and buy()
+	charging def.cost while this decided a different number would be a
+	mispricing nobody would see until someone bought three.
+]]
+function resolve.stock(player, profile, def)
+	local held = profile[def.field] or 0
+	local max = def.max or #def.costs
+	if held >= max then
+		--[[ Not an error, same as buying an unlock twice: answer the question
+		     they were actually asking. ]]
+		PlayerState.notify(player,
+			("You already have %d %s. That's the most you can carry."):format(max, def.name), "info")
+		return { ok = false, silent = true }
+	end
+	local cost = Items.costOf(def, held)
+	return {
+		ok = true,
+		cost = cost,
+		commit = function()
+			profile[def.field] = held + 1
+		end,
+		message = ("%s bought — you have %d."):format(def.name, held + 1),
+	}
+end
+
 function ItemService.buy(player, id)
 	local profile = DataService.get(player)
 	if not profile then
@@ -117,11 +146,14 @@ function ItemService.buy(player, id)
 		return { ok = false, err = verdict.err, silent = verdict.silent }
 	end
 
-	if profile.money < def.cost then
-		return { ok = false, err = "Need " .. Format.money(def.cost) .. "." }
+	--[[ The verdict's price wins where it set one. Everything but a `stock` is
+	     a flat def.cost and never sets it. ]]
+	local cost = verdict.cost or def.cost
+	if profile.money < cost then
+		return { ok = false, err = "Need " .. Format.money(cost) .. "." }
 	end
 
-	profile.money -= def.cost
+	profile.money -= cost
 	verdict.commit()
 
 	PlayerState.push(player)
