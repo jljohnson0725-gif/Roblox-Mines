@@ -58,6 +58,22 @@ RaceSim.DRAIN = 5.0 -- stamina per second at V_REF
 RaceSim.V_REF = 24.0 -- the speed DRAIN is quoted at
 RaceSim.V_FLOOR = 11.0 -- the exhausted jog; the same for everyone
 
+--[[
+	HOW FAST THE WHOLE THING PLAYS, and it is a pure presentation dial.
+
+	Every runner's velocity is in model studs; at PACE 1 the field moves at
+	15-24 studs/s, which is a jog and reads as one. This multiplies the clock,
+	so every velocity, every gap and every finishing time scales together and
+	the ORDER cannot change -- a race at PACE 2.2 is the same race, watched at
+	2.2x. The balance below is therefore unaffected by it, which is why the
+	optimal splits are quoted without reference to it.
+
+	2.2 puts the field at 34-54 studs/s against a default Roblox walk of 16,
+	and leaves the gaps readable: the sprinter still wins The Dash by about a
+	second rather than by a frame.
+]]
+RaceSim.PACE = 2.2
+
 --[[ The pool a runner allocates. Grows as the story progresses, which is what
      makes the last opponent unbeatable until it does not: below his pool there
      is no split that beats his time, so the wall is real rather than scripted. ]]
@@ -78,6 +94,14 @@ RaceSim.Tracks = {
 		length = 220,
 		drain = 1.0,
 		best = "15 / 7",
+	},
+	{
+		id = "straight",
+		name = "The Straight",
+		blurb = "Long enough to punish a pure sprinter",
+		length = 340,
+		drain = 1.0,
+		best = "13 / 9",
 	},
 	{
 		id = "mile",
@@ -164,7 +188,17 @@ end
 ]]
 function RaceSim.step(state, dt)
 	local track = state.track
+	--[[
+		THE CLOCK COUNTS REAL SECONDS; THE PHYSICS RUNS PACE TIMES FASTER.
+
+		Getting this backwards is subtle and was wrong first time: scaling dt
+		before adding it to the clock advances the world faster AND counts the
+		faster seconds, so finishedAt still reports 90 for a race that takes 41
+		on a stopwatch -- and the panel quotes finishedAt. The clock has to be
+		the wall clock, and only the step handed to the integration is scaled.
+	]]
 	state.clock += dt
+	local step = dt * RaceSim.PACE
 
 	local done = true
 	for _, runner in ipairs(state.runners) do
@@ -180,8 +214,8 @@ function RaceSim.step(state, dt)
 		runner.velocity = RaceSim.V_FLOOR + (runner.vmax - RaceSim.V_FLOOR) * left
 
 		local cost = (runner.velocity / RaceSim.V_REF) ^ 2 * RaceSim.DRAIN * track.drain
-		runner.stamina -= cost * dt
-		runner.distance += runner.velocity * dt
+		runner.stamina -= cost * step
+		runner.distance += runner.velocity * step
 
 		if runner.distance >= track.length then
 			runner.distance = track.length
@@ -231,7 +265,22 @@ function RaceSim.bestSplit(pool, trackId)
 end
 
 --[[
-	THE FIELD YOU RACE AGAINST.
+	THE FIELD YOU RACE AGAINST, five of them, each standing on their own track.
+
+	THE POOL IS NOT THE DIFFICULTY. Measured, the lowest pool that beats each:
+
+		Scuffed Larry  pool 12, optimal    -> you need 13
+		Bolt           pool 18, speed      -> you need 16   BELOW his
+		Grind          pool 22, endurance  -> you need 21   BELOW his
+		The Ace        pool 28, optimal    -> you need 29
+		???            pool 34, optimal    -> you need 35
+
+	The two with a STYLE are beatable by a weaker runner, because they spend
+	the same way whatever ground they are on and their own track does not
+	quite want it -- Bolt brings 14/4 to a straight that wants 13/9. The two
+	that solve their track can only be out-pooled. That is the lesson in the
+	order it needs teaching: read the ground first, and only grind when the
+	opponent has stopped making mistakes for you.
 
 	`style` is how an opponent spends its pool, and it is the thing the player
 	is meant to READ. Only "optimal" solves the track it is standing on; the
@@ -244,17 +293,18 @@ end
 	no matter how cleverly they allocate. See RaceSim.bestSplit.
 ]]
 RaceSim.Opponents = {
-	{ id = "rookie", name = "Scuffed Larry", pool = 12, style = "optimal",
-		tell = "runs the track the way the track wants" },
-	{ id = "bolt", name = "Bolt", pool = 20, style = "speed",
-		tell = "all legs, no lungs -- goes out hard every time" },
-	{ id = "grind", name = "Grind", pool = 20, style = "endurance",
-		tell = "never tires, never quick" },
-	{ id = "ace", name = "The Ace", pool = 26, style = "optimal",
-		tell = "reads the track as well as you do" },
-	{ id = "boss", name = "???", pool = 34, style = "optimal",
+	{ id = "rookie", name = "Scuffed Larry", pool = 12, style = "optimal", track = "dash",
+		tell = "runs the track the way the track wants, badly" },
+	{ id = "bolt", name = "Bolt", pool = 18, style = "speed", track = "straight",
+		tell = "all legs, no lungs -- goes out hard whatever the ground" },
+	{ id = "grind", name = "Grind", pool = 22, style = "endurance", track = "climb",
+		tell = "never tires, never quick, never adapts" },
+	{ id = "ace", name = "The Ace", pool = 28, style = "optimal", track = "mile",
+		tell = "reads the track exactly as well as you do" },
+	{ id = "boss", name = "???", pool = 34, style = "optimal", track = "haul",
 		tell = "not yet" },
 }
+
 RaceSim.OpponentById = {}
 for index, o in ipairs(RaceSim.Opponents) do
 	o.index = index

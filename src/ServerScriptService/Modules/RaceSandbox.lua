@@ -6,14 +6,16 @@
 	animates it; nothing here touches it. This is the new model on its own strip
 	so the two can be compared side by side before either is thrown away.
 
-	THE STRIP IS SCALED, THE CLOCK IS NOT. The racing island has a radius of 110
-	and The Haul is 1400 studs, so a true-length track cannot be built here at
-	all. Distance is mapped onto a strip that fits and the SECONDS are left
-	alone -- which keeps the thing that actually needs feeling: The Dash is over
-	in nine seconds and The Haul grinds for ninety, and a Sprinter dying at the
-	three-quarter mark looks exactly like a Sprinter dying at the three-quarter
-	mark whatever the strip measures. Build the real lengths when the island
-	grows; this file is where that number changes.
+	AN OVAL, AND LONG RACES ARE MORE LAPS. It was a straight strip scaled to
+	fit the island, and that was wrong in a way you could measure: mapping 1400
+	studs onto 165 made The Haul crawl at 1.8 studs/s on screen while The Dash
+	moved at 11.8, so the longest race looked six times slower than the
+	shortest. Speeding the clock up scales both and never closes that gap.
+
+	A lap is LAP_STUDS of real model distance, drawn at 1:1, so apparent speed
+	IS the runner's speed and it is the same on every track. The Dash is under
+	two laps and The Haul is eleven. Nothing is scaled any more, which also
+	means the island no longer has to be as big as the longest race.
 
 	RUNNERS CARRY THEIR OWN NUMBERS. Each one has its speed and remaining
 	stamina above its head, because the point of a sandbox is to see WHY the
@@ -35,23 +37,58 @@ local Islands = require(Shared.Islands)
 local RaceSandbox = {}
 
 local ROOT_NAME = "RaceSandbox"
-local LANE = 9 -- studs between the two runners
-local DECK_Y = 5 -- height of the strip above the island floor
-local WIDTH = 26
+local LANE = 7 -- studs between the two runners, across the track
+--[[ Well clear of the old RaceTrack, which is still standing on the same
+     island and would otherwise be drawn through this one. Drop this back to
+     ground level the day the betting track is retired. ]]
+local DECK_Y = 26
+local WIDTH = 20 -- how wide the running surface is
 
---[[ Shortest and longest strip the island can hold. The Haul gets the long end
-     and The Dash the short one, so the tracks still LOOK different lengths
-     even though none of them is its true length. ]]
-local STRIP_MIN, STRIP_MAX = 95, 165
+--[[
+	A stadium: two straights joined by two semicircles. One lap of the CENTRE
+	line is LAP_STUDS of model distance, drawn 1:1, so a runner moving at 20
+	studs/s in the model moves at 20 studs/s on screen.
+
+	perimeter = 2 * STRAIGHT + 2 * pi * RADIUS, solved for STRAIGHT below so
+	LAP_STUDS is the number that is actually true rather than the number that
+	was intended.
+]]
+local LAP_STUDS = 130
+local RADIUS = 24
+local STRAIGHT = (LAP_STUDS - 2 * math.pi * RADIUS) / 2
 
 local busy = false
 
-local function stripLength(track)
-	local longest = 0
-	for _, t in ipairs(RaceSim.Tracks) do
-		longest = math.max(longest, t.length)
+--[[
+	Distance along the centre line -> a point and a facing.
+
+	Runs the near straight, the far turn, the far straight, the near turn, in
+	that order, so distance 0 is the start line and increasing distance always
+	moves the same way round. `offset` pushes a runner out to its own lane
+	WITHOUT changing how far it has run -- lanes are cosmetic here, and a lane
+	that added distance would quietly hand the inside runner a shorter race.
+]]
+local function pointAt(distance, offset)
+	local d = distance % LAP_STUDS
+	local turn = math.pi * RADIUS
+	local r = RADIUS + (offset or 0)
+	if d < STRAIGHT then
+		return Vector3.new(-STRAIGHT / 2 + d, 0, -r), Vector3.new(1, 0, 0)
 	end
-	return STRIP_MIN + (track.length / longest) * (STRIP_MAX - STRIP_MIN)
+	d -= STRAIGHT
+	if d < turn then
+		local a = d / RADIUS -- 0..pi
+		return Vector3.new(STRAIGHT / 2 + math.sin(a) * r, 0, -math.cos(a) * r),
+			Vector3.new(math.cos(a), 0, math.sin(a))
+	end
+	d -= turn
+	if d < STRAIGHT then
+		return Vector3.new(STRAIGHT / 2 - d, 0, r), Vector3.new(-1, 0, 0)
+	end
+	d -= STRAIGHT
+	local a = d / RADIUS
+	return Vector3.new(-STRAIGHT / 2 - math.sin(a) * r, 0, math.cos(a) * r),
+		Vector3.new(-math.cos(a), 0, -math.sin(a))
 end
 
 local function part(props, parent)
@@ -89,63 +126,60 @@ function RaceSandbox.build(track)
 		return nil
 	end
 
-	local length = stripLength(track)
 	local root = Instance.new("Model")
 	root.Name = ROOT_NAME
+	local base = CFrame.new(island.center + Vector3.new(0, DECK_Y, 0))
 
-	local centre = island.center + Vector3.new(0, DECK_Y, 0)
-	--[[ The Climb is drawn tilted. It changes nothing in the model -- drain is
-	     a number on the track, not a slope the runner feels -- but a track that
-	     drains you should not look flat. ]]
-	local tilt = track.drain > 1.5 and math.rad(6) or 0
+	--[[ The surface, laid as short segments round the centre line. Cheaper to
+	     reason about than a mesh and it makes the turns actually curve. ]]
+	local SEGMENTS = 72
+	for i = 0, SEGMENTS - 1 do
+		local d0 = (i / SEGMENTS) * LAP_STUDS
+		local d1 = ((i + 1) / SEGMENTS) * LAP_STUDS
+		local p0 = pointAt(d0, 0)
+		local p1 = pointAt(d1, 0)
+		local mid = (p0 + p1) / 2
+		local span = (p1 - p0).Magnitude
+		local seg = part({
+			name = "Track",
+			size = Vector3.new(span + 0.6, 1, WIDTH),
+			cframe = base * CFrame.lookAt(mid, mid + (p1 - p0).Unit),
+			color = Color3.fromRGB(84, 96, 78),
+			material = Enum.Material.Grass,
+			collide = true,
+		}, root)
+		seg.CFrame = seg.CFrame * CFrame.Angles(0, math.rad(90), 0)
+	end
 
-	local deck = part({
-		name = "Deck",
-		size = Vector3.new(length, 1, WIDTH),
-		cframe = CFrame.new(centre) * CFrame.Angles(0, 0, tilt),
-		color = Color3.fromRGB(78, 92, 70),
-		material = Enum.Material.Grass,
-		collide = true,
-	}, root)
-
+	--[[ The line, and a marker every quarter lap so a fade has landmarks. ]]
+	local startP = pointAt(0, 0)
 	part({
 		name = "StartLine",
-		size = Vector3.new(1.5, 1.2, WIDTH),
-		cframe = deck.CFrame * CFrame.new(-length / 2 + 2, 0.2, 0),
-		color = Color3.fromRGB(235, 235, 235),
-	}, root)
-	part({
-		name = "FinishLine",
-		size = Vector3.new(1.5, 1.2, WIDTH),
-		cframe = deck.CFrame * CFrame.new(length / 2 - 2, 0.2, 0),
+		size = Vector3.new(1.4, 1.3, WIDTH),
+		cframe = base * CFrame.new(startP + Vector3.new(0, 0.2, 0)),
 		color = Color3.fromRGB(255, 196, 52),
 		material = Enum.Material.Neon,
 	}, root)
-
-	--[[ A marker every quarter, so "he died at the three-quarter mark" is a
-	     thing you can see rather than a thing you have to time. ]]
 	for q = 1, 3 do
+		local p, dir = pointAt(LAP_STUDS * q / 4, 0)
 		part({
 			name = "Quarter",
-			size = Vector3.new(0.5, 1.05, WIDTH),
-			cframe = deck.CFrame * CFrame.new(-length / 2 + length * (q / 4), 0.1, 0),
+			size = Vector3.new(0.5, 1.1, WIDTH),
+			cframe = base * CFrame.lookAt(p + Vector3.new(0, 0.1, 0), p + dir)
+				* CFrame.Angles(0, math.rad(90), 0),
 			color = Color3.fromRGB(150, 165, 145),
-			transparency = 0.35,
+			transparency = 0.4,
 		}, root)
 	end
 
-	local sign = Instance.new("Part")
-	sign.Name = "Sign"
-	sign.Anchored = true
-	sign.CanCollide = false
-	sign.CanQuery = false
-	sign.Size = Vector3.new(0.4, 0.4, 0.4)
-	sign.Transparency = 1
-	sign.CFrame = deck.CFrame * CFrame.new(0, 14, 0)
-	sign.Parent = root
-
+	local sign = part({
+		name = "Sign",
+		size = Vector3.new(0.4, 0.4, 0.4),
+		cframe = base * CFrame.new(0, 16, 0),
+		transparency = 1,
+	}, root)
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(420, 76)
+	gui.Size = UDim2.fromOffset(460, 82)
 	gui.AlwaysOnTop = true
 	gui.Parent = sign
 	local label = Instance.new("TextLabel")
@@ -154,33 +188,34 @@ function RaceSandbox.build(track)
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextColor3 = Color3.fromRGB(240, 240, 245)
-	label.Text = ("%s  ·  %d studs%s\nbest split %s")
-		:format(track.name, track.length,
-			track.drain > 1 and (("  ·  uphill x%.1f drain"):format(track.drain)) or "",
+	label.Text = ("%s  -  %d studs, %.1f laps%s
+best split %s")
+		:format(track.name, track.length, track.length / LAP_STUDS,
+			track.drain > 1 and (("  -  uphill x%.1f drain"):format(track.drain)) or "",
 			track.best)
 	label.Parent = gui
 
 	root.Parent = Workspace
-	return root, deck, length
+	return root, base
 end
 
 --[[ A runner: a coloured marker with its own live numbers over its head. ]]
-local function buildRunner(root, deck, length, lane, entry, color)
+local function buildRunner(root, base, lane, entry, color)
 	local model = Instance.new("Model")
 	model.Name = "Runner_" .. entry.id
-
+	local p = pointAt(0, lane * LANE)
 	local body = part({
 		name = "Body",
-		size = Vector3.new(2.6, 3.4, 2.6),
-		cframe = deck.CFrame * CFrame.new(-length / 2 + 2, 2.6, lane * LANE),
+		size = Vector3.new(2.4, 3.2, 2.4),
+		cframe = base * CFrame.new(p + Vector3.new(0, 2.5, 0)),
 		color = color,
 		material = Enum.Material.Neon,
 	}, model)
 	model.PrimaryPart = body
 
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(260, 68)
-	gui.StudsOffset = Vector3.new(0, 3.4, 0)
+	gui.Size = UDim2.fromOffset(250, 66)
+	gui.StudsOffset = Vector3.new(0, 3.2, 0)
 	gui.AlwaysOnTop = true
 	gui.Parent = body
 	local label = Instance.new("TextLabel")
@@ -197,13 +232,6 @@ local function buildRunner(root, deck, length, lane, entry, color)
 	return model, body, label
 end
 
---[[
-	Run one race and return the finishing order.
-
-	The visual is driven straight off RaceSim.step -- there is no second copy of
-	the movement here. If the marker is in front, it is because the simulation
-	says it is in front.
-]]
 function RaceSandbox.run(entries, trackId, onFinish)
 	if busy then
 		return false, "A race is already running."
@@ -215,7 +243,7 @@ function RaceSandbox.run(entries, trackId, onFinish)
 	busy = true
 
 	local function body()
-		local root, deck, length = RaceSandbox.build(track)
+		local root, base = RaceSandbox.build(track)
 		if not root then
 			error("no racing island")
 		end
@@ -228,7 +256,7 @@ function RaceSandbox.run(entries, trackId, onFinish)
 		}
 		for i, runner in ipairs(state.runners) do
 			local lane = i - (#state.runners + 1) / 2
-			local model, body, label = buildRunner(root, deck, length, lane, runner, colors[i] or colors[1])
+			local model, body, label = buildRunner(root, base, lane, runner, colors[i] or colors[1])
 			views[i] = { model = model, body = body, label = label, lane = lane }
 		end
 
@@ -243,12 +271,19 @@ function RaceSandbox.run(entries, trackId, onFinish)
 
 			for i, runner in ipairs(state.runners) do
 				local view = views[i]
-				local along = (runner.distance / track.length) * (length - 4)
-				view.body.CFrame = deck.CFrame
-					* CFrame.new(-length / 2 + 2 + along, 2.6, view.lane * LANE)
+				--[[ 1:1 -- the distance the model says it has run is the distance
+				     it has moved, wrapped round the oval. Nothing is scaled, which
+				     is what makes apparent speed the same on every track. ]]
+				local p, dir = pointAt(runner.distance, view.lane * LANE)
+				view.body.CFrame = base * CFrame.lookAt(p + Vector3.new(0, 2.5, 0),
+					p + dir + Vector3.new(0, 2.5, 0))
 				local pct = math.max(runner.stamina, 0) / runner.staminaMax * 100
-				view.label.Text = ("%s   %d/%d\n%.1f studs/s   stamina %d%%")
-					:format(runner.name, runner.speed, runner.endurance, runner.velocity, pct)
+				local laps = math.max(math.ceil(track.length / LAP_STUDS), 1)
+				local lap = math.min(math.floor(runner.distance / LAP_STUDS) + 1, laps)
+				view.label.Text = ("%s   %d/%d
+lap %d/%d   %.0f studs/s   stamina %d%%")
+					:format(runner.name, runner.speed, runner.endurance, lap, laps,
+						runner.velocity * RaceSim.PACE, pct)
 			end
 			if finished then
 				conn:Disconnect()

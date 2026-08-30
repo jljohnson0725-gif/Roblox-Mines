@@ -33,7 +33,14 @@ local RaceLab = {}
 function RaceLab.init(ctx)
 	local player = Players.LocalPlayer
 
-	local track = RaceSim.Tracks[1].id
+	--[[ The track is not chosen -- each opponent stands on their own, which is
+	     what makes "who am I racing" and "what ground is it" the same
+	     question. See RaceSim.Opponents. ]]
+	local function trackOf(id)
+		local o = RaceSim.OpponentById[id]
+		return (o and o.track) or RaceSim.Tracks[1].id
+	end
+	local track = trackOf(RaceSim.Opponents[1].id)
 	local opponent = RaceSim.Opponents[1].id
 	--[[
 		POOL AND SPEED, with endurance derived. Two independent 0..40 counters
@@ -102,14 +109,10 @@ function RaceLab.init(ctx)
 	--[[ track ]]
 	Theme.label({ parent = card, size = UDim2.new(1, 0, 0, 14), order = 3,
 		text = "TRACK", textSize = 11, color = Theme.color.dim })
-	local trackRow = row(4, 30)
-	local trackButtons = {}
-	for i, t in ipairs(RaceSim.Tracks) do
-		trackButtons[t.id] = Theme.button({
-			parent = trackRow, size = UDim2.new(0, 94, 1, 0), order = i,
-			text = t.name, textSize = 12,
-		})
-	end
+	local trackLine = Theme.label({
+		parent = card, size = UDim2.new(1, 0, 0, 30), order = 4,
+		text = "", textSize = 13, color = Theme.color.gold,
+	})
 
 	--[[ opponent ]]
 	Theme.label({ parent = card, size = UDim2.new(1, 0, 0, 14), order = 5,
@@ -161,9 +164,6 @@ function RaceLab.init(ctx)
 	result.TextWrapped = true
 
 	local function render()
-		for id, b in pairs(trackButtons) do
-			Theme.recolor(b, id == track and Theme.color.good or Theme.color.raised)
-		end
 		for id, b in pairs(oppButtons) do
 			Theme.recolor(b, id == opponent and Theme.color.good or Theme.color.raised)
 		end
@@ -174,6 +174,8 @@ function RaceLab.init(ctx)
 		poolLabel.Text = ("POOL %d"):format(pool)
 
 		local t = RaceSim.track(track)
+		trackLine.Text = ("%s  -  %d studs, %.1f laps%s"):format(t.name, t.length,
+			t.length / 130, t.drain > 1 and "  -  uphill" or "")
 		local mine = RaceSim.predict(speed, endurance, track)
 		--[[ What the pool COULD do here, so a bad split is visible as a bad
 		     split rather than as a slow runner. ]]
@@ -208,11 +210,12 @@ function RaceLab.init(ctx)
 	end)
 	reset.Activated:Connect(function() speed = math.floor(pool / 2) settle() end)
 
-	for id, b in pairs(trackButtons) do
-		b.Activated:Connect(function() track = id render() end)
-	end
 	for id, b in pairs(oppButtons) do
-		b.Activated:Connect(function() opponent = id render() end)
+		b.Activated:Connect(function()
+			opponent = id
+			track = trackOf(id)
+			render()
+		end)
 	end
 
 	go.Activated:Connect(function()
