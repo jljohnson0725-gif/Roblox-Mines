@@ -136,10 +136,23 @@ Islands.List = {
 		]]
 		center = Vector3.new(210, 1150, 120),
 
-		--[[ Twice Plinko's radius: a race needs a straight worth watching, and
-		     56 studs is a courtyard. 110 gives roughly 200 studs of track
-		     inside the walkable ring. ]]
-		radius = 110,
+		--[[
+			BIG ENOUGH TO HOLD THE LONGEST RACE AS ONE LAP, which is what fixes
+			"who is winning" being unreadable.
+
+			It was 110, which held about 200 studs of track -- so a 1400-stud
+			race had to be run as eleven laps of a small oval, and on a circuit
+			the runner physically ahead of you may be a lap down. One lap makes
+			the leader the one further round, and a 1400-stud lap needs roughly
+			305 studs of apron. 400 x 0.82 gives 328.
+
+			MEASURED BEFORE COMMITTING, because the scatter in IslandService
+			follows the annulus area and tripling a radius looks alarming: the
+			island went from 467 parts to 1322, not the 13x the area suggests,
+			because every decoration exponent there is sub-linear. The whole
+			place grew by about 10%.
+		]]
+		radius = 400,
 
 		--[[ A far bigger flat apron than the 0.52 default, because the thing
 		     standing here is a track rather than a machine: 0.82 of the radius

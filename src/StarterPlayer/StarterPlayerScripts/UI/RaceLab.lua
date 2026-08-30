@@ -174,8 +174,8 @@ function RaceLab.init(ctx)
 		poolLabel.Text = ("POOL %d"):format(pool)
 
 		local t = RaceSim.track(track)
-		trackLine.Text = ("%s  -  %d studs, %.1f laps%s"):format(t.name, t.length,
-			t.length / 130, t.drain > 1 and "  -  uphill" or "")
+		trackLine.Text = ("%s  -  %d studs, one lap%s"):format(t.name, t.length,
+			t.drain > 1 and "  -  uphill" or "")
 		local mine = RaceSim.predict(speed, endurance, track)
 		--[[ What the pool COULD do here, so a bad split is visible as a bad
 		     split rather than as a slow runner. ]]

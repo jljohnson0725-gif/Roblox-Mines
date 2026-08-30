@@ -6,16 +6,26 @@
 	animates it; nothing here touches it. This is the new model on its own strip
 	so the two can be compared side by side before either is thrown away.
 
-	AN OVAL, AND LONG RACES ARE MORE LAPS. It was a straight strip scaled to
-	fit the island, and that was wrong in a way you could measure: mapping 1400
-	studs onto 165 made The Haul crawl at 1.8 studs/s on screen while The Dash
-	moved at 11.8, so the longest race looked six times slower than the
-	shortest. Speeding the clock up scales both and never closes that gap.
+	ONE LAP, AND THE LINE IS THE ANSWER. Whoever crosses first has won, and you
+	can see it -- which is the whole reason this is not laps any more.
 
-	A lap is LAP_STUDS of real model distance, drawn at 1:1, so apparent speed
-	IS the runner's speed and it is the same on every track. The Dash is under
-	two laps and The Haul is eleven. Nothing is scaled any more, which also
-	means the island no longer has to be as big as the longest race.
+	It went through both wrong answers first. A straight strip SCALED to fit
+	the island made The Haul crawl at 1.8 studs/s on screen while The Dash moved
+	at 11.8, so the longest race looked six times slower than the shortest.
+	Drawing 1:1 and running MULTIPLE LAPS fixed the speed and broke the reading:
+	on a circuit the runner physically in front of you may be a lap down, so
+	first-past-the-post becomes invisible.
+
+	A circuit sized to the track fixes both. Every track is exactly one lap of
+	its own oval, drawn 1:1, so apparent speed is the runner's real speed AND
+	the leader is simply the one further round. Nobody is ever a lap down
+	because there is only ever one lap.
+
+	THE ISLAND HAD TO GROW FOR THIS. The Haul is 1400 studs, and a 1400-stud
+	single lap needs about 305 studs of apron; the island was 110 with 90. It is
+	400 now, which measured at 1322 parts against the old 467 -- the scatter
+	exponents in IslandService are sub-linear, so tripling the radius cost less
+	than a fifth of what the area suggests.
 
 	RUNNERS CARRY THEIR OWN NUMBERS. Each one has its speed and remaining
 	stamina above its head, because the point of a sandbox is to see WHY the
@@ -45,50 +55,71 @@ local DECK_Y = 26
 local WIDTH = 20 -- how wide the running surface is
 
 --[[
-	A stadium: two straights joined by two semicircles. One lap of the CENTRE
-	line is LAP_STUDS of model distance, drawn 1:1, so a runner moving at 20
-	studs/s in the model moves at 20 studs/s on screen.
+	THE CIRCUIT IS SIZED TO THE TRACK, so one lap is exactly its length.
 
-	perimeter = 2 * STRAIGHT + 2 * pi * RADIUS, solved for STRAIGHT below so
-	LAP_STUDS is the number that is actually true rather than the number that
-	was intended.
+	A stadium: two straights joined by two semicircles, with the straight fixed
+	at twice the turn radius so every track is the same SHAPE and only the size
+	changes -- a 220-stud dash and a 1400-stud haul read as the same kind of
+	place, one small and one enormous.
+
+		perimeter = 2S + 2*pi*R, and S = 2R
+		          = 4R + 2*pi*R
+		          = R * (4 + 2*pi)
+
+	Solved for R, so the perimeter IS the track length rather than approximately
+	it. Get this wrong and the finish line sits somewhere that is not the finish.
 ]]
-local LAP_STUDS = 130
-local RADIUS = 24
-local STRAIGHT = (LAP_STUDS - 2 * math.pi * RADIUS) / 2
+local SHAPE = 4 + 2 * math.pi -- perimeter / radius, for straight = 2 * radius
 
-local busy = false
+local function circuitFor(track)
+	local radius = track.length / SHAPE
+	return {
+		radius = radius,
+		straight = radius * 2,
+		turn = math.pi * radius,
+		perimeter = track.length,
+	}
+end
 
 --[[
 	Distance along the centre line -> a point and a facing.
 
-	Runs the near straight, the far turn, the far straight, the near turn, in
-	that order, so distance 0 is the start line and increasing distance always
-	moves the same way round. `offset` pushes a runner out to its own lane
-	WITHOUT changing how far it has run -- lanes are cosmetic here, and a lane
-	that added distance would quietly hand the inside runner a shorter race.
+	NO WRAPPING. Distance runs 0 to the perimeter once and stops; a modulo here
+	would silently start a second lap and put the leader behind the runner they
+	just passed. Clamped instead, so a runner who has finished parks on the line
+	rather than vanishing round it again.
+
+	`offset` pushes a runner into its own lane WITHOUT changing how far it has
+	run -- lanes are cosmetic, and a lane that added distance would quietly hand
+	the inside runner a shorter race.
 ]]
-local function pointAt(distance, offset)
-	local d = distance % LAP_STUDS
-	local turn = math.pi * RADIUS
-	local r = RADIUS + (offset or 0)
-	if d < STRAIGHT then
-		return Vector3.new(-STRAIGHT / 2 + d, 0, -r), Vector3.new(1, 0, 0)
+local function pointAt(geo, distance, offset)
+	local d = math.clamp(distance, 0, geo.perimeter)
+	local S, R = geo.straight, geo.radius
+	local r = R + (offset or 0)
+	if d < S / 2 then
+		--[[ the near straight runs from the LINE to the first turn, so distance
+		     0 is the line and the lap closes back onto it ]]
+		return Vector3.new(d, 0, -r), Vector3.new(1, 0, 0)
 	end
-	d -= STRAIGHT
-	if d < turn then
-		local a = d / RADIUS -- 0..pi
-		return Vector3.new(STRAIGHT / 2 + math.sin(a) * r, 0, -math.cos(a) * r),
+	d -= S / 2
+	if d < geo.turn then
+		local a = d / R
+		return Vector3.new(S / 2 + math.sin(a) * r, 0, -math.cos(a) * r),
 			Vector3.new(math.cos(a), 0, math.sin(a))
 	end
-	d -= turn
-	if d < STRAIGHT then
-		return Vector3.new(STRAIGHT / 2 - d, 0, r), Vector3.new(-1, 0, 0)
+	d -= geo.turn
+	if d < S then
+		return Vector3.new(S / 2 - d, 0, r), Vector3.new(-1, 0, 0)
 	end
-	d -= STRAIGHT
-	local a = d / RADIUS
-	return Vector3.new(-STRAIGHT / 2 - math.sin(a) * r, 0, math.cos(a) * r),
-		Vector3.new(-math.cos(a), 0, -math.sin(a))
+	d -= S
+	if d < geo.turn then
+		local a = d / R
+		return Vector3.new(-S / 2 - math.sin(a) * r, 0, math.cos(a) * r),
+			Vector3.new(-math.cos(a), 0, -math.sin(a))
+	end
+	d -= geo.turn
+	return Vector3.new(-S / 2 + d, 0, -r), Vector3.new(1, 0, 0)
 end
 
 local function part(props, parent)
@@ -126,6 +157,7 @@ function RaceSandbox.build(track)
 		return nil
 	end
 
+	local geo = circuitFor(track)
 	local root = Instance.new("Model")
 	root.Name = ROOT_NAME
 	local base = CFrame.new(island.center + Vector3.new(0, DECK_Y, 0))
@@ -134,10 +166,8 @@ function RaceSandbox.build(track)
 	     reason about than a mesh and it makes the turns actually curve. ]]
 	local SEGMENTS = 72
 	for i = 0, SEGMENTS - 1 do
-		local d0 = (i / SEGMENTS) * LAP_STUDS
-		local d1 = ((i + 1) / SEGMENTS) * LAP_STUDS
-		local p0 = pointAt(d0, 0)
-		local p1 = pointAt(d1, 0)
+		local p0 = pointAt(geo, (i / SEGMENTS) * geo.perimeter, 0)
+		local p1 = pointAt(geo, ((i + 1) / SEGMENTS) * geo.perimeter, 0)
 		local mid = (p0 + p1) / 2
 		local span = (p1 - p0).Magnitude
 		local seg = part({
@@ -152,7 +182,7 @@ function RaceSandbox.build(track)
 	end
 
 	--[[ The line, and a marker every quarter lap so a fade has landmarks. ]]
-	local startP = pointAt(0, 0)
+	local startP = pointAt(geo, 0, 0)
 	part({
 		name = "StartLine",
 		size = Vector3.new(1.4, 1.3, WIDTH),
@@ -161,7 +191,7 @@ function RaceSandbox.build(track)
 		material = Enum.Material.Neon,
 	}, root)
 	for q = 1, 3 do
-		local p, dir = pointAt(LAP_STUDS * q / 4, 0)
+		local p, dir = pointAt(geo, geo.perimeter * q / 4, 0)
 		part({
 			name = "Quarter",
 			size = Vector3.new(0.5, 1.1, WIDTH),
@@ -188,22 +218,21 @@ function RaceSandbox.build(track)
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextColor3 = Color3.fromRGB(240, 240, 245)
-	label.Text = ("%s  -  %d studs, %.1f laps%s
-best split %s")
-		:format(track.name, track.length, track.length / LAP_STUDS,
+	label.Text = ("%s  -  %d studs, one lap%s\nbest split %s")
+		:format(track.name, track.length,
 			track.drain > 1 and (("  -  uphill x%.1f drain"):format(track.drain)) or "",
 			track.best)
 	label.Parent = gui
 
 	root.Parent = Workspace
-	return root, base
+	return root, base, geo
 end
 
 --[[ A runner: a coloured marker with its own live numbers over its head. ]]
-local function buildRunner(root, base, lane, entry, color)
+local function buildRunner(root, base, geo, lane, entry, color)
 	local model = Instance.new("Model")
 	model.Name = "Runner_" .. entry.id
-	local p = pointAt(0, lane * LANE)
+	local p = pointAt(geo, 0, lane * LANE)
 	local body = part({
 		name = "Body",
 		size = Vector3.new(2.4, 3.2, 2.4),
@@ -243,7 +272,7 @@ function RaceSandbox.run(entries, trackId, onFinish)
 	busy = true
 
 	local function body()
-		local root, base = RaceSandbox.build(track)
+		local root, base, geo = RaceSandbox.build(track)
 		if not root then
 			error("no racing island")
 		end
@@ -256,7 +285,7 @@ function RaceSandbox.run(entries, trackId, onFinish)
 		}
 		for i, runner in ipairs(state.runners) do
 			local lane = i - (#state.runners + 1) / 2
-			local model, body, label = buildRunner(root, base, lane, runner, colors[i] or colors[1])
+			local model, body, label = buildRunner(root, base, geo, lane, runner, colors[i] or colors[1])
 			views[i] = { model = model, body = body, label = label, lane = lane }
 		end
 
@@ -272,18 +301,28 @@ function RaceSandbox.run(entries, trackId, onFinish)
 			for i, runner in ipairs(state.runners) do
 				local view = views[i]
 				--[[ 1:1 -- the distance the model says it has run is the distance
-				     it has moved, wrapped round the oval. Nothing is scaled, which
-				     is what makes apparent speed the same on every track. ]]
-				local p, dir = pointAt(runner.distance, view.lane * LANE)
+				     it has moved along the circuit. Nothing is scaled, which is
+				     what makes apparent speed the same on every track. ]]
+				local p, dir = pointAt(geo, runner.distance, view.lane * LANE)
 				view.body.CFrame = base * CFrame.lookAt(p + Vector3.new(0, 2.5, 0),
 					p + dir + Vector3.new(0, 2.5, 0))
 				local pct = math.max(runner.stamina, 0) / runner.staminaMax * 100
-				local laps = math.max(math.ceil(track.length / LAP_STUDS), 1)
-				local lap = math.min(math.floor(runner.distance / LAP_STUDS) + 1, laps)
-				view.label.Text = ("%s   %d/%d
-lap %d/%d   %.0f studs/s   stamina %d%%")
-					:format(runner.name, runner.speed, runner.endurance, lap, laps,
-						runner.velocity * RaceSim.PACE, pct)
+				--[[ Place is read off DISTANCE, which on a ONE-LAP circuit is the
+				     same thing the eye reads off the track. That equivalence is the
+				     whole point of one lap: on a multi-lap oval the runner in front
+				     of you may be a lap down, and the label would disagree with the
+				     picture. ]]
+				local place = 1
+				for _, other in ipairs(state.runners) do
+					if other ~= runner and other.distance > runner.distance then
+						place += 1
+					end
+				end
+				local togo = math.max(track.length - runner.distance, 0)
+				view.label.Text = ("%s   %d/%d\n%s   %.0f studs/s   stamina %d%%   %.0f to go")
+					:format(runner.name, runner.speed, runner.endurance,
+						place == 1 and "LEADING" or ("P" .. place),
+						runner.velocity * RaceSim.PACE, pct, togo)
 			end
 			if finished then
 				conn:Disconnect()
