@@ -100,6 +100,15 @@ function CodeService.redeem(player, input)
 	     inventory AND into the Index, so a code-granted Secret counts as
 	     discovered exactly like an earned one. ]]
 	local granted = {}
+	--[[ A grown runner, for testing a TRACK rather than the ladder that leads
+	     to it. Sets the pool to the ceiling and leaves the split alone, so
+	     whatever build was being tried survives the grant. ]]
+	if reward.racePool and type(profile.runner) == "table" then
+		local RaceSim = require(Shared.RaceSim)
+		profile.runner.pool = RaceSim.MaxPool
+		profile.runner.speed = math.clamp(profile.runner.speed or 0, 0, profile.runner.pool)
+		table.insert(granted, ("runner pool %d"):format(profile.runner.pool))
+	end
 	if reward.secrets then
 		for _, char in ipairs(Brainrots.ByTier.Secret or {}) do
 			local item = {

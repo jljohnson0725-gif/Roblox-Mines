@@ -77,7 +77,12 @@ RaceSim.PACE = 2.2
 --[[ The pool a runner allocates. Grows as the story progresses, which is what
      makes the last opponent unbeatable until it does not: below his pool there
      is no split that beats his time, so the wall is real rather than scripted. ]]
-RaceSim.StartingPool = 10
+--[[
+	14, not 10, and the number is load-bearing: the first opponent needs 13 to
+	beat, so a smaller start is a player who cannot win their first race and has
+	nowhere to earn the point. Measured, not chosen.
+]]
+RaceSim.StartingPool = 14
 RaceSim.MaxPool = 40
 
 --[[
@@ -282,6 +287,21 @@ end
 	order it needs teaching: read the ground first, and only grind when the
 	opponent has stopped making mistakes for you.
 
+	`grants` IS THE CEILING THIS OPPONENT CAN RAISE YOU TO, not a reward. Every
+	win gives one point while you are under it, so a boss you have outgrown pays
+	nothing and the next one is the only way up. The chain was checked end to
+	end and has no dead end -- each ceiling clears the next requirement:
+
+		start 14  ->  Larry needs 13, raises you to 18
+		          ->  Bolt  needs 16, raises you to 24
+		          ->  Grind needs 21, raises you to 30
+		          ->  Ace   needs 29, raises you to 36
+		          ->  ???   needs 35
+
+	NOBODY IS LOCKED. You may race the last one at 14 and lose, which is the
+	story beat -- his tell is "not yet". The wall is real arithmetic, so it does
+	not need a door.
+
 	`style` is how an opponent spends its pool, and it is the thing the player
 	is meant to READ. Only "optimal" solves the track it is standing on; the
 	other two spend the same way whatever the track, which is what makes them
@@ -294,15 +314,15 @@ end
 ]]
 RaceSim.Opponents = {
 	{ id = "rookie", name = "Scuffed Larry", pool = 12, style = "optimal", track = "dash",
-		tell = "runs the track the way the track wants, badly" },
+		grants = 18, tell = "runs the track the way the track wants, badly" },
 	{ id = "bolt", name = "Bolt", pool = 18, style = "speed", track = "straight",
-		tell = "all legs, no lungs -- goes out hard whatever the ground" },
+		grants = 24, tell = "all legs, no lungs -- goes out hard whatever the ground" },
 	{ id = "grind", name = "Grind", pool = 22, style = "endurance", track = "climb",
-		tell = "never tires, never quick, never adapts" },
+		grants = 30, tell = "never tires, never quick, never adapts" },
 	{ id = "ace", name = "The Ace", pool = 28, style = "optimal", track = "mile",
-		tell = "reads the track exactly as well as you do" },
+		grants = 36, tell = "reads the track exactly as well as you do" },
 	{ id = "boss", name = "???", pool = 34, style = "optimal", track = "haul",
-		tell = "not yet" },
+		grants = 40, tell = "not yet" },
 }
 
 RaceSim.OpponentById = {}

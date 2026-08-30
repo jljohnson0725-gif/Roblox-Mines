@@ -567,6 +567,12 @@ Config.Codes = {
 	]]
 	SECRETS = { secrets = true, testOnly = true, blurb = "every Secret, one each" },
 
+	--[[ The racing pool is earned one point at a time, which is correct and
+	     slow to sit through when the thing being checked is a track rather than
+	     the ladder. testOnly, obviously: handing this out live would delete the
+	     progression it exists to test around. ]]
+	RACEPOOL = { racePool = true, testOnly = true, blurb = "a fully grown runner" },
+
 	--[[ Everything needed to stand on the racing island: the seal that opens
 	     it, something worth summoning, and money to stake once you are up
 	     there. Earning this legitimately is about 69 Plinko drops, which is the

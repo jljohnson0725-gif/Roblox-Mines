@@ -396,6 +396,10 @@ end
 function RaceSandbox.start()
 	local Net = require(Shared.Net)
 	local DataService = require(script.Parent.DataService)
+	--[[ Required HERE rather than at the top: PlotService pulls this module in
+	     during Bootstrap, and a top-level PlayerState require would close a
+	     cycle that only shows up as a nil at call time. ]]
+	local PlayerState = require(script.Parent.PlayerState)
 
 	--[[
 		Remember the split. Stored as pool + speed with endurance DERIVED, so
@@ -405,29 +409,49 @@ function RaceSandbox.start()
 		own bounds: this is a bench, the pool is a dial the player is meant to
 		drag around, and the race clamps what it is handed anyway.
 	]]
-	Net.get("SetRacer").OnServerEvent:Connect(function(player, pool, speed)
+	--[[
+		THE SPLIT ONLY. The pool used to come from here too, which was fine while
+		it was a dial the player was meant to drag -- and became an exploit the
+		moment it was something you earn. The client may say how to spend the
+		points; it may not say how many it has.
+	]]
+	Net.get("SetRacer").OnServerEvent:Connect(function(player, _pool, speed)
 		local profile = DataService.get(player)
-		if not profile then
+		if not profile or type(profile.runner) ~= "table" then
 			return
 		end
-		pool = math.clamp(math.floor(tonumber(pool) or 22), 1, RaceSim.MaxPool)
-		speed = math.clamp(math.floor(tonumber(speed) or 0), 0, pool)
-		profile.runner = { pool = pool, speed = speed }
+		profile.runner.speed = math.clamp(math.floor(tonumber(speed) or 0), 0, profile.runner.pool)
 	end)
 
-	Net.get("RaceTest").OnServerInvoke = function(player, speed, endurance, trackId, opponentId)
-		speed = math.clamp(math.floor(tonumber(speed) or 0), 0, RaceSim.MaxPool)
-		endurance = math.clamp(math.floor(tonumber(endurance) or 0), 0, RaceSim.MaxPool)
-		if speed + endurance > RaceSim.MaxPool then
-			return { ok = false, err = "That is more than a runner can carry." }
+	Net.get("RaceTest").OnServerInvoke = function(player, speed, _endurance, trackId, opponentId)
+		local profile = DataService.get(player)
+		if not profile or type(profile.runner) ~= "table" then
+			return { ok = false, err = "Still loading, one sec." }
 		end
+		--[[
+			THE POOL COMES FROM THE PROFILE, and endurance is derived from it.
+			Taking either from the client would make every earned point
+			decorative -- a panel could simply ask for forty.
+		]]
+		local pool = profile.runner.pool
+		speed = math.clamp(math.floor(tonumber(speed) or profile.runner.speed or 0), 0, pool)
+		local endurance = pool - speed
 		local opponent = RaceSim.OpponentById[opponentId]
 		if not opponent then
 			return { ok = false, err = "Unknown opponent." }
 		end
+		--[[
+			THE TRACK COMES FROM THE OPPONENT, not from the caller.
+
+			It was read off the client, which let anyone race the last boss on
+			the shortest track -- and the whole ladder is built on each of them
+			standing on ground that suits or exposes them. Who you picked IS
+			which track it is; there is nothing left for the caller to choose.
+		]]
+		trackId = opponent.track
 		local track = RaceSim.track(trackId)
 		if not track then
-			return { ok = false, err = "Unknown track." }
+			return { ok = false, err = "That opponent has no track." }
 		end
 		if RaceSandbox.isBusy() then
 			return { ok = false, err = "A race is already running." }
@@ -438,6 +462,30 @@ function RaceSandbox.start()
 			{ id = "you", name = player.DisplayName, speed = speed, endurance = endurance },
 			{ id = opponent.id, name = opponent.name, speed = oSpeed, endurance = oEndurance },
 		}, trackId, function(order, failed)
+			--[[
+				THE POINT IS AWARDED HERE, on the server, off the finishing order
+				the simulation produced -- never off anything the client said.
+
+				ONE POINT PER WIN, AND ONLY UNDER THIS OPPONENT'S CEILING. A boss
+				you have outgrown pays nothing, so the next one is the only way
+				up and the ladder cannot be farmed from the bottom. See the note
+				on `grants` in Shared/RaceSim.
+			]]
+			local gained, profile = 0, DataService.get(player)
+			if order and order[1] and order[1].id == "you" and profile
+				and type(profile.runner) == "table" then
+				profile.runner.defeated = profile.runner.defeated or {}
+				profile.runner.defeated[opponent.id] = true
+				local ceiling = math.min(opponent.grants or 0, RaceSim.MaxPool)
+				if profile.runner.pool < ceiling then
+					profile.runner.pool += 1
+					gained = 1
+					--[[ The new point lands in ENDURANCE, because `speed` is the
+					     number the player owns and silently moving it would undo
+					     a split they chose. They can move it back in one press. ]]
+				end
+				PlayerState.push(player)
+			end
 			--[[ The player may have left mid-race; firing at a gone player is
 			     an error rather than a no-op. ]]
 			if player.Parent then
@@ -445,6 +493,8 @@ function RaceSandbox.start()
 					ok = order ~= nil,
 					err = failed,
 					order = order,
+					gained = gained,
+					pool = profile and profile.runner and profile.runner.pool,
 					opponent = { speed = oSpeed, endurance = oEndurance },
 				})
 			end

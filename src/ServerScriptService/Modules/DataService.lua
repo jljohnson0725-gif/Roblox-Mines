@@ -73,7 +73,10 @@ local function newProfile()
 			the invariant that they sum to the pool cannot be broken by a bad
 			write -- there is no second number to disagree with the first.
 		]]
-		runner = { pool = 22, speed = 11 },
+		--[[ `pool` is EARNED, never chosen -- see RaceSandbox. `defeated` is
+		     which opponents you have put away, which is what stops a boss you
+		     have outgrown from paying out forever. ]]
+		runner = { pool = 14, speed = 7, defeated = {} },
 		cologne = false,
 		peptides = false,
 		--[[ The Brainrot Whistle. Calls a ride from anywhere; does NOT open the
@@ -172,8 +175,11 @@ local function reconcile(profile)
 	if type(profile.runner) ~= "table" then
 		profile.runner = { pool = 22, speed = 11 }
 	end
-	profile.runner.pool = math.clamp(math.floor(tonumber(profile.runner.pool) or 22), 1, 40)
+	profile.runner.pool = math.clamp(math.floor(tonumber(profile.runner.pool) or 14), 1, 40)
 	profile.runner.speed = math.clamp(math.floor(tonumber(profile.runner.speed) or 0), 0, profile.runner.pool)
+	if type(profile.runner.defeated) ~= "table" then
+		profile.runner.defeated = {}
+	end
 	profile.cologne = profile.cologne == true
 	profile.peptides = profile.peptides == true
 	profile.whistle = profile.whistle == true

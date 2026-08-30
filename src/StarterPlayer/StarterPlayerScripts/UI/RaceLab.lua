@@ -58,6 +58,7 @@ function RaceLab.init(ctx)
 	local speed = 11
 	local endurance = pool - speed
 	local adopted = false
+	local defeated = {}
 	local racing = false
 
 	--[[ Debounced: the +/- buttons fire fast and the server does not need to
@@ -143,11 +144,13 @@ function RaceLab.init(ctx)
 	local reset = Theme.button({ parent = statRow, size = UDim2.fromOffset(74, 34), order = 4,
 		text = "RESET", textSize = 11 })
 
-	local poolRow = row(10, 28)
-	local poolDown = Theme.button({ parent = poolRow, size = UDim2.fromOffset(38, 28), order = 1, text = "-" })
-	local poolLabel = Theme.label({ parent = poolRow, size = UDim2.fromOffset(230, 28), order = 2,
-		text = "", textSize = 12, color = Theme.color.dim })
-	local poolUp = Theme.button({ parent = poolRow, size = UDim2.fromOffset(38, 28), order = 3, text = "+" })
+	--[[ THE POOL IS EARNED, so it is shown and not offered. It was a +/- dial
+	     while this was a bench; a dial now would make every point you win
+	     decorative. Points come from beating people -- see RaceSandbox. ]]
+	local poolLabel = Theme.label({
+		parent = card, size = UDim2.new(1, 0, 0, 22), order = 10,
+		text = "", textSize = 12, color = Theme.color.gold,
+	})
 
 	local estimate = Theme.label({
 		parent = card, size = UDim2.new(1, 0, 0, 34), order = 11,
@@ -167,11 +170,24 @@ function RaceLab.init(ctx)
 		for id, b in pairs(oppButtons) do
 			Theme.recolor(b, id == opponent and Theme.color.good or Theme.color.raised)
 		end
+		for id, b in pairs(oppButtons) do
+			local def = RaceSim.OpponentById[id]
+			b.Text = (defeated[id] and "* " or "") .. (def and def.name or id)
+		end
 		local o = RaceSim.OpponentById[opponent]
-		tell.Text = o and ("pool %d  ·  %s"):format(o.pool, o.tell) or ""
+		if o then
+			local worth = (pool < (o.grants or 0)) and "  ·  a win is +1" or "  ·  outgrown, pays nothing"
+			tell.Text = ("pool %d  ·  %s%s"):format(o.pool, o.tell, worth)
+		else
+			tell.Text = ""
+		end
 
 		splitLabel.Text = ("SPEED %d      ENDURANCE %d"):format(speed, endurance)
-		poolLabel.Text = ("POOL %d"):format(pool)
+		local beaten = 0
+		for _, o in ipairs(RaceSim.Opponents) do
+			if defeated[o.id] then beaten += 1 end
+		end
+		poolLabel.Text = ("POOL %d   ·   %d of %d beaten"):format(pool, beaten, #RaceSim.Opponents)
 
 		local t = RaceSim.track(track)
 		trackLine.Text = ("%s  -  %d studs, one lap%s"):format(t.name, t.length,
@@ -200,14 +216,6 @@ function RaceLab.init(ctx)
 
 	toSpeed.Activated:Connect(function() speed += 1 settle() end)
 	toEnd.Activated:Connect(function() speed -= 1 settle() end)
-	poolUp.Activated:Connect(function() pool += 1 settle() end)
-	poolDown.Activated:Connect(function()
-		pool -= 1
-		--[[ Shrinking the pool takes the point off Speed first, so the split
-		     never silently inverts on the way down. ]]
-		speed = math.min(speed, math.max(pool, 0))
-		settle()
-	end)
 	reset.Activated:Connect(function() speed = math.floor(pool / 2) settle() end)
 
 	for id, b in pairs(oppButtons) do
@@ -247,17 +255,29 @@ function RaceLab.init(ctx)
 
 	--[[ Adopt the saved split the first time the server tells us what it is. ]]
 	ctx.onState(function()
-		if adopted then
-			return
-		end
 		local saved = ctx.state.runner
 		if type(saved) ~= "table" then
+			return
+		end
+		--[[
+			DEFEATS REFRESH EVERY TIME, the split only once.
+
+			The panel used to mark a defeat locally when a race it had started
+			was won, which drifts the moment anything else changes the profile:
+			it read "1 of 5 beaten" with two beaten because the second win came
+			back for an opponent the panel was no longer pointing at. The server
+			owns this set; the panel should read it, not keep its own tally.
+		]]
+		defeated = saved.defeated or {}
+		if adopted then
+			render()
 			return
 		end
 		adopted = true
 		pool = math.clamp(math.floor(saved.pool or pool), 1, RaceSim.MaxPool)
 		speed = math.clamp(math.floor(saved.speed or speed), 0, pool)
 		endurance = pool - speed
+		defeated = saved.defeated or {}
 		render()
 	end)
 
@@ -268,13 +288,28 @@ function RaceLab.init(ctx)
 			result.Text = (type(res) == "table" and res.err) or "Race failed."
 			result.TextColor3 = Theme.color.bad
 		else
+			--[[ The server owns the pool, so take its word for it rather than
+			     incrementing a local copy that could drift from the profile. ]]
+			if res.pool then
+				pool = res.pool
+				speed = math.min(speed, pool)
+				endurance = pool - speed
+			end
 			local first, second = res.order[1], res.order[2]
 			local won = first and first.id == "you"
+			if won then
+				--[[ Optimistic, so the tick appears on the same beat as the
+				     result; the next state push overwrites it with the truth. ]]
+				defeated[opponent] = true
+			end
 			result.Text = ("%s  —  %s %.1fs, %s %.1fs\nthey ran %d/%d")
 				:format(won and "YOU WIN" or "you lose",
 					first.name, first.time, second and second.name or "?",
 					second and second.time or 0,
 					res.opponent.speed, res.opponent.endurance)
+			if (res.gained or 0) > 0 then
+				result.Text = result.Text .. ("   +%d POOL"):format(res.gained)
+			end
 			result.TextColor3 = won and Theme.color.good or Theme.color.bad
 		end
 		render()
