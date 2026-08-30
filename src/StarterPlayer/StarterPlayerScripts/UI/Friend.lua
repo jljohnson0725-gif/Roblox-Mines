@@ -176,9 +176,19 @@ local TOPICS = {
 		]]
 		id = "fight",
 		when = function(state, seen)
-			return not seen.fight
-				and state.inventory ~= nil
-				and #state.inventory >= 3
+			if seen.fight then
+				return false
+			end
+			--[[ EITHER TRIGGER, whichever lands first. Three brainrots means
+			     the warning arrives before somebody can take one; a single
+			     street fight means it arrives the moment the subject becomes
+			     real. Before the combat stats existed only the first was
+			     available, and it left a player who punched someone on their
+			     first day waiting to accumulate a collection before anyone
+			     told them what a punch can turn into. ]]
+			local stats = state.stats or {}
+			return (stats.fights or 0) > 0
+				or (state.inventory ~= nil and #state.inventory >= 3)
 		end,
 		lines = {
 			"Word to the wise, since nobody else here will give it.",
@@ -187,6 +197,49 @@ local TOPICS = {
 			"Say yes and there's a brainrot on the table. Lose, and it's theirs. Permanently.",
 			"Puro and I settle our differences by talking. Well. I talk.",
 		},
+	},
+	{
+		--[[
+			HE READS YOUR RECORD BACK AT YOU, which needs the numbers and so is
+			the one topic whose lines are a function rather than a table.
+
+			THREE DUELS, NOT ONE. "You are 1 and 0" is not a record, it is an
+			anecdote -- there is nothing for him to have an opinion about until
+			there is a pattern.
+
+			AND ONCE, like the warning. A standing readout sitting above the
+			explainers would starve every topic below it the moment you fought
+			your third duel, which is the bug the ordering note further up
+			records. If this ever wants to be recurring it needs to fire on the
+			record CHANGING rather than on it existing -- which means stamping
+			the total when heard, not a `seen` boolean.
+		]]
+		id = "record",
+		when = function(state, seen)
+			if seen.record then
+				return false
+			end
+			local s = state.stats or {}
+			return ((s.duelWins or 0) + (s.duelLosses or 0) + (s.duelDraws or 0)) >= 3
+		end,
+		lines = function(state)
+			local s = state.stats or {}
+			local won, lost, drew = s.duelWins or 0, s.duelLosses or 0, s.duelDraws or 0
+			local out = {
+				("So you're %d and %d in duels now.%s"):format(won, lost,
+					drew > 0 and (" %d went nowhere, which I'm counting separately because it's funnier."):format(drew) or ""),
+			}
+			--[[ Three readings, and he is fond of you in all of them. ]]
+			if lost > won then
+				out[#out + 1] = "I'm not going to tell you to stop. I'm going to stand here and think it very loudly."
+			elseif won > lost then
+				out[#out + 1] = "People are going to start crossing the street when they see you. That's a compliment. Mostly."
+			else
+				out[#out + 1] = "Dead level. Which means the next one decides which of those you are."
+			end
+			out[#out + 1] = "Puro's record is nothing and nothing. Never been in a fight. Never lost one either."
+			return out
+		end,
 	},
 	{
 		id = "multiplier",
@@ -406,7 +459,30 @@ function Friend.init(ctx)
 		radius = 10,
 	})
 
-	local current, index = nil, 1
+	--[[
+		A topic's `lines` may be a FUNCTION of the state rather than a table,
+		for the ones that read a number back at you. Resolved ONCE when the
+		topic is picked, not on every render: a live income tick firing between
+		two clicks would otherwise rewrite the sentence the player is halfway
+		through reading.
+
+		A function that errors or returns nothing falls back to a single line
+		rather than propagating -- he is a flavour NPC, and a bad format string
+		must not take the dialogue box down with it.
+	]]
+	local function linesOf(topic, snapshot)
+		if type(topic.lines) ~= "function" then
+			return topic.lines
+		end
+		local ok, out = pcall(topic.lines, snapshot)
+		if ok and type(out) == "table" and #out > 0 then
+			return out
+		end
+		warn("[Friend] lines() failed for topic " .. tostring(topic.id))
+		return { "Anyway. You know where I am." }
+	end
+
+	local current, index, shown = nil, 1, nil
 
 	--[[ One place decides whether the card is up, and it publishes that on the
 	     player. The tutorial's highlight watches it so the ring and the four
@@ -418,8 +494,8 @@ function Friend.init(ctx)
 	end
 
 	local function show()
-		body.Text = current.lines[index]
-		advance.Text = (index >= #current.lines) and "Alright" or "Next"
+		body.Text = shown[index]
+		advance.Text = (index >= #shown) and "Alright" or "Next"
 		setOpen(true)
 	end
 
@@ -520,10 +596,11 @@ function Friend.init(ctx)
 			return
 		end
 		current = topicFor(state, seen)
+		shown = linesOf(current, state)
 		--[[ Resume where this topic left off, wrapping. Talking to him again in
 		     the same state should not replay line one forever, and should not
 		     dead-end either. ]]
-		index = ((progress[current.id] or 0) % #current.lines) + 1
+		index = ((progress[current.id] or 0) % #shown) + 1
 		show()
 	end
 
@@ -549,7 +626,7 @@ function Friend.init(ctx)
 			return
 		end
 		progress[current.id] = index
-		if index >= #current.lines then
+		if index >= #shown then
 			seen[current.id] = true
 			--[[ Recorded on the PLAYER so the tutorial can ask whether this
 			     conversation happened without either module knowing about the
