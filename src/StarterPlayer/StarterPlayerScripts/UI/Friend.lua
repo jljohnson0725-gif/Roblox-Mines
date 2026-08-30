@@ -150,6 +150,45 @@ local TOPICS = {
 		},
 	},
 	{
+		--[[
+			THE ONLY WARNING ABOUT DUELS ANYWHERE IN THE GAME.
+
+			Coach does not mention fighting at all, and the offer card's one
+			line -- "X is fighting back, both of you put a brainrot up" --
+			arrives AFTER you have swung and they have swung back. So the rule
+			that a punch can escalate into staking a brainrot permanently was
+			learned by having it happen to you, which is exactly the shape of
+			thing this NPC exists to head off.
+
+			HE ALSO SAYS THE OPPOSITE HALF, and that half matters as much: a
+			street fight stakes nothing. A player who assumes punching is
+			dangerous simply never punches anyone, and the whole street-fight
+			layer goes unused for want of one sentence.
+
+			GATED ON HAVING SOMETHING TO LOSE, not on having been in a fight --
+			there is no combat counter on the profile, and adding one to time a
+			warning is the wrong way round. Three brainrots means the advice
+			lands before somebody takes one rather than after.
+
+			AND ONCE ONLY. Sitting above the explainers with an always-true
+			condition would starve every topic below it, which is the bug the
+			ordering note further up records. It is a warning, not a nag.
+		]]
+		id = "fight",
+		when = function(state, seen)
+			return not seen.fight
+				and state.inventory ~= nil
+				and #state.inventory >= 3
+		end,
+		lines = {
+			"Word to the wise, since nobody else here will give it.",
+			"Swing at someone in the street and nothing's on the line. No stakes, no prompt. That's all a street fight is.",
+			"But hit one back within thirty seconds and the game asks you both whether you want it for real.",
+			"Say yes and there's a brainrot on the table. Lose, and it's theirs. Permanently.",
+			"Puro and I settle our differences by talking. Well. I talk.",
+		},
+	},
+	{
 		id = "multiplier",
 		when = function(state)
 			return (state.inventory == nil or #state.inventory == 0)
