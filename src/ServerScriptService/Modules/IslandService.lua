@@ -1053,8 +1053,20 @@ function IslandService.travelToPlinko(player)
 		return { ok = false, err = "You are already on Plinko island." }
 	end
 
-	character:PivotTo(CFrame.new(
-		island.center + Vector3.new(0, 6, -island.radius * 0.45)))
+	--[[
+		THE CENTRE, WHICH IS THE ONE PART OF THE PLAZA NOTHING STANDS ON.
+
+		This used to land at 0.45 of the radius -- 99 studs out on a 220 island
+		-- reasoning that dropping somebody on top of a machine would read as a
+		bug. It had the geometry backwards: the four machines are arranged ON a
+		ring 105 studs from the centre (PlinkoService.RING), so moving outward
+		from the middle walks INTO them and 99 lands six studs short of the
+		ring. The middle is the clearing they are arranged around.
+
+		Anything sited at the centre later has to move this, so the arithmetic
+		is worth keeping next to the number it depends on.
+	]]
+	character:PivotTo(CFrame.new(island.center + Vector3.new(0, 6, 0)))
 	return { ok = true }
 end
 
