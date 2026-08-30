@@ -108,6 +108,48 @@ local TOPICS = {
 		},
 	},
 	{
+		--[[ Cologne bought, face still to go. Above `stink` because the two are
+		     mutually exclusive and this is the later half of the same arc.
+
+		     AND BOTH SIT ABOVE THE EXPLAINERS, which is not where they started.
+		     They were below `unsecured` and `mines` on the reasoning that a
+		     player rich enough for a five hundred million purchase has long
+		     since stopped needing either -- but those two are gated on HAVING
+		     BUSTED and on twelve rounds, not on wealth. A careful player who
+		     never hit a mine kept getting the unsecured warning forever and
+		     never heard a word about the cologne they had just bought.
+
+		     The rule these two follow: a topic about what you OWN outranks a
+		     topic about what you have not done yet. ]]
+		id = "face",
+		when = function(state)
+			return state.cologne == true and state.peptides ~= true
+		end,
+		lines = {
+			"Better! Genuinely. I can stand closer to you now.",
+			"That's one down. The face is the expensive one.",
+			"Peptides. A billion. You'll look like a completely different man, which is the idea.",
+		},
+	},
+	{
+		--[[
+			HALF THE PRICE, NOT ZERO. He only brings the smell up once doing
+			something about it is in sight -- nagging a player about a five
+			hundred million purchase while they are worth four thousand is not
+			advice, it is just being told you smell for six hours.
+		]]
+		id = "stink",
+		when = function(state)
+			return state.cologne ~= true
+				and (state.money or 0) >= Config.CologneCost * 0.5
+		end,
+		lines = {
+			"Not to bring it up again, but you do still smell.",
+			"There's a cologne in the shop. Half a billion. I know.",
+			"Puro says money can't buy happiness. Puro is a pillow. Buy the cologne.",
+		},
+	},
+	{
 		id = "multiplier",
 		when = function(state)
 			return (state.inventory == nil or #state.inventory == 0)
@@ -138,37 +180,6 @@ local TOPICS = {
 			"You noticed the mine count changes the payout. It also changes the DROP chance.",
 			"More mines, more likely something falls out. That's why one mine isn't just the safe option.",
 			"Puro says I explain things too much. She doesn't say anything actually. But I can tell.",
-		},
-	},
-	{
-		--[[ Cologne bought, face still to go. Above `stink` because the two are
-		     mutually exclusive and this is the later half of the same arc. ]]
-		id = "face",
-		when = function(state)
-			return state.cologne == true and state.peptides ~= true
-		end,
-		lines = {
-			"Better! Genuinely. I can stand closer to you now.",
-			"That's one down. The face is the expensive one.",
-			"Peptides. A billion. You'll look like a completely different man, which is the idea.",
-		},
-	},
-	{
-		--[[
-			HALF THE PRICE, NOT ZERO. He only brings the smell up once doing
-			something about it is in sight -- nagging a player about a five
-			hundred million purchase while they are worth four thousand is not
-			advice, it is just being told you smell for six hours.
-		]]
-		id = "stink",
-		when = function(state)
-			return state.cologne ~= true
-				and (state.money or 0) >= Config.CologneCost * 0.5
-		end,
-		lines = {
-			"Not to bring it up again, but you do still smell.",
-			"There's a cologne in the shop. Half a billion. I know.",
-			"Puro says money can't buy happiness. Puro is a pillow. Buy the cologne.",
 		},
 	},
 	{
