@@ -44,6 +44,9 @@ local FUNCTIONS = {
 	     ball" and "you are already there" both need saying, and a teleport that
 	     silently does nothing is indistinguishable from a broken button. ]]
 	"UsePlinkoBall",
+	--[[ The stat-model sandbox. A RemoteFunction because the caller waits for
+	     the whole race and wants the finishing order back. ]]
+	"RaceTest",
 	"RequestState", -- client pulls on startup, so it can't miss the first push
 	"ReplayIntro", -- run the cold open again on demand; does not clear the seen flag
 }
@@ -68,6 +71,9 @@ local EVENTS = {
 	"OpenSummon", -- server says go ahead: let them pick a ride
 	"OpenRace", -- the podium was used; show the fields
 	"OpenWheel", -- the wheel console was used
+	--[[ The finish, pushed rather than returned: a race is up to ninety
+	     seconds long and a RemoteFunction that waits that out is a hang. ]]
+	"RaceResult",
 	"OpenPlinko", -- the machine was used; let them set a stake and drop
 	"PlayIntro", -- roll the cold open on this client
 	--[[ client -> server. The client reports a swing; the server decides

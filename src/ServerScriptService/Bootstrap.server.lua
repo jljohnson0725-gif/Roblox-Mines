@@ -20,6 +20,7 @@ local PlayerState = require(Modules.PlayerState)
 local EventService = require(Modules.EventService)
 local PlotService = require(Modules.PlotService)
 local AppearanceService = require(Modules.AppearanceService)
+local RaceSandbox = require(Modules.RaceSandbox)
 local MinesLandmark = require(Modules.MinesLandmark)
 local ShopService = require(Modules.ShopService)
 local UpgradeService = require(Modules.UpgradeService)
@@ -56,6 +57,7 @@ print(("[MapStyle] daylight pass: %d parts restyled, %d mushrooms"):format(style
 game:GetService("StarterPlayer").CharacterWalkSpeed = Config.BaseWalkSpeed
 
 DataService.start()
+RaceSandbox.start()
 EventService.start()
 
 -- Before PlotService: it attaches to the bases that exist when it starts, so
